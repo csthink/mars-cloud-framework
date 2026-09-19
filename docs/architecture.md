@@ -22,7 +22,8 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ├── mars-cloud-core-spring-boot-starter/
 ├── mars-cloud-mvc-spring-boot-starter/
 ├── mars-cloud-mysql/
-└── （后续：nacos / feign / sentinel / security starter）
+├── mars-cloud-nacos-spring-boot-starter/
+└── （后续：feign / sentinel / security starter）
 ```
 
 ## 划分三规则
@@ -40,14 +41,14 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ## 依赖方向
 
 ```
-        ┌───────────────────────────┐
-        │  mars-cloud-dependencies  │  ← 版本唯一出口（BOM）
-        └─────────────┬─────────────┘
-                      │ parent
-   ┌──────────────────┼──────────────────┬──────────────────┐
-   ▼                  ▼                  ▼                  ▼
-common ◄──────── core-starter ◄─── mvc-starter          mysql
-（无 Spring）      （自动装配）      （Web 横切）      （持久化约定）
+                 ┌───────────────────────────┐
+                 │  mars-cloud-dependencies  │  ← 版本唯一出口（BOM）
+                 └─────────────┬─────────────┘
+                               │ 所有模块的 parent
+   ┌──────────────────┬────────┼──────────┬──────────────────┐
+   ▼                  ▼        ▼          ▼                  ▼
+common ◄──────── core-starter ◄─── mvc-starter           mysql        nacos-starter
+（无 Spring）      （自动装配）      （Web 横切）       （持久化）     （注册配置）
 ```
 
 - `common` **不依赖任何 Spring / Servlet / Swagger**。它是唯一能被所有栈复用的模块，
@@ -109,6 +110,19 @@ Boot 4 带的是 Jackson 3，包名从 `com.fasterxml.jackson.*` 变为 `tools.j
 `mars-cloud-mysql` 把 `BaseEntity`、逻辑删除、审计字段自动填充、ID 生成器固化下来，
 业务侧只写实体与 Mapper。**Entity 不作为对外 API 的 DTO。**
 
+### Nacos：接入必须满足同一套命名与失败语义
+
+`mars-cloud-nacos-spring-boot-starter` 同时引入 Nacos Discovery 与 Config，并在启动期校验：
+
+- 每个环境使用独立、非空的 Namespace ID，Config 与 Discovery 必须相同
+- 共享配置固定为 `COMMON/shared-common.yaml`
+- 应用配置固定为 `DEFAULT_GROUP/<spring.application.name>.yaml`
+- 共享配置先导入，应用配置后导入，且两层显式开启刷新
+- 两层都禁止 `optional:`，避免配置中心不可用时带着不完整配置继续启动
+
+Spring Cloud Alibaba 2025.1.x 使用 `spring.config.import`，不使用 `bootstrap.yml`。
+测试或明确不接入 Nacos 的进程必须同时关闭 Config 与 Discovery。配置模板见模块 README。
+
 ## 已知行为与偏差
 
 ### String 返回值：统一协商为 JSON
@@ -157,6 +171,7 @@ body 换成了 JSON 信封。而 `ResponseBodyAdvice` 在转换器**选定之后
 | 服务之间**不加编译期依赖** | 服务本就无编译期耦合，将来拆库拆服务是零成本的 | 跨服务调用要自己写客户端（后续由 Feign starter 提供） |
 | 按**消费者数量**决定能力下沉 | 第一个消费者时写在业务服务里，避免框架被单点需求污染 | 第二个消费者出现时需要一次搬迁 |
 | 配置项进版本库、环境取值只走环境变量 | 新克隆的仓不因缺配置文件而起不来；也避免把某人本机配置当成默认值 | 环境差异要靠环境变量表达 |
+| Nacos 配置导入 fail-fast，禁止 `optional:` | 配置中心不可用或 Data ID 写错时立即停止，避免服务使用残缺配置运行 | 本地离线测试必须显式关闭 Config 与 Discovery |
 
 ### 为什么框架不引任何 IdP 的具体 SDK
 

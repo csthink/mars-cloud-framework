@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: mars-cloud-example-service
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE_ID}
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE_ID}
+        group: DEFAULT_GROUP
+        username: ${NACOS_USERNAME:}
+        password: ${NACOS_PASSWORD:}
+  config:
+    import:
+      - nacos:shared-common.yaml?group=COMMON&refreshEnabled=true
+      - nacos:${spring.application.name}.yaml?group=DEFAULT_GROUP&refreshEnabled=true

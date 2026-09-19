@@ -78,6 +78,18 @@ mars:
 它是一条命令能跑起来的示例服务，演示信封、异常映射、错误码与 i18n 的接线，
 并自带端到端验收脚本。
 
+接入 Nacos 注册发现与配置中心时，再引入：
+
+```xml
+<dependency>
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-nacos-spring-boot-starter</artifactId>
+</dependency>
+```
+
+该 starter 固定 Namespace、Group、Data ID、配置导入顺序与失败语义。完整配置模板、离线方式和
+约定说明见 [`mars-cloud-nacos-spring-boot-starter/README.md`](mars-cloud-nacos-spring-boot-starter/README.md)。
+
 ### 参与本仓开发
 
 构建、测试与依赖约束见下文「[构建](#构建)」一节。
@@ -91,6 +103,7 @@ mars:
 | `mars-cloud-core-spring-boot-starter` | 核心自动装配，目前提供分布式 ID（雪花算法） |
 | `mars-cloud-mvc-spring-boot-starter` | Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间校验、i18n、请求上下文 |
 | `mars-cloud-mysql` | MyBatis-Plus 约定：基础实体、逻辑删除、审计字段填充、ID 生成器 |
+| `mars-cloud-nacos-spring-boot-starter` | Nacos 注册发现与配置中心：固定 Namespace、Group、Data ID、导入顺序与 fail-fast 约定 |
 
 依赖方向是单向的：starter → `common` / `dependencies` / 更底层的 starter
 （mvc starter 依赖 core starter 以获得分布式 ID），不允许反向依赖或成环。
@@ -111,7 +124,7 @@ mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 Spring Framework 7（Boot 4 基线）靠参数名解析 `@RequestParam` / `@PathVariable`，
 缺了它会在运行期抛 `IllegalArgumentException`，而编译期不报错。
 
-契约测试共有 **55 个**（mvc starter 41 个、mysql 14 个），随 `mvn clean install` 一起跑：
+契约测试共有 **65 个**（mvc starter 41 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
@@ -124,6 +137,7 @@ Spring Framework 7（Boot 4 基线）靠参数名解析 `@RequestParam` / `@Path
 | `PersistenceContractTest` | 审计字段填充、雪花 ID、分页拦截器 |
 | `DataSourceDialectTest` | 方言显式指定（达梦/金仓/大小写）、配置错误启动期失败、分页参数 |
 | `OpenApiSmokeTest` | `/v3/api-docs` 与 Swagger UI 可访问、接口清单非空 |
+| `NacosConventionTest` | 自动装配、应用命名、离线模式、Namespace 一致性、Group、Data ID、导入顺序与禁止 `optional:` |
 
 > 改到统一响应、异常映射、i18n 或错误码时，这几张测试表是必须跑绿的契约面。
 
@@ -138,6 +152,7 @@ Spring Framework 7（Boot 4 基线）靠参数名解析 `@RequestParam` / `@Path
 | Spring Boot | 4.0.8 |
 | Spring Cloud | 2025.1.3 |
 | Spring Cloud Alibaba | 2025.1.0.0 |
+| Nacos client | 3.1.1（由 Spring Cloud Alibaba BOM 管理） |
 | Jackson | 3.1.5（注解仍是 `com.fasterxml.jackson.annotation` 2.21） |
 | MyBatis-Plus | 3.5.17（`mybatis-plus-spring-boot4-starter`） |
 

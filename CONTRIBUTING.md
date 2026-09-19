@@ -39,6 +39,7 @@
 | i18n | message lookup、fallback locale、缺 key 时的行为 |
 | 错误码 | 是否落在声明区间内、是否与既有码冲突 |
 | 自动装配 | `AutoConfiguration.imports` 是否同步、条件注解是否覆盖两种 Web 栈 |
+| Nacos 约定 | Config 与 Discovery 的 Namespace 是否一致；Group / Data ID / 导入顺序 / fail-fast 是否仍受测试保护 |
 | 持久化契约 | `BaseEntity` / 审计填充 / 逻辑删除的改动必须验证下游 |
 | 依赖版本 | 只改 `mars-cloud-dependencies`，并跑全量构建 |
 
@@ -50,6 +51,7 @@
 mvn clean install                                     # 全量 + 契约测试
 mvn -pl mars-cloud-common clean test                  # 单模块
 mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
+mvn -pl mars-cloud-nacos-spring-boot-starter -am test # Nacos 约定 + 其依赖
 ```
 
 本仓的契约测试是**回归网**，改到统一响应、异常映射、i18n 或错误码时必须全绿。

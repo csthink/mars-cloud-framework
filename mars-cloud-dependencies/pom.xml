@@ -31,6 +31,7 @@
         <mars-cloud-core-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-core-spring-boot-starter.version>
         <mars-cloud-mvc-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-mvc-spring-boot-starter.version>
         <mars-cloud-mysql.version>1.0.0-SNAPSHOT</mars-cloud-mysql.version>
+        <mars-cloud-nacos-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-nacos-spring-boot-starter.version>
 
         <!-- 常用依赖版本 -->
         <lombok.version>1.18.40</lombok.version>
@@ -122,6 +123,12 @@
                 <groupId>com.mars.cloud</groupId>
                 <artifactId>mars-cloud-mysql</artifactId>
                 <version>${mars-cloud-mysql.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-nacos-spring-boot-starter</artifactId>
+                <version>${mars-cloud-nacos-spring-boot-starter.version}</version>
             </dependency>
 
             <!-- 常用依赖版本声明 -->
