@@ -73,6 +73,30 @@ Servlet starter 里，外部调用方就会看到「网关一种错误格式、�
 信封本身**不做 i18n 查找**——文案由各栈的 advice 层解析完成后传入。这样 `common`
 才能保持无 Spring 依赖。
 
+**「无 Spring 依赖」的判定标准是依赖树，不是 POM 里那几行。** 例如
+`spring-boot-starter-jackson` 看着只是 JSON，实际会经 `spring-boot-starter` 把
+`spring-core` / `spring-context` / 日志实现一起带进来——所以 `common` 直接依赖
+Jackson 3 的 artifact，并因此在 BOM 里单独钉住它的版本。
+
+### 框架不绑定具体锁实现
+
+分布式锁失败的异常类型由 `common` 提供（`LockFailureException`），Servlet 侧的全局
+异常处理把它映射成 HTTP 409 + 统一信封。**但框架不引入 lock4j、Redisson 或任何锁实现。**
+
+原因不是洁癖：第三方锁组件（连最轻量的 core 包也一样）会把**无条件自动装配**带进使用方
+的 classpath，从而要求使用方提供锁执行器，否则应用启动失败。框架为了一个异常类型
+就把使用方的启动过程交给第三方的自动配置，代价不成比例。谁实现锁，谁负责抛这个异常。
+
+### JSON：Jackson 3
+
+Boot 4 带的是 Jackson 3，包名从 `com.fasterxml.jackson.*` 变为 `tools.jackson.*`
+（**注解例外**，仍在 `com.fasterxml.jackson.annotation`）。两处必须留意的差异：
+
+- `ObjectMapper` 不再支持 `setConfig` / `configure` 一类的可变配置，改为
+  `JsonMapper.builder()` 一次性构建
+- 异常基类变为 `JacksonException`，且**不再受检**
+- `JsonParser.Feature` 由 `JsonReadFeature` / `JsonWriteFeature` 取代
+
 ### 错误码：区间化，启动即校验
 
 每个模块与每个服务声明自己的错误码区间，框架在启动时校验「不越界 + 不重复」，

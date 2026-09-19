@@ -1,0 +1,12 @@
+# 测试应用的配置：服务级错误码区间声明 + i18n 资源
+spring:
+  messages:
+    basename: i18n/error-code
+
+mars:
+  error-code:
+    validate: true
+    range:
+      service: mvc-contract-test
+      start: 61900
+      end: 61999

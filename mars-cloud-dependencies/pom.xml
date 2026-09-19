@@ -18,13 +18,13 @@
       所有模块以它为 parent，依赖版本只在这里声明一次。
     -->
     <properties>
-        <java.version>17</java.version>
+        <java.version>25</java.version>
         <!-- 统一编译/依赖版本 -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>${java.version}</maven.compiler.release>
-        <spring-boot.version>3.5.7</spring-boot.version>
-        <spring-cloud.version>2025.0.0</spring-cloud.version>
-        <spring-cloud-alibaba.version>2025.0.0.0</spring-cloud-alibaba.version>
+        <spring-boot.version>4.0.8</spring-boot.version>
+        <spring-cloud.version>2025.1.3</spring-cloud.version>
+        <spring-cloud-alibaba.version>2025.1.0.0</spring-cloud-alibaba.version>
 
         <!-- 内部模块版本 -->
         <mars-cloud-common.version>1.0.0-SNAPSHOT</mars-cloud-common.version>
@@ -34,18 +34,33 @@
 
         <!-- 常用依赖版本 -->
         <lombok.version>1.18.40</lombok.version>
-        <hutool-all.version>5.8.41</hutool-all.version>
-        <hutool-core.version>5.8.41</hutool-core.version>
-        <fastjson2.version>2.0.57</fastjson2.version>
-        <mybatis.version>3.0.4</mybatis.version>
-        <mybatis-plus.version>3.5.8</mybatis-plus.version>
+        <!--
+          Jackson：Boot 4.0.8 的 jackson-bom 管的是 3.1.5 / 注解 2.21。
+          mars-cloud-common 不依赖 Spring，拿不到 Boot 的依赖管理，
+          所以在这里把版本显式钉住，升级 Boot 时需一并核对。
+        -->
+        <jackson3.version>3.1.5</jackson3.version>
+        <jackson-annotations.version>2.21</jackson-annotations.version>
+        <hutool-all.version>5.8.47</hutool-all.version>
+        <hutool-core.version>5.8.47</hutool-core.version>
+        <fastjson2.version>2.0.65</fastjson2.version>
+        <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
+        <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <!-- 3.5.9 起分页等依赖 JSqlParser 的拦截器被拆到独立 artifact -->
+        <mybatis-plus-jsqlparser.version>3.5.17</mybatis-plus-jsqlparser.version>
         <mybatis-plus-generator.version>3.5.3.1</mybatis-plus-generator.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
         <commons-collections4.version>4.5.0</commons-collections4.version>
         <commons-codec.version>1.18.0</commons-codec.version>
         <transmittable-thread-local.version>2.12.3</transmittable-thread-local.version>
-        <lock4j.version>2.2.4</lock4j.version>
-        <springdoc-openapi.version>2.8.14</springdoc-openapi.version>
+        <!--
+          分布式锁：框架**不引入**任何锁实现（lock4j / Redisson 都不引）。
+          锁异常类型由 mars-cloud-common 提供，见 LockFailureException。
+        -->
+        <!--
+          接口文档（springdoc-openapi）不在这里声明：3.0.x 之前无 Boot 4 版本，
+          而 3.1.x 的 parent 是 Boot 4.1。引入时需与 Boot 4.0.x 逐项核对。
+        -->
     </properties>
 
     <!--
@@ -157,23 +172,17 @@
                 <version>${transmittable-thread-local.version}</version>
             </dependency>
 
+            <!-- MyBatis-Plus：Boot 4 用专用 artifactId -->
             <dependency>
                 <groupId>com.baomidou</groupId>
-                <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
-                <version>${lock4j.version}</version>
-            </dependency>
-
-            <!-- MyBatis / MyBatis-Plus -->
-            <dependency>
-                <groupId>org.mybatis.spring.boot</groupId>
-                <artifactId>mybatis-spring-boot-starter</artifactId>
-                <version>${mybatis.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.baomidou</groupId>
-                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis-plus-jsqlparser.version}</version>
             </dependency>
 
             <!-- MyBatis-Plus 代码生成器 -->
@@ -181,19 +190,6 @@
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-generator</artifactId>
                 <version>${mybatis-plus-generator.version}</version>
-            </dependency>
-
-            <!-- 接口文档 -->
-            <dependency>
-                <groupId>org.springdoc</groupId>
-                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-                <version>${springdoc-openapi.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.springdoc</groupId>
-                <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
-                <version>${springdoc-openapi.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

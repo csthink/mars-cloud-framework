@@ -46,6 +46,10 @@ mvn -pl mars-cloud-common install          # 单模块（父 POM 通过显式 re
 mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 ```
 
+本仓要求 **JDK 25**（编译目标 `release 25`）。引入本框架的业务服务，编译时请保留
+参数名（`-parameters`，Spring Boot 的 parent 默认已开启）——Spring 6.1 起用它解析
+`@RequestParam` / `@PathVariable` 的参数名。
+
 根聚合 POM 只做聚合、**不做 parent**：各模块的 parent 始终是 `mars-cloud-dependencies`，
 这样「版本唯一出口」的契约不变，且 `mars-cloud-dependencies` 将来仍可被独立提取。
 
@@ -53,11 +57,12 @@ mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 
 | 组件 | 版本 |
 | --- | --- |
-| Java | 17+ |
-| Spring Boot | 3.5.7 |
-| Spring Cloud | 2025.0.0 |
-| Spring Cloud Alibaba | 2025.0.0.0 |
-| MyBatis-Plus | 3.5.8 |
+| Java | 25 (LTS) |
+| Spring Boot | 4.0.8 |
+| Spring Cloud | 2025.1.3 |
+| Spring Cloud Alibaba | 2025.1.0.0 |
+| Jackson | 3.1.5（注解仍是 `com.fasterxml.jackson.annotation` 2.21） |
+| MyBatis-Plus | 3.5.17（`mybatis-plus-spring-boot4-starter`） |
 
 ## 文档
 

@@ -1,8 +1,8 @@
 package com.mars.cloud.mvc.advice;
 
 
-import com.baomidou.lock.exception.LockFailureException;
 import com.mars.cloud.common.error.ErrorCode;
+import com.mars.cloud.common.exception.LockFailureException;
 import com.mars.cloud.common.response.UnifyResponse;
 import com.mars.cloud.mvc.error.ExceptionCodeConfiguration;
 import com.mars.cloud.mvc.exception.AuthenticationException;
@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
@@ -30,6 +31,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @since 2025-10-29 18:00
@@ -170,9 +172,12 @@ public class GlobalExceptionAdvice {
     public UnifyResponse<Object> handleMethodValidation(HandlerMethodValidationException ex) {
         log.error("HandlerMethodValidationException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
 
-        String joinMsg = ex.getAllValidationResults().stream()
-                .flatMap(r -> r.getResolvableErrors().stream())
-                .map(e -> e.getDefaultMessage())
+        // Spring 7 移除了 getAllValidationResults()，改为参数级 + 跨参数级两类结果
+        String joinMsg = Stream.concat(
+                        ex.getParameterValidationResults().stream()
+                                .flatMap(r -> r.getResolvableErrors().stream()),
+                        ex.getCrossParameterValidationResults().stream())
+                .map(MessageSourceResolvable::getDefaultMessage)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining("; "));
         if (joinMsg.isEmpty()) joinMsg = "Bad Request";

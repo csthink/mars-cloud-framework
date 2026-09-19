@@ -27,6 +27,35 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 
 统一响应的字段、错误码区间与 i18n 约定见 [../docs/error-code.md](../docs/error-code.md)。
 
+## 异常映射一览
+
+| 异常 | HTTP | 说明 |
+| --- | --- | --- |
+| `HttpException` 及其子类 | 按异常自带状态码 | 业务异常基类，`BusinessException` / `FailedException` 为 200 |
+| `AuthenticationException` | 401 | |
+| `AuthorizationException` | 403 | |
+| `BadRequestException` | 400 | |
+| `ResourceNotFoundException` | 404 | |
+| `ConflictException` | 409 | |
+| `LockFailureException` | 409 | **框架自带**的锁失败异常，见下 |
+| 参数校验类异常 | 400 | 含 `BindException` / `ConstraintViolationException` 等 |
+| 未预期异常 | 500 | 兜底，错误码 500 |
+
+### 分布式锁失败
+
+框架**不引入任何锁实现**。谁实现锁，谁在获取失败时抛
+`com.mars.cloud.common.exception.LockFailureException`，本 starter 会把它映射成
+HTTP 409 + 统一信封：
+
+```java
+if (!lock.tryLock(key)) {
+    throw new LockFailureException("资源正在处理中：" + key);
+}
+```
+
+不要为了让这个分支工作而引入第三方锁组件——它们会把无条件自动装配带进你的
+classpath，反而破坏应用启动。
+
 ## 配置项
 
 ```yaml

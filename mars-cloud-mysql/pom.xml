@@ -63,14 +63,19 @@
             <scope>runtime</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-starter</artifactId>
-        </dependency>
-
+        <!--
+          MyBatis-Plus 的 Boot 4 专用 starter。mybatis-spring-boot-starter 由它传递引入，
+          不再单独声明——单独声明会把 MyBatis 的版本决定权从 MyBatis-Plus 手里拿走。
+        -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        </dependency>
+
+        <!-- 分页拦截器（3.5.9 起不在 starter 内，需显式引入） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
         </dependency>
 
         <dependency>

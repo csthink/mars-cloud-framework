@@ -8,11 +8,12 @@
 
 | 约束 | 理由 |
 | --- | --- |
-| `mars-cloud-common` **不得**依赖任何 Spring / Servlet / Swagger 组件 | 它是唯一能被 Servlet 与响应式两种栈复用的模块 |
+| `mars-cloud-common` **不得**依赖任何 Spring / Servlet / Swagger 组件 | 它是唯一能被 Servlet 与响应式两种栈复用的模块。引 `spring-boot-starter-jackson` 同样破坏这条——它经 `spring-boot-starter` 带入 `spring-core` / `spring-context` 与日志实现 |
 | 统一响应信封（`UnifyResponse`）与错误码契约（`ErrorCode`）**留在 common** | 网关与业务服务必须返回同一种响应格式 |
+| 框架**不引入任何具体锁实现**（lock4j / Redisson 都不引） | 第三方锁组件连最轻的 core 包都会无条件自动装配，导致使用方启动失败。锁异常类型用 `com.mars.cloud.common.exception.LockFailureException` |
 | `service` 之间**不得**有 Maven 依赖，只能走 HTTP | 保证将来拆库拆服务是零成本 |
 | 各模块 `<parent>` 是 `mars-cloud-dependencies`，**根聚合 POM 不做 parent** | 「版本唯一出口」契约 |
-| 依赖版本只在 `mars-cloud-dependencies` 声明一次，模块内**不写 `<version>`** | 同上 |
+| 依赖版本只在 `mars-cloud-dependencies` 声明一次，模块内**不写 `<version>`** | 同上。唯一例外是 `common` 的 Jackson——它拿不到 Boot 的依赖管理，版本在 BOM 里用属性钉住 |
 | starter **不得**依赖任何具体认证产品（含第三方 IdP 的 artifact） | 框架只依赖标准协议，换 IdP 不改代码 |
 | 不为「以后可能用」提前引入组件 | 出现真实场景再建模块 |
 
@@ -45,6 +46,18 @@ mvn clean install                                  # 全量
 mvn -pl mars-cloud-common clean test               # 单模块（验证 relativePath）
 mvn -pl mars-cloud-mvc-spring-boot-starter -am test  # 单模块 + 依赖
 ```
+
+改到统一响应、异常映射、i18n 或错误码时，`mars-cloud-mvc-spring-boot-starter` 的
+`MvcContractTest` / `ErrorCodeContractTest` 是必须跑绿的契约测试。
+
+## 升级依赖时注意
+
+- **不要顺手把 `X.1.x` 当成补丁**：同一依赖的 `X.1.x` 线可能对应更高一档的 Spring Boot
+- Jackson 3 的 `ObjectMapper` **不可变配置**：`setConfig` / `configure` 已移除，
+  改用 `JsonMapper.builder()`；异常基类变为 `JacksonException` 且不再受检；
+  `JsonParser.Feature` 已被 `JsonReadFeature` 取代
+- `common` 不参与 Boot 的依赖管理，它的 Jackson 版本在 BOM 里手工钉住，升级 Boot 时要一并核对
+- 框架不引锁实现，测试里也不要为了让某个第三方组件装配成功而引入它
 
 ## 提交前
 

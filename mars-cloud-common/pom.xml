@@ -47,10 +47,22 @@
             <artifactId>commons-collections4</artifactId>
         </dependency>
 
-        <!-- 非 Web 库，需显式声明 Jackson -->
+        <!--
+          JSON：Jackson 3（包名 tools.jackson.*），版本由 Boot 4.0.8 的 jackson-bom 决定。
+          刻意**不引** spring-boot-starter-jackson —— 那会把 spring-boot / spring-context
+          等运行时依赖带进本模块，破坏「common 不依赖 Spring」的约束。
+          Jackson 3 把注解留在 com.fasterxml.jackson.annotation，故注解依赖单独声明。
+        -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson3.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson-annotations.version}</version>
         </dependency>
 
         <!-- 工具类里用到了日志接口，直接依赖 slf4j-api（不引入具体绑定） -->
