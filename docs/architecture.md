@@ -149,3 +149,7 @@ body 换成了 JSON 信封。而 `ResponseBodyAdvice` 在转换器**选定之后
 - 服务依赖 release 版本，不依赖 SNAPSHOT
 - 依赖版本只在 `mars-cloud-dependencies` 里声明一次，模块内**不写 `<version>`**
 - 不使用 git submodule
+
+> **当前状态**：制品库尚未选定（自建 Nexus 或 GitHub Packages 私有包均可），
+> 因此现在**没有发布步骤**。下游服务仓的 CI 通过检出本仓源码并 `mvn install` 来消费，
+> 详见 [docs/ci.md](ci.md)。

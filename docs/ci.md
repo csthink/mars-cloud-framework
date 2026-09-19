@@ -8,6 +8,11 @@
 1. **构建 + 测试**：`mvn clean install`（Java 25 / Temurin）
 2. **公开安全扫描**：`tools/check-public-safety-generic.sh`
 
+> **本仓目前不发布制品。** 私有制品仓库尚未选定，所以流水线只构建到本地仓库。
+> 下游服务仓的 CI 会检出本仓源码并 `mvn install` 来拿到依赖——
+> 等制品库定下来，再补发布步骤与下游的拉取配置（见
+> [docs/architecture.md](architecture.md) 的版本策略）。
+
 ## 为什么安全扫描在 CI 里也要跑
 
 本仓装了 pre-commit hook，但 hook 可以被 `git commit --no-verify` 绕过。
@@ -34,16 +39,46 @@ bash tools/check-public-safety-generic.sh .
 本仓构建成功后，会向 `csthink/mars-cloud-service` 发送 `framework-updated` 事件，
 让下游在框架变更后自动重建——否则「框架改了、服务没跟上」只能靠人记得去跑。
 
-跨仓触发**必须用 PAT**：工作流自带的 `GITHUB_TOKEN` 只能操作本仓。
-需要配置一个名为 `SERVICE_DISPATCH_TOKEN` 的仓库 secret：
-
-1. 生成一个 fine-grained PAT，仓库范围只勾 `csthink/mars-cloud-service`，
-   权限给 **Contents: Read and write**（dispatch 事件由 contents 权限覆盖）
-2. 存为本仓 secret：
-
-   ```bash
-   gh secret set SERVICE_DISPATCH_TOKEN -R csthink/mars-cloud-framework
-   ```
+跨仓触发**必须用 PAT**：工作流自带的 `GITHUB_TOKEN` 只能操作本仓，
+而且用 `GITHUB_TOKEN` 创建的事件**不会触发新的工作流运行**（GitHub 的既定行为）。
 
 **未配置该 secret 时该步骤会跳过并打印提示，不会让流水线失败**——
 否则新克隆的仓一提交就是红的。
+
+### 配置步骤（需要仓库管理员在网页操作）
+
+fine-grained PAT **只能在 GitHub 网页创建，没有 API 或 CLI 可以生成**，
+所以这一步无法由自动化代劳。权限刻意收到最小：
+
+1. 打开 <https://github.com/settings/personal-access-tokens/new>
+2. **Token name**：`mars-cloud-framework → service dispatch`
+3. **Expiration**：按组织策略选（建议 90 天，到期轮换）
+4. **Repository access** → 选 **Only select repositories** → 只勾 `csthink/mars-cloud-service`
+5. **Permissions** → Repository permissions → 只开一项：
+   **Contents: Read and write**（`repository_dispatch` 事件即由它覆盖）。
+   其余全部保持 **No access**——尤其不要给 `Administration`、`Workflows`、`Secrets`
+6. 生成后复制 token，存为本仓 secret（用管道，**不要写进命令行参数**，
+   否则会留在 shell 历史里）：
+
+   ```bash
+   printf '%s' '<粘贴 token>' | gh secret set SERVICE_DISPATCH_TOKEN -R csthink/mars-cloud-framework
+   ```
+
+7. 验证：
+
+   ```bash
+   # 触发一次本仓流水线，看 dispatch 步骤是否真的发出事件
+   gh workflow run ci.yml -R csthink/mars-cloud-framework
+   gh run list -R csthink/mars-cloud-service --limit 5   # 应出现 event=repository_dispatch 的 run
+   ```
+
+> ⚠️ **不要用个人 CLI token（`gho_…`）充当这个 secret。** 它带 `repo` 全范围权限，
+> 远超「向一个仓发一个事件」所需。跨仓只读目标仓 + 发事件，用上面的细粒度权限就够了。
+
+### 轮换
+
+到期或怀疑泄漏时：删旧 token → 按上面步骤生成新的 → 覆盖 secret。删 secret 用：
+
+```bash
+gh secret delete SERVICE_DISPATCH_TOKEN -R csthink/mars-cloud-framework
+```
