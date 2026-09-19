@@ -46,7 +46,7 @@ mvn -pl mars-cloud-common install          # 单模块（父 POM 通过显式 re
 mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 ```
 
-本仓自带契约测试（mvc starter 28 个、mysql 14 个），随 `mvn clean install` 一起跑：
+本仓自带契约测试（mvc starter 32 个、mysql 14 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
@@ -57,6 +57,7 @@ mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 | `StringReturnAndFallbackTest` | String 返回值的 Content-Type 与文案兜底 |
 | `PersistenceContractTest` | 审计字段填充、雪花 ID、分页拦截器 |
 | `DataSourceDialectTest` | 方言显式指定（达梦/金仓/大小写）、配置错误启动期失败、分页参数 |
+| `OpenApiSmokeTest` | `/v3/api-docs` 与 Swagger UI 可访问、接口清单非空 |
 
 本仓要求 **JDK 25**（编译目标 `release 25`）。引入本框架的业务服务，编译时请保留
 参数名（`-parameters`，Spring Boot 的 parent 默认已开启）——Spring 6.1 起用它解析

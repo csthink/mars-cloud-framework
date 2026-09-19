@@ -25,6 +25,7 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 | 请求上下文 | `HttpContextUtilFilter` + `HttpContextUtil`，线程内可取到 `HttpServletRequest` |
 | 通用工作线程 | `AbstractWorkThread` + `RequestFacade`，适合把大请求拆成并行子任务 |
 | 转换器协商 | `HttpMessageConverterAutoConfiguration` 修正 String 返回值的 `Content-Type` |
+| 接口文档 | 随依赖带入 springdoc-openapi，业务服务无需再声明 |
 
 统一响应的字段、错误码区间与 i18n 约定见 [../docs/error-code.md](../docs/error-code.md)。
 
@@ -135,6 +136,31 @@ HttpServletRequest request = HttpContextUtil.getRequest();
 starter 会自动把 `JsonStringHttpMessageConverter` 插到消息转换器链首，保证前两种情况的
 `Content-Type` 是 `application/json`；显式要求 `text/plain` 的接口不受影响。
 细节见 [../docs/architecture.md](../docs/architecture.md) 的「已知行为与偏差」。
+
+## 接口文档
+
+引入本 starter 即已带入 **springdoc-openapi**（版本由 BOM 管），无需在业务服务里重复声明：
+
+| 端点 | 内容 |
+| --- | --- |
+| `/v3/api-docs` | OpenAPI 3 JSON |
+| `/v3/api-docs.yaml` | OpenAPI 3 YAML |
+| `/swagger-ui/index.html` | Swagger UI 页面 |
+
+常见配置：
+
+```yaml
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    # 生产环境建议关闭
+    enabled: true
+```
+
+⚠️ **版本纪律**：springdoc 必须停在 `3.0.x`。`3.1.x` 的 parent 是 Spring Boot 4.1.0，
+与本项目的 Boot 4.0.x 不同线；升级前先核对 Boot 版本。
 
 ## 自定义覆盖
 
