@@ -11,7 +11,13 @@ mars-cloud 微服务框架的**公共库仓**：依赖管理 BOM + 一组 Spring
 
 ## 快速开始
 
-引入依赖管理（BOM）：
+克隆后先装 pre-commit hook（幂等，只需一次）：
+
+```bash
+./tools/install-hooks.sh
+```
+
+然后引入依赖管理（BOM）：
 
 ```xml
 <parent>
