@@ -146,6 +146,7 @@ Spring Framework 7（Boot 4 基线）靠参数名解析 `@RequestParam` / `@Path
 - [docs/architecture.md](docs/architecture.md) —— 模块划分、依赖方向与设计取舍
 - [docs/error-code.md](docs/error-code.md) —— 统一响应信封与错误码区间约定
 - [docs/ci.md](docs/ci.md) —— 流水线内容与跨仓触发
+- [CONTRIBUTING.md](CONTRIBUTING.md) —— 参与本仓开发：硬性约束、模块边界判定、改动检查清单
 - 各模块自己的 `README.md` —— 配置项与用法
 - 配套服务仓的 `mars-cloud-sample-service` —— 可运行的完整示例
 
