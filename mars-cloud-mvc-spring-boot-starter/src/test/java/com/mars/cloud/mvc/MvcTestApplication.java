@@ -1,12 +1,13 @@
 package com.mars.cloud.mvc;
 
 import com.mars.cloud.common.error.ErrorCode;
+import com.mars.cloud.mvc.annotation.IgnoreResponseAnnotation;
 import com.mars.cloud.mvc.error.ErrorCodeRegistrar;
 import lombok.Getter;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,7 +32,12 @@ public class MvcTestApplication {
     @Getter
     public enum TestErrorCode implements ErrorCode {
 
-        RESOURCE_NOT_FOUND(61901);
+        RESOURCE_NOT_FOUND(61901),
+
+        /**
+         * 文案只存在于 application.yml 的 mars.codes 兜底里（i18n 资源刻意不写它）。
+         */
+        FALLBACK_ONLY(61990);
 
         private final int code;
 
@@ -57,15 +63,32 @@ public class MvcTestApplication {
     public record Payload(String name, int value) {
     }
 
+    /**
+     * 验证「类级 @IgnoreResponseAnnotation 跳过包装」。
+     */
+    @RestController
+    @IgnoreResponseAnnotation
+    public static class IgnoredClassController {
+
+        @GetMapping("/ignored-class")
+        public Map<String, Object> raw() {
+            return Map.of("raw", "class-level");
+        }
+    }
+
+    /**
+     * 测试宿主。
+     *
+     * <p><b>刻意用显式 {@code @Import} 而不是 {@code @ComponentScan}：</b>
+     * 后者会连同包下的测试夹具（故意制造错误码越界/重复的 {@code @Configuration}）
+     * 一起扫进来，让正常测试的上下文也被它们污染而启动失败。
+     * 业务服务的真实形态是 {@code @SpringBootApplication}（含扫描），
+     * 但测试宿主不需要它——starter 的装配只依赖 {@code @EnableAutoConfiguration}。
+     */
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @ComponentScan(basePackageClasses = MvcTestApplication.class)
+    @Import({TestErrorCodeRegistrar.class, IgnoredClassController.class})
     public static class App {
-
-        @Bean
-        public TestErrorCodeRegistrar testErrorCodeRegistrar() {
-            return new TestErrorCodeRegistrar();
-        }
     }
 
     @RestController
@@ -85,6 +108,39 @@ public class MvcTestApplication {
         @GetMapping("/empty")
         public Payload empty() {
             return null;
+        }
+
+        /**
+         * 方法级跳过包装 → 原样返回。
+         */
+        @IgnoreResponseAnnotation
+        @GetMapping("/ignored")
+        public Map<String, Object> ignored() {
+            return Map.of("raw", "no-envelope");
+        }
+
+        /**
+         * 普通字符串 → 必须包成 JSON 信封。
+         */
+        @GetMapping("/string-plain")
+        public String stringPlain() {
+            return "plain-text";
+        }
+
+        /**
+         * 本身是 JSON 的字符串 → 应直接透传。
+         */
+        @GetMapping("/string-json")
+        public String stringJson() {
+            return "{\"name\":\"直接透传\"}";
+        }
+
+        /**
+         * 文案不在 i18n 里、只在本地兜底配置里 → 走兜底链路。
+         */
+        @GetMapping("/fallback-error")
+        public Payload fallbackError() {
+            throw new com.mars.cloud.mvc.exception.BusinessException(TestErrorCode.FALLBACK_ONLY);
         }
 
         /**

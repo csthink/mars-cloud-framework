@@ -121,6 +121,20 @@ HttpServletRequest request = HttpContextUtil.getRequest();
 子线程会继承请求上下文与 MDC，避免日志串线。线程池为进程内单例，队列满时由调用方
 线程直接执行（`CallerRunsPolicy`）。
 
+## String 返回值
+
+控制器直接返回 `String` 时，`GlobalResponseAdvice` 会区分两种情况：
+
+| 情况 | 行为 |
+| --- | --- |
+| 本身就是合法 JSON | 原样透传（不再二次序列化），`Content-Type: application/json` |
+| 普通字符串 | 包成统一信封返回 JSON |
+
+⚠️ 普通字符串这条路径的 **`Content-Type` 仍是 `text/plain`**——`ResponseBodyAdvice` 在
+消息转换器选定之后才执行，改不动执行者。body 是正确的 JSON 信封，只有响应头不对。
+需要严格 `application/json` 的接口，请返回对象而不是字符串。原因与修复方向见
+[../docs/architecture.md](../docs/architecture.md) 的「已知行为与偏差」。
+
 ## 自定义覆盖
 
 所有自动装配的 Bean 都带 `@ConditionalOnMissingBean`，业务侧声明同类型 Bean 即可覆盖：

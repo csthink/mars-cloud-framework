@@ -51,6 +51,12 @@ public class Order extends BaseEntity {
 | ID 生成 | 提供自定义 `IdentifierGenerator` Bean |
 | 拦截器 | 提供自定义 `MybatisPlusInterceptor` Bean |
 
+## 契约测试
+
+`PersistenceContractTest` 用内存库固定了框架承诺的持久化行为——审计字段填充、
+雪花 ID 分配、分页拦截器、以及「实体没有 `version` 字段时填充不报错」。
+改 `BaseEntity` / 填充逻辑 / 拦截器时这些测试必须跑绿。
+
 ## 数据库方言
 
 分页方言由 MyBatis-Plus 依据 JDBC URL 自动识别。切换到其它数据库时，可通过

@@ -5,8 +5,13 @@ spring:
 
 mars:
   error-code:
+    # 区间校验必须开启，否则 ErrorCodeRangeValidator 不会创建，越界/重复的测试就失效了
     validate: true
     range:
       service: mvc-contract-test
       start: 61900
       end: 61999
+
+  # 文案兜底：i18n 未命中时从这里取（key 是纯数字）
+  codes:
+    61990: 兜底配置里的文案

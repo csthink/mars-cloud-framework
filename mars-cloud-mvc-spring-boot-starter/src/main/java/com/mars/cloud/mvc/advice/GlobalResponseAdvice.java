@@ -92,9 +92,10 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
         } else if (body instanceof String || String.class.equals(returnType.getGenericParameterType())) {
             // 若原返回结果为 String，则转换为 JSON 响应体再返回
             if (isValidJson(body.toString())) {
-                // 只有本身是 json 的直接以 json 形式返回
+                // 本身已是合法 JSON：原样透传。**不要再序列化一次**，否则字符串会被转义成
+                // "{\"k\":\"v\"}" 这种双重编码的形态
                 response.getHeaders().set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-                return JsonUtil.toJson(body);
+                return body.toString();
             } else {
                 // 非 JSON 的字符串必须序列化成 JSON 再返回，否则会与 StringHttpMessageConverter 冲突
                 return JsonUtil.toJson(UnifyResponse.success(body));

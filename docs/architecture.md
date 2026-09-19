@@ -107,6 +107,39 @@ Boot 4 带的是 Jackson 3，包名从 `com.fasterxml.jackson.*` 变为 `tools.j
 `mars-cloud-mysql` 把 `BaseEntity`、逻辑删除、审计字段自动填充、ID 生成器固化下来，
 业务侧只写实体与 Mapper。**Entity 不作为对外 API 的 DTO。**
 
+## 已知行为与偏差
+
+契约测试固定下来的行为里，有两处**看起来像 bug 但属于已知偏差**，改动前请先读这一节。
+
+### String 返回值：普通字符串的 Content-Type 是 text/plain
+
+控制器直接返回 `String` 时：
+
+| 情况 | body | Content-Type |
+| --- | --- | --- |
+| 字符串本身是合法 JSON | 原样透传，不二次序列化 | `application/json` |
+| 普通字符串 | 包成统一信封 | **`text/plain`**（偏差） |
+
+偏差的机制：`ResponseBodyAdvice` 在消息转换器**选定之后**才执行，此时
+`StringHttpMessageConverter` 已经拿到 `String` 返回值，advice 里改响应头也换不掉执行者。
+body 是对的，只有响应头不对。
+
+要修得在 starter 侧调整转换器优先级（让 JSON 转换器排在 String 转换器之前），
+属于会改变全局行为的改动，需要单独评估。
+
+### 文案兜底的生效层次
+
+`error.code.<数字>` 的 i18n 查找在异常构造时就会执行（`HttpException`），
+而 `mars.codes[<数字>]` 本地兜底配置只在 advice 层生效：
+
+| 取值处 | i18n | `mars.codes` 兜底 | 最终回落 |
+| --- | --- | --- | --- |
+| `HttpException#getErrorMsg()` | ✅ | ❌ | 数字码 |
+| 响应体 `message`（advice） | ✅ | ✅ | 数字码 |
+
+也就是说：**要不要用兜底配置，取决于读的是异常自带文案还是响应体**。业务侧读响应体时
+兜底是生效的，日志里读异常自带文案时不会。
+
 ## 版本策略
 
 - 开发期统一 `1.0.0-SNAPSHOT`，首个可用版本打 release 后发布到制品库
