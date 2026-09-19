@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: 构建 + 测试 + 安全扫描
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # -Dmaven.repo.local 显式指向 runner 上的路径：
+      # 本地开发机把 Maven 本地仓库配在别处，CI 上不能依赖「恰好是默认值」。
+      - name: 构建并安装到本地仓库
+        run: mvn -B -Dmaven.repo.local="$HOME/.m2/repository" clean install
+
+      - name: 公开安全扫描（通用版）
+        run: bash tools/check-public-safety-generic.sh .
+
+      # 说明：**没有**单独的「关键词扫描 secret」步骤。
+      # 那种写法（命中 password/secret 等词即报警）在真实仓库上全是误报——
+      # 它会打中扫描脚本自身、测试代码、以及 `password: ""` 这类合法配置。
+      # 通用扫描里的「凭据」规则已经更准：**关键词 + 赋值 + 8 位以上字面量**，
+      # 占位符与空值不匹配。要更强的检测应上专用工具（gitleaks 等），而不是手写关键词 grep。
+
+  dispatch-service:
+    name: 通知 service 仓重建
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # 跨仓触发必须用 PAT：GITHUB_TOKEN 只能操作本仓，无法 dispatch 到另一个仓。
+      # secret 未配置时**跳过而不是失败**——否则新克隆的仓一提交就红。
+      # 配置方法见 docs/ci.md。
+      - name: 触发 mars-cloud-service 的 CI
+        env:
+          DISPATCH_TOKEN: ${{ secrets.SERVICE_DISPATCH_TOKEN }}
+          # gh CLI 从 GH_TOKEN 取认证
+          GH_TOKEN: ${{ secrets.SERVICE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "${DISPATCH_TOKEN}" ]; then
+            echo "未配置 SERVICE_DISPATCH_TOKEN，跳过跨仓触发（见 docs/ci.md）。"
+            exit 0
+          fi
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/csthink/mars-cloud-service/dispatches \
+            -f event_type=framework-updated
+          echo "已向 mars-cloud-service 发送 framework-updated 事件"
