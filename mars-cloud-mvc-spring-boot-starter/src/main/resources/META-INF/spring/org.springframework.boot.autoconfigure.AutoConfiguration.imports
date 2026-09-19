@@ -3,3 +3,4 @@ com.mars.cloud.mvc.autoconfigure.HttpContextUtilFilterAutoConfiguration
 com.mars.cloud.mvc.autoconfigure.ExceptionCodeAutoConfiguration
 com.mars.cloud.mvc.autoconfigure.ContextHolderAutoConfiguration
 com.mars.cloud.mvc.autoconfigure.MvcAdviceAutoConfiguration
+com.mars.cloud.mvc.autoconfigure.HttpMessageConverterAutoConfiguration

@@ -128,6 +128,15 @@ public class MvcTestApplication {
         }
 
         /**
+         * 显式声明 text/plain → 不应被 JSON 化，用于验证修正没有误伤纯文本接口。
+         */
+        @IgnoreResponseAnnotation
+        @GetMapping(value = "/string-text-plain", produces = "text/plain")
+        public String stringTextPlain() {
+            return "plain-text";
+        }
+
+        /**
          * 本身是 JSON 的字符串 → 应直接透传。
          */
         @GetMapping("/string-json")

@@ -24,6 +24,7 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 | i18n | `I18nUtil` 读取 `MessageSource`，三级兜底 |
 | 请求上下文 | `HttpContextUtilFilter` + `HttpContextUtil`，线程内可取到 `HttpServletRequest` |
 | 通用工作线程 | `AbstractWorkThread` + `RequestFacade`，适合把大请求拆成并行子任务 |
+| 转换器协商 | `HttpMessageConverterAutoConfiguration` 修正 String 返回值的 `Content-Type` |
 
 统一响应的字段、错误码区间与 i18n 约定见 [../docs/error-code.md](../docs/error-code.md)。
 
@@ -125,15 +126,15 @@ HttpServletRequest request = HttpContextUtil.getRequest();
 
 控制器直接返回 `String` 时，`GlobalResponseAdvice` 会区分两种情况：
 
-| 情况 | 行为 |
-| --- | --- |
-| 本身就是合法 JSON | 原样透传（不再二次序列化），`Content-Type: application/json` |
-| 普通字符串 | 包成统一信封返回 JSON |
+| 情况 | 行为 | Content-Type |
+| --- | --- | --- |
+| 本身就是合法 JSON | 原样透传（不再二次序列化） | `application/json` |
+| 普通字符串 | 包成统一信封返回 JSON | `application/json` |
+| `produces = "text/plain"` | 原样返回 | `text/plain` |
 
-⚠️ 普通字符串这条路径的 **`Content-Type` 仍是 `text/plain`**——`ResponseBodyAdvice` 在
-消息转换器选定之后才执行，改不动执行者。body 是正确的 JSON 信封，只有响应头不对。
-需要严格 `application/json` 的接口，请返回对象而不是字符串。原因与修复方向见
-[../docs/architecture.md](../docs/architecture.md) 的「已知行为与偏差」。
+starter 会自动把 `JsonStringHttpMessageConverter` 插到消息转换器链首，保证前两种情况的
+`Content-Type` 是 `application/json`；显式要求 `text/plain` 的接口不受影响。
+细节见 [../docs/architecture.md](../docs/architecture.md) 的「已知行为与偏差」。
 
 ## 自定义覆盖
 

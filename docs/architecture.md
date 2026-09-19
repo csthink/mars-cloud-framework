@@ -109,23 +109,26 @@ Boot 4 带的是 Jackson 3，包名从 `com.fasterxml.jackson.*` 变为 `tools.j
 
 ## 已知行为与偏差
 
-契约测试固定下来的行为里，有两处**看起来像 bug 但属于已知偏差**，改动前请先读这一节。
-
-### String 返回值：普通字符串的 Content-Type 是 text/plain
+### String 返回值：统一协商为 JSON
 
 控制器直接返回 `String` 时：
 
 | 情况 | body | Content-Type |
 | --- | --- | --- |
 | 字符串本身是合法 JSON | 原样透传，不二次序列化 | `application/json` |
-| 普通字符串 | 包成统一信封 | **`text/plain`**（偏差） |
+| 普通字符串 | 包成统一信封 | `application/json` |
+| 接口显式声明 `produces = "text/plain"` | 原样返回 | `text/plain` |
 
-偏差的机制：`ResponseBodyAdvice` 在消息转换器**选定之后**才执行，此时
-`StringHttpMessageConverter` 已经拿到 `String` 返回值，advice 里改响应头也换不掉执行者。
-body 是对的，只有响应头不对。
+**这里曾经有个坑**：Spring 默认转换器链里 `StringHttpMessageConverter` 排在 JSON 转换器之前，
+它注册的媒体类型是 `text/plain` 加通配符，所以协商结果是 `text/plain`——即使 advice 已经把
+body 换成了 JSON 信封。而 `ResponseBodyAdvice` 在转换器**选定之后**才执行，在 advice 里改响应头
+是改不动执行者的。
 
-要修得在 starter 侧调整转换器优先级（让 JSON 转换器排在 String 转换器之前），
-属于会改变全局行为的改动，需要单独评估。
+现在的做法：starter 往链首插一个**只声明 JSON 媒体类型**的字符串转换器
+（`JsonStringHttpMessageConverter`，行为继承自 `StringHttpMessageConverter`）。
+它只在协商结果是 JSON 时参与，显式要求 `text/plain` 的接口走原转换器，不受影响。
+
+> 写代码时注意：`*/*` 这个通配符**不能**直接写进 Javadoc 注释，`*/` 会提前闭合注释块。
 
 ### 文案兜底的生效层次
 

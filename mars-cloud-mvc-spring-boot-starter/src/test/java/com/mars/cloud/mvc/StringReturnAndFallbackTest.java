@@ -24,11 +24,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * String 返回值与文案兜底的行为留痕（T0.4）。
+ * String 返回值与文案兜底的行为契约。
  *
- * <p>本类记录当前真实行为：JSON 字符串原样透传；普通字符串被包成信封；
- * 文案兜底在 advice 层生效。其中**普通字符串的 Content-Type 偏差**是有意留痕的已知问题
- * （见 {@link #plainString_bodyIsEnvelopeButContentTypeIsTextPlain} 与 STATUS 的坏点表）。
+ * <p>覆盖三条路径：普通字符串被包成信封、JSON 字符串原样透传、文案兜底在 advice 层生效。
+ * 三者的 {@code Content-Type} 都必须是 {@code application/json}——这正是历史偏差
+ * （body 是 JSON 信封但响应头是 {@code text/plain}）修复后的断言点。
  */
 @SpringBootTest(classes = {App.class, TestController.class})
 class StringReturnAndFallbackTest {
@@ -57,19 +57,26 @@ class StringReturnAndFallbackTest {
     }
 
     @Test
-    @DisplayName("【已知偏差】普通字符串：body 是正确信封，但 Content-Type 仍是 text/plain")
-    void plainString_bodyIsEnvelopeButContentTypeIsTextPlain() throws Exception {
-        // 已知偏差，不是回归：ResponseBodyAdvice 在转换器选定之后才执行，
-        // 此时 StringHttpMessageConverter 已经抢到 String 返回值，改响应头也换不掉执行者。
-        // 修复方案见 STATUS 的坏点表。
+    @DisplayName("普通字符串：包成信封，Content-Type 为 application/json")
+    void plainString_isWrappedIntoEnvelopeWithJsonContentType() throws Exception {
         MvcResult result = mockMvc.perform(get("/string-plain"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.result").value("plain-text"))
                 .andReturn();
 
-        // 记下真实现状：body 正确，但响应头不是 application/json
+        assertThat(result.getResponse().getContentType()).startsWith(MediaType.APPLICATION_JSON_VALUE);
+    }
+
+    @Test
+    @DisplayName("显式要求 text/plain 的接口不受影响：仍返回 text/plain 与原始字符串")
+    void explicitTextPlain_endpointIsNotHijacked() throws Exception {
+        MvcResult result = mockMvc.perform(get("/string-text-plain").accept(MediaType.TEXT_PLAIN))
+                .andExpect(status().isOk())
+                .andReturn();
+
         assertThat(result.getResponse().getContentType()).startsWith(MediaType.TEXT_PLAIN_VALUE);
+        assertThat(result.getResponse().getContentAsString()).isEqualTo("plain-text");
     }
 
     @Test
@@ -85,20 +92,15 @@ class StringReturnAndFallbackTest {
     }
 
     @Test
-    @DisplayName("根因留痕：StringHttpMessageConverter 排在 Jackson 转换器之前，先抢到 String 返回值")
-    void converterOrderExplainsTheContentTypeDeviation() {
+    @DisplayName("修正机制留痕：只声明 JSON 的字符串转换器被插到了链首")
+    void jsonOnlyStringConverterIsFirst() {
         List<String> converterNames = handlerAdapter.getMessageConverters().stream()
                 .map(converter -> converter.getClass().getSimpleName())
                 .collect(Collectors.toList());
 
-        int stringIndex = indexOfFirst(converterNames, "StringHttpMessageConverter");
-        int jacksonIndex = indexOfFirst(converterNames, "Jackson");
-
-        assertThat(stringIndex).isGreaterThanOrEqualTo(0);
-        assertThat(jacksonIndex).isGreaterThanOrEqualTo(0);
-        // 这正是 Content-Type 偏差的机制：ResponseBodyAdvice 在转换器选定之后才执行，
-        // 此时改响应头已经无法改变由谁序列化 body。
-        assertThat(stringIndex).isLessThan(jacksonIndex);
+        // 它在链首，且只声明 JSON 媒体类型——协商出 text/plain 时不会参与，
+        // 所以显式要求 text/plain 的接口仍由 StringHttpMessageConverter 处理
+        assertThat(converterNames.get(0)).isEqualTo("JsonStringHttpMessageConverter");
     }
 
     private static int indexOfFirst(List<String> names, String fragment) {

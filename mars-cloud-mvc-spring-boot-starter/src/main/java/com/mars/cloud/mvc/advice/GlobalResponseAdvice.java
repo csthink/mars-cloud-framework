@@ -6,7 +6,6 @@ import com.mars.cloud.common.response.UnifyResponse;
 import com.mars.cloud.mvc.annotation.IgnoreResponseAnnotation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
@@ -93,8 +92,8 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
             // 若原返回结果为 String，则转换为 JSON 响应体再返回
             if (isValidJson(body.toString())) {
                 // 本身已是合法 JSON：原样透传。**不要再序列化一次**，否则字符串会被转义成
-                // "{\"k\":\"v\"}" 这种双重编码的形态
-                response.getHeaders().set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+                // "{\"k\":\"v\"}" 这种双重编码的形态。
+                // 不在这里改 Content-Type：媒体类型由转换器链协商（见 HttpMessageConverterAutoConfiguration）
                 return body.toString();
             } else {
                 // 非 JSON 的字符串必须序列化成 JSON 再返回，否则会与 StringHttpMessageConverter 冲突
