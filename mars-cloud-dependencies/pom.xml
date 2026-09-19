@@ -208,4 +208,26 @@
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <!--
+                          保留方法参数名。Spring 6.1 起靠参数名解析 @RequestParam /
+                          @PathVariable / @RequestBody 的参数名，缺了它运行期会抛
+                          IllegalArgumentException: Name for argument of type [...] not specified。
+
+                          放在这里而不是「请各服务自己记得开」：所有模块的 parent 都是本 BOM，
+                          写在这里等于对全仓生效，且新增服务不会漏。
+                        -->
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
 </project>

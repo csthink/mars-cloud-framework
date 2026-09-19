@@ -40,8 +40,14 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 | `ResourceNotFoundException` | 404 | |
 | `ConflictException` | 409 | |
 | `LockFailureException` | 409 | **框架自带**的锁失败异常，见下 |
-| 参数校验类异常 | 400 | 含 `BindException` / `ConstraintViolationException` 等 |
+| 参数校验类异常 | 400 | 含 `MethodArgumentNotValidException` / `BindException` / `ConstraintViolationException` / `HandlerMethodValidationException` / `MissingServletRequestParameterException` / `MethodArgumentTypeMismatchException` / `IllegalArgumentException` |
+| `NoHandlerFoundException` | 404 | 找不到处理器 |
+| `HttpRequestMethodNotSupportedException` | 405 | 方法不支持 |
+| `HttpMediaTypeNotAcceptableException` | 406 | 无法按 `Accept` 协商 |
 | 未预期异常 | 500 | 兜底，错误码 500 |
+
+框架兜底用的状态码（400 / 404 / 405 / 406 / 500）**不经错误码区间校验**，
+详见 [../docs/error-code.md](../docs/error-code.md)。
 
 ### 分布式锁失败
 
@@ -73,7 +79,9 @@ mars:
   error-code:
     validate: true                    # 建议保持开启
     framework-layers: [ common, mvc ]  # 用到的框架层，区间取自框架分配表
-    ranges:                            # 业务服务自己那一段（多服务各自声明）
+    ranges:                            # 业务服务自己那一段（多服务各自声明、互不重叠）
+      # business 区段是 66000–99999，由所有业务服务共用；
+      # 这里声明的只是本服务占用的那一段，不要照抄成整个区段。
       - owner: business
         start: 66000
         end: 66999
