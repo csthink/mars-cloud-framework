@@ -11,9 +11,10 @@ import java.util.List;
  * 故意制造错误码区间违规的测试夹具。
  *
  * <p><b>刻意放在 {@code com.mars.cloud.mvc.fixture} 子包</b>：测试宿主
- * {@code MvcTestApplication.App} 会对 {@code com.mars.cloud.mvc} 做组件扫描，
- * 若这些 {@code @Configuration} 落在被扫描的包里，正常测试的上下文也会被它们污染
- * （越界/重复的注册器会让所有测试一起启动失败）。
+ * {@code MvcTestApplication.App} 不做组件扫描（改用显式 {@code @Import}），
+ * 但仍保持这个包布局——夹具不该和被测代码混在一起。
+ *
+ * <p>码值都取 <b>business</b> 区段（66000 段），因为 mvc 层要用来测「归属层未启用」。
  */
 public final class RangeViolationFixtures {
 
@@ -21,13 +22,13 @@ public final class RangeViolationFixtures {
     }
 
     /**
-     * 越界：70001 不在声明的 61900–61999 区间内。
+     * 越界：声明 66000–66050，却注册 66099。
      */
     @Configuration(proxyBeanMethods = false)
     public static class OutOfRangeRegistrarConfig {
         @Bean
         public ErrorCodeRegistrar outOfRangeRegistrar() {
-            return () -> List.of((ErrorCode) () -> 70001);
+            return () -> List.of((ErrorCode) () -> 66099);
         }
     }
 
@@ -38,18 +39,30 @@ public final class RangeViolationFixtures {
     public static class DuplicateRegistrarConfig {
         @Bean
         public ErrorCodeRegistrar duplicateRegistrar() {
-            return () -> List.of((ErrorCode) () -> 61902, (ErrorCode) () -> 61902);
+            return () -> List.of((ErrorCode) () -> 66002, (ErrorCode) () -> 66002);
         }
     }
 
     /**
-     * 恰好落在区间边界（start / end）。
+     * 恰好落在测试声明区间 [66000, 66050] 的两个边界上。
      */
     @Configuration(proxyBeanMethods = false)
     public static class BoundaryRegistrarConfig {
         @Bean
         public ErrorCodeRegistrar boundaryRegistrar() {
-            return () -> List.of((ErrorCode) () -> 61900, (ErrorCode) () -> 61999);
+            return () -> List.of((ErrorCode) () -> 66000, (ErrorCode) () -> 66050);
+        }
+    }
+
+    /**
+     * 归属 security 层（62000 段）——测试宿主不使用这一段，因此可以安全地用来验证
+     * 「该层未启用」与「启用后即被接受」两种情况。
+     */
+    @Configuration(proxyBeanMethods = false)
+    public static class SecurityLayerRegistrarConfig {
+        @Bean
+        public ErrorCodeRegistrar securityLayerRegistrar() {
+            return () -> List.of((ErrorCode) () -> 62001);
         }
     }
 }

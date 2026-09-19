@@ -46,13 +46,13 @@ mvn -pl mars-cloud-common install          # 单模块（父 POM 通过显式 re
 mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 ```
 
-本仓自带契约测试（mvc starter 32 个、mysql 14 个），随 `mvn clean install` 一起跑：
+本仓自带契约测试（mvc starter 41 个、mysql 14 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
 | `MvcContractTest` | 成功/失败信封、HTTP 状态码、错误码 |
 | `ResponseAdviceEdgeCaseTest` | 跳过包装、dev/非 dev 的调试详情差异 |
-| `AutoconfigurationBoundaryTest` | 错误码越界/重复在启动期拦截、响应式栈不装配 Servlet advice |
+| `AutoconfigurationBoundaryTest` | 错误码归属/越界/重复/段间重叠在启动期拦截、配置自检、响应式栈不装配 Servlet advice |
 | `MessageResolutionTest` | 文案三级兜底的层次 |
 | `StringReturnAndFallbackTest` | String 返回值的 Content-Type 与文案兜底 |
 | `PersistenceContractTest` | 审计字段填充、雪花 ID、分页拦截器 |

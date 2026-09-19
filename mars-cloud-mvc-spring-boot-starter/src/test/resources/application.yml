@@ -7,10 +7,13 @@ mars:
   error-code:
     # 区间校验必须开启，否则 ErrorCodeRangeValidator 不会创建，越界/重复的测试就失效了
     validate: true
-    range:
-      service: mvc-contract-test
-      start: 61900
-      end: 61999
+    # 框架层：只启用 common 与 mvc（引入本 starter 时必然存在的两层）
+    framework-layers: [ common, mvc ]
+    # 业务服务自己声明区间，owner 必须是框架分配表里的归属名
+    ranges:
+      - owner: business
+        start: 66000
+        end: 66099
 
   # 文案兜底：i18n 未命中时从这里取（key 是纯数字）
   codes:

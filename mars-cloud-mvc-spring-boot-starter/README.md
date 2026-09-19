@@ -20,7 +20,7 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 | --- | --- |
 | 统一响应 | `GlobalResponseAdvice` 把返回值包成 `UnifyResponse` |
 | 全局异常 | `GlobalExceptionAdvice` 把异常映射成信封 + HTTP 状态码 |
-| 错误码区间校验 | `ErrorCodeRangeValidator` 启动时校验越界与重复 |
+| 错误码区间校验 | `ErrorCodeRangeValidator` 启动时校验归属、越界、重复、段间重叠 |
 | i18n | `I18nUtil` 读取 `MessageSource`，三级兜底 |
 | 请求上下文 | `HttpContextUtilFilter` + `HttpContextUtil`，线程内可取到 `HttpServletRequest` |
 | 通用工作线程 | `AbstractWorkThread` + `RequestFacade`，适合把大请求拆成并行子任务 |
@@ -71,11 +71,12 @@ mars:
 
   # 错误码区间校验
   error-code:
-    validate: true           # 建议保持开启
-    range:
-      service: order-service
-      start: 66000
-      end: 66999
+    validate: true                    # 建议保持开启
+    framework-layers: [ common, mvc ]  # 用到的框架层，区间取自框架分配表
+    ranges:                            # 业务服务自己那一段（多服务各自声明）
+      - owner: business
+        start: 66000
+        end: 66999
 
   # 请求上下文过滤器
   http-context:

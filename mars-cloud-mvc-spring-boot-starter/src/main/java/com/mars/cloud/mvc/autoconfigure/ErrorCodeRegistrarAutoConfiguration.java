@@ -1,6 +1,6 @@
 package com.mars.cloud.mvc.autoconfigure;
 
-import com.mars.cloud.mvc.env.ErrorCodeRangeProperties;
+import com.mars.cloud.mvc.env.ErrorCodeProperties;
 import com.mars.cloud.mvc.error.ErrorCodeRangeValidator;
 import com.mars.cloud.mvc.error.ErrorCodeRegistrar;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -16,7 +16,7 @@ import java.util.List;
  * @since 2025-10-30 10:15
  */
 @AutoConfiguration
-@EnableConfigurationProperties(ErrorCodeRangeProperties.class)
+@EnableConfigurationProperties(ErrorCodeProperties.class)
 @ConditionalOnClass(ErrorCodeRegistrar.class) // 有这个接口才生效
 public class ErrorCodeRegistrarAutoConfiguration {
 
@@ -25,7 +25,7 @@ public class ErrorCodeRegistrarAutoConfiguration {
     @ConditionalOnMissingBean(ErrorCodeRangeValidator.class) // 避免重复注册
     public ErrorCodeRangeValidator errorCodeRangeValidator(
             List<ErrorCodeRegistrar> registrars,
-            ErrorCodeRangeProperties props) {
+            ErrorCodeProperties props) {
         return new ErrorCodeRangeValidator(registrars, props);
     }
 }
