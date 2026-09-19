@@ -59,5 +59,35 @@ public class Order extends BaseEntity {
 
 ## 数据库方言
 
-分页方言由 MyBatis-Plus 依据 JDBC URL 自动识别。切换到其它数据库时，可通过
-`mybatis-plus.configuration` 或数据源配置显式指定方言，业务代码不需要改动。
+分页方言默认由 MyBatis-Plus 依据 JDBC URL 自动识别，**默认不需要配置**。
+
+换成国产数据库、自动识别认不出驱动或 URL 前缀时，可以显式指定：
+
+```yaml
+mars:
+  datasource:
+    dialect-auto-detect: false
+    db-type: dm            # MyBatis-Plus 的 DbType 枚举名，大小写不敏感
+```
+
+支持的值即 MyBatis-Plus `DbType` 的枚举名：`mysql` / `dm`（达梦）/ `kingbase_es`（人大金仓）
+/ `gauss` / `oscar`（神通）/ `gbase` / `xu_gu`（虚谷）/ `high_go` / `ocean_base` …
+完整清单见 MyBatis-Plus 文档。
+
+**达梦（`dm`）说明**：MyBatis-Plus 没有为达梦单独提供分页方言实现，而是把 `DM` 归入
+**Oracle 方言家族**（`DbType.oracleSameType()` 包含 DM），分页 SQL 因此按 Oracle 语法生成
+（`ROWNUM` 包裹）。这在达梦的 Oracle 兼容模式下可用；若部署时用了非兼容模式，
+需要在达梦侧开启兼容或改用自定义 `IDialect`。
+
+### 分页参数
+
+| 配置 | 默认 | 说明 |
+| --- | --- | --- |
+| `mars.datasource.max-limit` | 不限制 | 单页最大条数，防止 `size` 被传成极大值 |
+| `mars.datasource.overflow` | `false` | 页码超出总页数时是否回到首页 |
+| `mars.datasource.optimize-join` | `true` | 是否优化 join 的 count 查询 |
+
+**关闭自动识别却没给 `db-type` 时应用会启动失败**，这是有意的：方言错了要到运行时生成
+分页 SQL 才暴露，代价比启动失败大得多。
+
+业务侧声明自己的 `MybatisPlusInterceptor` Bean 即可完全接管，默认的不再创建。
