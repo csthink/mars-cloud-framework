@@ -1,0 +1,70 @@
+# mars-cloud-framework
+
+mars-cloud 微服务框架的**公共库仓**：依赖管理 BOM + 一组 Spring Boot Starter。
+
+本仓只产出 jar，不部署任何东西。可部署的应用在配套的服务仓中。
+
+## 快速开始
+
+引入依赖管理（BOM）：
+
+```xml
+<parent>
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-dependencies</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <relativePath/>
+</parent>
+```
+
+按需引入能力：
+
+```xml
+<dependency>
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-mvc-spring-boot-starter</artifactId>
+</dependency>
+```
+
+## 模块
+
+| 模块 | 定位 |
+| --- | --- |
+| `mars-cloud-dependencies` | 依赖管理 BOM。全仓**版本唯一出口**，所有模块以它为 parent |
+| `mars-cloud-common` | 纯工具与模型库。**不依赖任何 Spring / Servlet 组件** |
+| `mars-cloud-core-spring-boot-starter` | 核心自动装配，目前提供分布式 ID（雪花算法） |
+| `mars-cloud-mvc-spring-boot-starter` | Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间校验、i18n、请求上下文 |
+| `mars-cloud-mysql` | MyBatis-Plus 约定：基础实体、逻辑删除、审计字段填充、ID 生成器 |
+
+依赖方向是单向的：`starter` → `common` / `dependencies`。`common` 不反向依赖任何 starter。
+
+## 构建
+
+```bash
+mvn clean install            # 全量构建
+mvn -pl mars-cloud-common install          # 单模块（父 POM 通过显式 relativePath 解析）
+mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
+```
+
+根聚合 POM 只做聚合、**不做 parent**：各模块的 parent 始终是 `mars-cloud-dependencies`，
+这样「版本唯一出口」的契约不变，且 `mars-cloud-dependencies` 将来仍可被独立提取。
+
+## 版本矩阵
+
+| 组件 | 版本 |
+| --- | --- |
+| Java | 17+ |
+| Spring Boot | 3.5.7 |
+| Spring Cloud | 2025.0.0 |
+| Spring Cloud Alibaba | 2025.0.0.0 |
+| MyBatis-Plus | 3.5.8 |
+
+## 文档
+
+- [docs/architecture.md](docs/architecture.md) —— 模块划分与依赖方向
+- [docs/error-code.md](docs/error-code.md) —— 统一响应信封与错误码区间约定
+- 各模块自己的 `README.md` —— 配置项与用法
+
+## 许可
+
+内部项目，暂未公开发布 artifact。

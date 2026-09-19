@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-dependencies</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>mars-cloud-dependencies</name>
+    <description>mars-cloud 依赖管理 BOM：统一管理 Spring Boot / Spring Cloud / Spring Cloud Alibaba / 内部模块 / 常用依赖的版本</description>
+
+    <!--
+      本模块是 mars-cloud 全仓的「版本唯一出口」。
+      所有模块以它为 parent，依赖版本只在这里声明一次。
+    -->
+    <properties>
+        <java.version>17</java.version>
+        <!-- 统一编译/依赖版本 -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <spring-boot.version>3.5.7</spring-boot.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <spring-cloud-alibaba.version>2025.0.0.0</spring-cloud-alibaba.version>
+
+        <!-- 内部模块版本 -->
+        <mars-cloud-common.version>1.0.0-SNAPSHOT</mars-cloud-common.version>
+        <mars-cloud-core-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-core-spring-boot-starter.version>
+        <mars-cloud-mvc-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-mvc-spring-boot-starter.version>
+        <mars-cloud-mysql.version>1.0.0-SNAPSHOT</mars-cloud-mysql.version>
+
+        <!-- 常用依赖版本 -->
+        <lombok.version>1.18.40</lombok.version>
+        <hutool-all.version>5.8.41</hutool-all.version>
+        <hutool-core.version>5.8.41</hutool-core.version>
+        <fastjson2.version>2.0.57</fastjson2.version>
+        <mybatis.version>3.0.4</mybatis.version>
+        <mybatis-plus.version>3.5.8</mybatis-plus.version>
+        <mybatis-plus-generator.version>3.5.3.1</mybatis-plus-generator.version>
+        <commons-lang3.version>3.17.0</commons-lang3.version>
+        <commons-collections4.version>4.5.0</commons-collections4.version>
+        <commons-codec.version>1.18.0</commons-codec.version>
+        <transmittable-thread-local.version>2.12.3</transmittable-thread-local.version>
+        <lock4j.version>2.2.4</lock4j.version>
+        <springdoc-openapi.version>2.8.14</springdoc-openapi.version>
+    </properties>
+
+    <!--
+      说明：
+        1. BOM 只管理版本，不打包 Jar。
+        2. 所有模块以本模块为 parent，可自动继承版本。
+        3. 内部模块 mars-cloud-* 只声明版本。
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot BOM -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud BOM -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud Alibaba BOM -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- 内部模块版本 -->
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-common</artifactId>
+                <version>${mars-cloud-common.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-core-spring-boot-starter</artifactId>
+                <version>${mars-cloud-core-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-mvc-spring-boot-starter</artifactId>
+                <version>${mars-cloud-mvc-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-mysql</artifactId>
+                <version>${mars-cloud-mysql.version}</version>
+            </dependency>
+
+            <!-- 常用依赖版本声明 -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool-all.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-core</artifactId>
+                <version>${hutool-core.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${fastjson2.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>${commons-collections4.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>${commons-codec.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>transmittable-thread-local</artifactId>
+                <version>${transmittable-thread-local.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>lock4j-redisson-spring-boot-starter</artifactId>
+                <version>${lock4j.version}</version>
+            </dependency>
+
+            <!-- MyBatis / MyBatis-Plus -->
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>${mybatis.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-boot-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- MyBatis-Plus 代码生成器 -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-generator</artifactId>
+                <version>${mybatis-plus-generator.version}</version>
+            </dependency>
+
+            <!-- 接口文档 -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc-openapi.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+                <version>${springdoc-openapi.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

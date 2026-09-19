@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-framework</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>mars-cloud-framework</name>
+    <description>mars-cloud 微服务框架：依赖管理 BOM 与各 Spring Boot Starter</description>
+
+    <!--
+      根聚合 POM 只做聚合，不做 parent。
+      各模块的 parent 始终是 mars-cloud-dependencies，这样「版本唯一出口」的契约不变，
+      且 mars-cloud-dependencies 将来仍可被独立提取。
+    -->
+    <modules>
+        <module>mars-cloud-dependencies</module>
+        <module>mars-cloud-common</module>
+        <module>mars-cloud-core-spring-boot-starter</module>
+        <module>mars-cloud-mvc-spring-boot-starter</module>
+        <module>mars-cloud-mysql</module>
+    </modules>
+
+</project>

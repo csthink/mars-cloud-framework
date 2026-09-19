@@ -1,0 +1,20 @@
+# Maven 构建产物
+target/
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+
+# macOS
+.DS_Store
+
+# 日志
+*.log
