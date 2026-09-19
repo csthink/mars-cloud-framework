@@ -1,11 +1,10 @@
 name: CI
 
 on:
+  # 不过滤分支：安全扫描必须在**每个分支**上跑。
+  # 只过滤 main 的话，特性分支上累积的违规要等到开 PR 才被发现——
+  # 那时可能已经 push 过，而历史泄漏不可挽回。
   push:
-    branches: [main]
-    paths:
-      - '**'
-      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
   workflow_dispatch:

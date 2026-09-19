@@ -1,8 +1,13 @@
 # mars-cloud-framework
 
+[![CI](https://github.com/csthink/mars-cloud-framework/actions/workflows/ci.yml/badge.svg)](https://github.com/csthink/mars-cloud-framework/actions/workflows/ci.yml)
+
 mars-cloud 微服务框架的**公共库仓**：依赖管理 BOM + 一组 Spring Boot Starter。
 
 本仓只产出 jar，不部署任何东西。可部署的应用在配套的服务仓中。
+
+> 本仓构建成功后会**自动触发** `mars-cloud-service` 的 CI，避免「框架改了、服务没跟上」。
+> 流水线内容与配置见 [docs/ci.md](docs/ci.md)。
 
 ## 快速开始
 
