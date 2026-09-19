@@ -91,5 +91,3 @@ mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 ## 许可
 
 内部项目，暂未公开发布 artifact。
-
-<!-- 跨仓触发验证：细粒度 PAT 配置于 2026-09-19T13:01:57Z，此为验证推送 -->
