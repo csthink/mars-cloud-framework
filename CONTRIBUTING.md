@@ -45,7 +45,8 @@
 
 ## 构建与验证
 
-需要 **JDK 25**。
+需要 **JDK 25**。仓内 `.mvn/jvm.config` 会给 Maven 进程带上
+`--sun-misc-unsafe-memory-access=allow`（Lombok 在 JDK 24 及以上编译期需要），无需手动设置。
 
 ```bash
 mvn clean install                                     # 全量 + 契约测试

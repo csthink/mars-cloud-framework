@@ -77,6 +77,28 @@ spring:
 也可以用 `mars.nacos.convention.validation-enabled=false` 关闭本 starter 的约定校验，
 但这不会关闭 Spring Cloud Alibaba 自己的 Nacos 客户端或导入检查。
 
+## 运行时 JVM 参数
+
+引入本 starter 的应用在 JDK 24 及以上启动时需要带：
+
+```
+--sun-misc-unsafe-memory-access=allow
+```
+
+本 starter 引入的 nacos-client 3.1.1 内部 shade 了 Guava，后者调用 `sun.misc.Unsafe`
+的内存访问方法。JDK 24 起（JEP 498）默认在首次调用时向标准错误打印一组
+`WARNING: A terminally deprecated method in sun.misc.Unsafe has been called` 弃用警告，
+后续 JDK 版本会先改为 `debug` 再改为 `deny`。这是 nacos 上游问题
+（[nacos#14070](https://github.com/alibaba/nacos/issues/14070)），上面的参数是 JDK 给出的规避方式。
+
+| 启动方式 | 谁负责带上参数 |
+| --- | --- |
+| `mvn spring-boot:run` / `spring-boot:start` | `mars-cloud-dependencies` 已在 `pluginManagement` 里统一配置，以它为 parent 的模块不需要再写 |
+| `java -jar`、容器 `ENTRYPOINT` | 应用自己的启动命令 |
+| IDE 直接运行主类 | 运行配置的 VM options |
+
+明确离线的进程（含测试）不会调用 Nacos 客户端，也就不会触发这组警告，不需要这个参数。
+
 ## 验证
 
 ```bash

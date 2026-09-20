@@ -233,6 +233,27 @@
                         <parameters>true</parameters>
                     </configuration>
                 </plugin>
+
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <!--
+                          mvn spring-boot:run / spring-boot:start 拉起的应用 JVM 统一带上这个参数。
+
+                          原因：nacos-client 3.1.1 内部 shade 的 Guava 调用 sun.misc.Unsafe 的
+                          内存访问方法，JDK 24 起（JEP 498）默认在首次调用时打印弃用警告，
+                          后续版本会先改为 debug 再改为 deny。这是 nacos 上游问题
+                          （https://github.com/alibaba/nacos/issues/14070），业务服务只要引入
+                          nacos starter 就会触发；本参数是 JDK 给出的规避方式。
+
+                          打包后的 jar 不经过本插件启动，容器与脚本里的 java -jar 命令需要
+                          自行带上同一个参数。测试 JVM 不经过本插件，也不需要它：测试明确离线，
+                          Nacos 客户端不会被调用。
+                        -->
+                        <jvmArguments>--sun-misc-unsafe-memory-access=allow</jvmArguments>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>

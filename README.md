@@ -124,6 +124,16 @@ mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 Spring Framework 7（Boot 4 基线）靠参数名解析 `@RequestParam` / `@PathVariable`，
 缺了它会在运行期抛 `IllegalArgumentException`，而编译期不报错。
 
+BOM 同时为 `spring-boot-maven-plugin` 统一配置了 JVM 参数 `--sun-misc-unsafe-memory-access=allow`，
+让 `mvn spring-boot:run` 拉起的应用不再打印 nacos-client 的 `sun.misc.Unsafe` 弃用警告；
+打包后的 jar 需要在启动命令里自带同一个参数，见
+[nacos starter README](mars-cloud-nacos-spring-boot-starter/README.md) 的「运行时 JVM 参数」。
+
+仓内 `.mvn/jvm.config` 给 **Maven 自己的 JVM** 带上 `--sun-misc-unsafe-memory-access=allow`：
+Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Unsafe`，不加它每次重新编译都会
+打印一组弃用警告。`mvn` 启动脚本会自动读取该文件，本机与 CI 同一份，无需设置环境变量；
+它只作用于 Maven 进程，不会传给测试或应用的 JVM。
+
 契约测试共有 **65 个**（mvc starter 41 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
