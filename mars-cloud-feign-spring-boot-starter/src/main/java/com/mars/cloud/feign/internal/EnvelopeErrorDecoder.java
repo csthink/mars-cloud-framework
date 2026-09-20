@@ -23,7 +23,8 @@ final class EnvelopeErrorDecoder implements ErrorDecoder {
         try {
             body = ResponseBodies.read(response);
         } catch (IOException ex) {
-            return map(response, methodKey, DownstreamFailureKind.MALFORMED_RESPONSE, null, ex);
+            return map(response, methodKey, FailureMappingClient.isTimeout(ex)
+                    ? DownstreamFailureKind.TIMEOUT : DownstreamFailureKind.UNAVAILABLE, null, null);
         }
 
         String clientName = FeignRequestFacts.clientName(response.request());

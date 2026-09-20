@@ -4,10 +4,15 @@ import com.mars.cloud.feign.DownstreamFailureMapper;
 import com.mars.cloud.feign.MarsFeignCapability;
 import com.mars.cloud.feign.internal.CallerContextRequestInterceptor;
 import com.mars.cloud.feign.internal.DownstreamFailureMapperRegistry;
+import com.mars.cloud.feign.internal.ServiceInstanceRetryGuard;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.cloud.openfeign.FeignClientFactoryBean;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.env.Environment;
 import feign.Capability;
 import feign.Feign;
 import feign.Request;
-import feign.RequestInterceptor;
 import feign.Retryer;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -43,8 +48,36 @@ public class MarsFeignAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    RequestInterceptor callerContextRequestInterceptor() {
+    CallerContextRequestInterceptor callerContextRequestInterceptor() {
         return new CallerContextRequestInterceptor();
+    }
+
+    @Bean
+    static BeanFactoryPostProcessor feignClientUrlVerifier(
+            Environment environment) {
+        return beanFactory -> {
+            for (String name : beanFactory.getBeanDefinitionNames()) {
+                var definition = beanFactory.getBeanDefinition(name);
+                Object url = null;
+                if (FeignClientFactoryBean.class.getName()
+                        .equals(definition.getBeanClassName())) {
+                    url = definition.getPropertyValues().get("url");
+                }
+                if (definition.getAttribute("feignClientsRegistrarFactoryBean") instanceof
+                        FeignClientFactoryBean factory) {
+                    url = AnnotatedElementUtils.findMergedAnnotation(
+                            factory.getType(), FeignClient.class).url();
+                }
+                if (url instanceof String value && !environment.resolveRequiredPlaceholders(value).isBlank()) {
+                    throw new IllegalStateException("内部 Feign client 不得配置 URL；必须经服务名与 LoadBalancer 调用");
+                }
+            }
+        };
+    }
+
+    @Bean
+    ServiceInstanceRetryGuard serviceInstanceRetryGuard() {
+        return new ServiceInstanceRetryGuard();
     }
 
     @Bean

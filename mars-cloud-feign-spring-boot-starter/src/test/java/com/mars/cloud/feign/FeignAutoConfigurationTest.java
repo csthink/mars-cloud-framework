@@ -32,6 +32,17 @@ class FeignAutoConfigurationTest {
     }
 
     @Test
+    void ordinaryInterceptorDoesNotDisableCallerContext() {
+        contextRunner.withBean("customHeader", RequestInterceptor.class,
+                () -> template -> template.header("X-Custom", "value"))
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(com.mars.cloud.feign.internal.CallerContextRequestInterceptor.class);
+                    assertThat(context.getBeansOfType(RequestInterceptor.class)).hasSize(2);
+                });
+    }
+
+    @Test
     void timeoutCannotBeRelaxed() {
         contextRunner
                 .withPropertyValues("spring.cloud.openfeign.client.config.orders.read-timeout=3001")

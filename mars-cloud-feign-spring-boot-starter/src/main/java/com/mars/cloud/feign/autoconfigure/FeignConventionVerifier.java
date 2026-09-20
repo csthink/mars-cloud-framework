@@ -33,13 +33,8 @@ public final class FeignConventionVerifier implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() {
-        require(retryer == Retryer.NEVER_RETRY, "Feign Retryer 必须保持 Retryer.NEVER_RETRY");
-        require(options.connectTimeoutMillis() > 0
-                        && options.connectTimeoutMillis() <= MAX_CONNECT_TIMEOUT_MILLIS,
-                "Feign 默认连接超时必须在 1..1000ms");
-        require(options.readTimeoutMillis() > 0
-                        && options.readTimeoutMillis() <= MAX_READ_TIMEOUT_MILLIS,
-                "Feign 默认读取超时必须在 1..3000ms");
+        verifyRetryer(retryer);
+        verifyOptions(options);
 
         for (Map.Entry<String, OpenFeignClientLimitProperties.Client> entry : feign.getConfig().entrySet()) {
             verifyFeignClient(entry.getKey(), entry.getValue());
@@ -49,6 +44,22 @@ public final class FeignConventionVerifier implements InitializingBean {
         for (Map.Entry<String, LoadBalancerLimitProperties.Client> entry : loadBalancer.getClients().entrySet()) {
             verifyRetry("client [" + entry.getKey() + "]", entry.getValue().getRetry());
         }
+    }
+
+    /** 校验 Feign 最终选中的重试器，包括客户端自己的配置。 */
+    public static void verifyRetryer(Retryer retryer) {
+        require(retryer == Retryer.NEVER_RETRY, "Feign Retryer 必须保持 Retryer.NEVER_RETRY");
+    }
+
+    /** 校验 Feign 最终选中的请求参数，包括客户端自己的配置。 */
+    public static void verifyOptions(Request.Options options) {
+        require(options.connectTimeoutMillis() > 0
+                        && options.connectTimeoutMillis() <= MAX_CONNECT_TIMEOUT_MILLIS,
+                "Feign 默认连接超时必须在 1..1000ms");
+        require(options.readTimeoutMillis() > 0
+                        && options.readTimeoutMillis() <= MAX_READ_TIMEOUT_MILLIS,
+                "Feign 默认读取超时必须在 1..3000ms");
+
     }
 
     private static void verifyFeignClient(String name, OpenFeignClientLimitProperties.Client client) {

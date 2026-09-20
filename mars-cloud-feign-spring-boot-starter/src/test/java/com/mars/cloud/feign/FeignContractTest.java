@@ -9,6 +9,7 @@ import feign.Client;
 import feign.Feign;
 import feign.Request;
 import feign.RequestLine;
+import feign.Retryer;
 import feign.RequestTemplate;
 import feign.Response;
 import feign.Target;
@@ -143,6 +144,63 @@ class FeignContractTest {
     }
 
     @Test
+    void responseBodyReadTimeoutUsesCallerMapper() {
+        Client transport = (request, options) -> Response.builder().request(request).status(200)
+                .reason("OK").body(new java.io.InputStream() {
+                    @Override
+                    public int read() throws IOException {
+                        throw new SocketTimeoutException("body timeout");
+                    }
+                }, null).build();
+        TestClient client = buildClient(transport, FeignContractTest::mapped);
+        assertThatThrownBy(client::value).isInstanceOfSatisfying(MappedFailureException.class,
+                ex -> assertThat(ex.failure.kind()).isEqualTo(DownstreamFailureKind.TIMEOUT));
+    }
+
+    @Test
+    void finalTransportRemovesHeadersAddedAfterIdentityInterceptor() {
+        AtomicReference<Request> captured = new AtomicReference<>();
+        Client transport = (request, options) -> {
+            captured.set(request);
+            return Response.builder().request(request).status(200).reason("OK")
+                    .body("{\"success\":true}", StandardCharsets.UTF_8).build();
+        };
+        MarsFeignCapability capability = new MarsFeignCapability(
+                new DownstreamFailureMapperRegistry(List.of()), JsonMapper.builder().build());
+        TestClient client = Feign.builder().client(transport).retryer(Retryer.NEVER_RETRY)
+                .options(new Request.Options(1000, 3000)).decoder(new feign.codec.StringDecoder())
+                .requestInterceptor(template -> template.header("x-mars-subject", "untrusted"))
+                .addCapability(capability)
+                .target(new Target.HardCodedTarget<>(TestClient.class, "inventory", "http://inventory"));
+        client.value();
+        assertThat(captured.get().headers().keySet()).noneMatch(key -> key.equalsIgnoreCase("X-Mars-Subject"));
+        try (CallerContextHolder.Scope ignored = CallerContextHolder.open(
+                new CallerContext("subject-1", "client-1", "default"))) {
+            client.value();
+            assertThat(captured.get().headers().get(InternalCallHeaders.SUBJECT)).containsExactly("subject-1");
+        }
+    }
+
+    @Test
+    void dtoDecodeFailureIsSanitizedAndMapped() {
+        MarsFeignCapability capability = new MarsFeignCapability(
+                new DownstreamFailureMapperRegistry(List.of(mapper("inventory", FeignContractTest::mapped))),
+                JsonMapper.builder().build());
+        Client transport = (request, options) -> Response.builder().request(request).status(200).reason("OK")
+                .body("{\"success\":true,\"result\":\"private detail\"}", StandardCharsets.UTF_8).build();
+        TestClient client = Feign.builder().client(transport).retryer(Retryer.NEVER_RETRY)
+                .options(new Request.Options(1000, 3000))
+                .decoder((response, type) -> { throw new IllegalArgumentException("private detail"); })
+                .addCapability(capability)
+                .target(new Target.HardCodedTarget<>(TestClient.class, "inventory", "http://inventory"));
+        assertThatThrownBy(client::value).isInstanceOfSatisfying(MappedFailureException.class, ex -> {
+            assertThat(ex.failure.kind()).isEqualTo(DownstreamFailureKind.MALFORMED_RESPONSE);
+            assertThat(ex.failure.cause()).isNull();
+            assertThat(ex).hasStackTraceContaining("MALFORMED_RESPONSE").hasMessageNotContaining("private detail");
+        });
+    }
+
+    @Test
     void mapperIsMandatory() {
         TestClient client = clientReturning(200, "{\"success\":false,\"code\":\"denied\"}",
                 new AtomicReference<>(), null);
@@ -207,6 +265,8 @@ class FeignContractTest {
                 response.body().asInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
         return Feign.builder()
+                .retryer(Retryer.NEVER_RETRY)
+                .options(new Request.Options(1000, 3000))
                 .client(transport)
                 .decoder(bodyDecoder)
                 .addCapability(capability)

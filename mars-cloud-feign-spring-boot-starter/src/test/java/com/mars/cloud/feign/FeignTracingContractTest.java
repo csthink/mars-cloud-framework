@@ -10,6 +10,10 @@ import feign.Client;
 import feign.Feign;
 import feign.Request;
 import feign.RequestLine;
+import feign.Retryer;
+import com.mars.cloud.feign.internal.DownstreamFailureMapperRegistry;
+import tools.jackson.databind.json.JsonMapper;
+import java.util.List;
 import feign.Response;
 import feign.codec.StringDecoder;
 import feign.micrometer.MicrometerObservationCapability;
@@ -57,17 +61,21 @@ class FeignTracingContractTest {
                         .reason("OK")
                         .request(request)
                         .headers(Map.of())
-                        .body("ok".getBytes(StandardCharsets.UTF_8))
+                        .body("{\"success\":true}".getBytes(StandardCharsets.UTF_8))
                         .build();
             };
             TraceClient client = Feign.builder()
                     .client(delegate)
+                    .retryer(Retryer.NEVER_RETRY)
+                    .options(new Request.Options(1000, 3000))
+                    .addCapability(new MarsFeignCapability(
+                            new DownstreamFailureMapperRegistry(List.of()), JsonMapper.builder().build()))
                     .decoder(new StringDecoder())
                     .addCapability(new MicrometerObservationCapability(registry))
                     .target(TraceClient.class, "http://orders");
             Span parent = tracer.nextSpan().name("contract-parent").start();
             try (Tracer.SpanInScope ignored = tracer.withSpan(parent)) {
-                assertThat(client.get()).isEqualTo("ok");
+                assertThat(client.get()).isEqualTo("{\"success\":true}");
             }
             finally {
                 parent.end();

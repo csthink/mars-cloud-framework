@@ -1,6 +1,10 @@
 package com.mars.cloud.feign;
 
 import feign.Client;
+import com.mars.cloud.feign.internal.ServiceInstanceRetryGuard;
+import com.mars.cloud.feign.internal.MarsFeignComponents;
+import com.mars.cloud.feign.internal.DownstreamFailureMapperRegistry;
+import tools.jackson.databind.json.JsonMapper;
 import feign.Request;
 import feign.RequestTemplate;
 import feign.Response;
@@ -33,7 +37,7 @@ import static org.mockito.Mockito.when;
 @SuppressWarnings({"rawtypes", "unchecked"})
 class FeignLoadBalancerRetryContractTest {
 
-    private static final Request.Options OPTIONS = new Request.Options();
+    private static final Request.Options OPTIONS = new Request.Options(1000, 3000);
 
     @Test
     void getRetriesOnceOnTheNextServiceInstance() throws Exception {
@@ -57,7 +61,20 @@ class FeignLoadBalancerRetryContractTest {
         assertThat(fixture.requestedHosts()).containsExactly("first.internal");
     }
 
+    @Test
+    void singleInstanceFailureDoesNotSendASecondRequest() {
+        RetryFixture fixture = retryFixture(true);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                fixture.client().execute(request(Request.HttpMethod.GET), OPTIONS))
+                .isInstanceOf(IllegalStateException.class).hasMessage("UNAVAILABLE");
+        assertThat(fixture.requestedHosts()).containsExactly("first.internal");
+    }
+
     private static RetryFixture retryFixture() {
+        return retryFixture(false);
+    }
+
+    private static RetryFixture retryFixture(boolean sameInstance) {
         ServiceInstance first = new DefaultServiceInstance(
                 "instance-1", "orders", "first.internal", 8081, false);
         ServiceInstance second = new DefaultServiceInstance(
@@ -77,7 +94,7 @@ class FeignLoadBalancerRetryContractTest {
         LoadBalancerClient loadBalancer = mock(LoadBalancerClient.class);
         when(loadBalancer.choose(eq("orders"), any(org.springframework.cloud.client.loadbalancer.Request.class)))
                 .thenAnswer(invocation -> {
-                    ServiceInstance chosen = instances.get(Math.min(selection.getAndIncrement(), 1));
+                    ServiceInstance chosen = instances.get(sameInstance ? 0 : Math.min(selection.getAndIncrement(), 1));
                     selectedInstances.add(chosen.getInstanceId());
                     return chosen;
                 });
@@ -114,7 +131,15 @@ class FeignLoadBalancerRetryContractTest {
         };
 
         Client client = new RetryableFeignBlockingLoadBalancerClient(
-                delegate, loadBalancer, retryFactory, clientFactory, List.of());
+                delegate, loadBalancer, retryFactory, clientFactory, List.of(new ServiceInstanceRetryGuard()));
+        DownstreamFailureMapper mapper = new DownstreamFailureMapper() {
+            public String clientName() { return "orders"; }
+            public RuntimeException map(DownstreamFailure failure) {
+                return new IllegalStateException(failure.kind().name());
+            }
+        };
+        client = new MarsFeignComponents(new DownstreamFailureMapperRegistry(List.of(mapper)),
+                JsonMapper.builder().build()).client(client);
         return new RetryFixture(client, selectedInstances, requestedHosts);
     }
 

@@ -155,7 +155,7 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 所以**有测试的模块必须依赖 `spring-boot-starter-test`**（它带来 mockito-core）；不满足时测试 JVM 会因
 `-javaagent` 指向未解析的占位符而起不来，报错里会直接显示 `${org.mockito:mockito-core:jar}`。
 
-契约测试共有 **98 个**（common 9 个、mvc starter 43 个、mysql 14 个、nacos starter 10 个、feign starter 22 个），随 `mvn clean install` 一起跑：
+契约测试共有 **107 个**（common 9 个、mvc starter 43 个、mysql 14 个、nacos starter 10 个、feign starter 31 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
@@ -173,6 +173,7 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 | `OpenApiSmokeTest` | `/v3/api-docs` 与 Swagger UI 可访问、接口清单非空 |
 | `NacosConventionTest` | 自动装配、应用命名、离线模式、Namespace 一致性、Group、Data ID、导入顺序与禁止 `optional:` |
 | `FeignAutoConfigurationTest` | 超时、固定 URL、Feign Retryer、LoadBalancer 重试次数与写请求重试的启动期守卫 |
+| `FeignClientConfigurationContractTest` | 注解 URL、延迟注册与客户端独立配置仍遵守调用约束 |
 | `FeignContractTest` | 身份头、统一信封解码、下游失败分类与调用方 mapper 唯一性 |
 | `FeignLoadBalancerRetryContractTest` | GET 只换下一实例重试一次，POST 不重试 |
 | `FeignTracingContractTest` | Micrometer 自动传播 W3C `traceparent`，且与当前父 span 保持同一 trace |

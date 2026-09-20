@@ -22,7 +22,13 @@ final class EnvelopeDecoder implements Decoder {
 
     @Override
     public Object decode(Response response, Type type) throws IOException {
-        byte[] body = ResponseBodies.read(response);
+        byte[] body;
+        try {
+            body = ResponseBodies.read(response);
+        } catch (IOException ex) {
+            throw wrapped(response, FailureMappingClient.isTimeout(ex)
+                    ? DownstreamFailureKind.TIMEOUT : DownstreamFailureKind.UNAVAILABLE, null);
+        }
         EnvelopeInspection inspection = inspector.inspect(body);
         if (!inspection.envelope()) {
             throw wrapped(response, DownstreamFailureKind.MALFORMED_RESPONSE, null);
@@ -30,7 +36,12 @@ final class EnvelopeDecoder implements Decoder {
         if (!inspection.success()) {
             throw wrapped(response, DownstreamFailureKind.BUSINESS_ENVELOPE, inspection.code());
         }
-        return delegate.decode(response.toBuilder().body(body).build(), type);
+        try {
+            return delegate.decode(response.toBuilder().body(body).build(), type);
+        } catch (IOException | RuntimeException ex) {
+            // 转换异常可能包含正文值，只把失败类别交给调用方。
+            throw wrapped(response, DownstreamFailureKind.MALFORMED_RESPONSE, null);
+        }
     }
 
     private MappedDownstreamException wrapped(Response response, DownstreamFailureKind kind, String code) {
