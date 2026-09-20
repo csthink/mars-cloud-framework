@@ -9,12 +9,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>覆盖三条路径：普通字符串被包成信封、JSON 字符串原样透传、文案兜底在 advice 层生效。
  * 三者的 {@code Content-Type} 都必须是 {@code application/json}——这正是历史偏差
  * （body 是 JSON 信封但响应头是 {@code text/plain}）修复后的断言点。
+ *
+ * <p>另外两条钉住修复的机制本身：显式 {@code text/plain} 的非拉丁字符必须以 UTF-8 写出，
+ * 以及容器里不得存在 {@code StringHttpMessageConverter} 类型的 bean（否则 Boot 不再注册
+ * 自己的 UTF-8 字符串转换器，前一条就会退回 ISO-8859-1）。
  */
 @SpringBootTest(classes = {App.class, TestController.class})
 class StringReturnAndFallbackTest {
@@ -80,6 +86,28 @@ class StringReturnAndFallbackTest {
     }
 
     @Test
+    @DisplayName("显式 text/plain 且内容为非拉丁字符：以 UTF-8 写出，字节与原文一致")
+    void explicitTextPlain_nonLatinTextIsWrittenAsUtf8() throws Exception {
+        MvcResult result = mockMvc.perform(get("/string-text-plain-cjk").accept(MediaType.TEXT_PLAIN))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        // 改前这里是 text/plain;charset=ISO-8859-1，正文两个字节 "??"
+        assertThat(result.getResponse().getContentType())
+                .startsWith(MediaType.TEXT_PLAIN_VALUE)
+                .containsIgnoringCase("charset=UTF-8");
+        assertThat(result.getResponse().getContentAsByteArray()).isEqualTo("中文".getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    @DisplayName("修复机制留痕：容器里没有 StringHttpMessageConverter 类型的 bean")
+    void noStringHttpMessageConverterBeanIsExposed() {
+        // JsonStringHttpMessageConverter 经 ServerHttpMessageConvertersCustomizer 注册而不是作为 bean 暴露，
+        // 否则 Boot 的 @ConditionalOnMissingBean(StringHttpMessageConverter.class) 会跳过它自己的 UTF-8 字符串转换器
+        assertThat(webApplicationContext.getBeanNamesForType(StringHttpMessageConverter.class)).isEmpty();
+    }
+
+    @Test
     @DisplayName("JSON 字符串：原样透传，且 Content-Type 为 application/json")
     void jsonString_isPassedThroughUnchanged() throws Exception {
         MvcResult result = mockMvc.perform(get("/string-json"))
@@ -92,24 +120,15 @@ class StringReturnAndFallbackTest {
     }
 
     @Test
-    @DisplayName("修正机制留痕：只声明 JSON 的字符串转换器被插到了链首")
+    @DisplayName("修正机制留痕：只声明 JSON 的字符串转换器位于所有默认转换器之前")
     void jsonOnlyStringConverterIsFirst() {
         List<String> converterNames = handlerAdapter.getMessageConverters().stream()
                 .map(converter -> converter.getClass().getSimpleName())
                 .collect(Collectors.toList());
 
-        // 它在链首，且只声明 JSON 媒体类型——协商出 text/plain 时不会参与，
-        // 所以显式要求 text/plain 的接口仍由 StringHttpMessageConverter 处理
+        // 经 addCustomConverter 加入的自定义转换器位于默认转换器之前，且它只声明 JSON 媒体类型——
+        // 协商出 text/plain 时不会参与，所以显式要求 text/plain 的接口仍由 StringHttpMessageConverter 处理
         assertThat(converterNames.get(0)).isEqualTo("JsonStringHttpMessageConverter");
-    }
-
-    private static int indexOfFirst(List<String> names, String fragment) {
-        for (int i = 0; i < names.size(); i++) {
-            if (names.get(i).contains(fragment)) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     @Test

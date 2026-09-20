@@ -137,6 +137,17 @@ public class MvcTestApplication {
         }
 
         /**
+         * 显式 text/plain 且内容是非拉丁字符 → 必须以 UTF-8 写出。
+         * 这条钉住的是「容器里不能有 StringHttpMessageConverter 类型的 bean」：
+         * 一旦有，Boot 就不再注册自己那个 UTF-8 的字符串转换器，默认链退回 ISO-8859-1。
+         */
+        @IgnoreResponseAnnotation
+        @GetMapping(value = "/string-text-plain-cjk", produces = "text/plain")
+        public String stringTextPlainCjk() {
+            return "中文";
+        }
+
+        /**
          * 本身是 JSON 的字符串 → 应直接透传。
          */
         @GetMapping("/string-json")

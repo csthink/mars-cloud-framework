@@ -4,6 +4,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.converter.StringHttpMessageConverter;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -20,16 +21,23 @@ import java.util.List;
  * 只是把媒体类型收窄为 {@code application/json}。这样它只在协商结果是 JSON 时才参与，
  * 不会抢走真正需要 {@code text/plain} 的响应（例如 {@code produces = "text/plain"}）。
  *
- * <p>注册顺序见 {@code MvcAdviceAutoConfiguration}：它必须排在
- * {@code StringHttpMessageConverter} **之前**。
+ * <p><b>注册方式见 {@code HttpMessageConverterAutoConfiguration}：</b>它经 Boot 的
+ * {@code ServerHttpMessageConvertersCustomizer} 用 {@code addCustomConverter} 加入，
+ * 按该 API 的契约位于所有默认转换器之前。它<b>不是</b>容器里的 bean：
+ * 一旦以 {@code StringHttpMessageConverter} 子类型的 bean 存在，Boot 会认为使用者已自定义字符串转换器，
+ * 不再注册自己那个 UTF-8 的 {@code StringHttpMessageConverter}，默认链里的 {@code text/plain}
+ * 转换器就退回 ISO-8859-1，非拉丁字符乱码。
  *
  * @since 2026-09-19
  */
 public class JsonStringHttpMessageConverter extends StringHttpMessageConverter {
 
+    /**
+     * 默认 UTF-8。JSON 写出时本来就按 {@code application/json} 解析成 UTF-8，
+     * 这里只是不让类落到父类的 ISO-8859-1 默认值。
+     */
     public JsonStringHttpMessageConverter() {
-        super();
-        setSupportedMediaTypes(List.of(MediaType.APPLICATION_JSON, MediaType.APPLICATION_PROBLEM_JSON));
+        this(StandardCharsets.UTF_8);
     }
 
     public JsonStringHttpMessageConverter(Charset defaultCharset) {

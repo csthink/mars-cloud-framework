@@ -50,6 +50,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Boot 4 的消息转换器扩展点 ServerHttpMessageConvertersCustomizer；同样只在编译期需要 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-http-converter</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!--
           JSON：Boot 4 的 starter-jackson 带的是 Jackson 3（包名 tools.jackson.*）。
           响应 advice 自己序列化 String 返回值时要直接用 ObjectMapper。

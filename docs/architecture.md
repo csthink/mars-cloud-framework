@@ -140,9 +140,19 @@ Spring Cloud Alibaba 2025.1.x 使用 `spring.config.import`，不使用 `bootstr
 body 换成了 JSON 信封。而 `ResponseBodyAdvice` 在转换器**选定之后**才执行，在 advice 里改响应头
 是改不动执行者的。
 
-现在的做法：starter 往链首插一个**只声明 JSON 媒体类型**的字符串转换器
+现在的做法：starter 在默认转换器之前加一个**只声明 JSON 媒体类型**的字符串转换器
 （`JsonStringHttpMessageConverter`，行为继承自 `StringHttpMessageConverter`）。
 它只在协商结果是 JSON 时参与，显式要求 `text/plain` 的接口走原转换器，不受影响。
+
+注册走 Boot 4 的扩展点 `ServerHttpMessageConvertersCustomizer`，调 `HttpMessageConverters.Builder#addCustomConverter`，
+这个 API 的契约就是自定义转换器位于默认转换器之前，不再依赖 `WebMvcConfigurer.extendMessageConverters`
+（Spring Framework 7 起标记删除）手工调顺序。
+
+**第二个坑**：这个转换器不能注册成 bean。Boot 用 `@ConditionalOnMissingBean(StringHttpMessageConverter.class)`
+决定要不要注册自己那个 UTF-8 的字符串转换器；`JsonStringHttpMessageConverter` 是它的子类，一旦以 bean 存在，
+Boot 就认为使用者已自定义字符串转换器而跳过，默认链里的 `text/plain` 转换器退回 Spring 的 ISO-8859-1 默认值，
+`produces = "text/plain"` 的非拉丁字符响应就乱码。契约测试同时钉住「`text/plain` 非拉丁字符按 UTF-8 写出」与
+「容器里没有 `StringHttpMessageConverter` 类型的 bean」。
 
 > 写代码时注意：`*/*` 这个通配符**不能**直接写进 Javadoc 注释，`*/` 会提前闭合注释块。
 

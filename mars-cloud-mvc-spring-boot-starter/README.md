@@ -142,8 +142,13 @@ HttpServletRequest request = HttpContextUtil.getRequest();
 | 普通字符串 | 包成统一信封返回 JSON | `application/json` |
 | `produces = "text/plain"` | 原样返回 | `text/plain` |
 
-starter 会自动把 `JsonStringHttpMessageConverter` 插到消息转换器链首，保证前两种情况的
-`Content-Type` 是 `application/json`；显式要求 `text/plain` 的接口不受影响。
+starter 通过 Boot 的 `ServerHttpMessageConvertersCustomizer` 把 `JsonStringHttpMessageConverter`
+注册为自定义转换器（位于所有默认转换器之前），保证前两种情况的 `Content-Type` 是 `application/json`；
+它只声明 JSON 媒体类型，显式要求 `text/plain` 的接口走 Boot 默认的字符串转换器，不受影响，
+非拉丁字符按 UTF-8 写出。该转换器刻意不作为 bean 暴露：容器里一旦出现 `StringHttpMessageConverter`
+类型的 bean，Boot 就不再注册自己那个 UTF-8 的字符串转换器，`text/plain` 响应会退回 ISO-8859-1。
+要替换这段注册逻辑，定义一个名为 `jsonStringHttpMessageConvertersCustomizer` 的
+`ServerHttpMessageConvertersCustomizer` bean 即可。
 细节见 [../docs/architecture.md](../docs/architecture.md) 的「已知行为与偏差」。
 
 ## 接口文档
