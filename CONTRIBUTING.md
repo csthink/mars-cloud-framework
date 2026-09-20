@@ -53,6 +53,8 @@
 缺了这个依赖，测试 JVM 会起不来，报错里直接显示未解析的 `${org.mockito:mockito-core:jar}`。
 这是有意的 fail-loud，不要用 `-Dmdep.skip` 或覆盖 `argLine` 绕过；要给测试 JVM 追加参数，
 改 BOM 的 `argLine` 属性（`@{argLine}` 会把它接在前面），不要覆盖 `pluginManagement` 里那一行。
+同一行还给测试 JVM 带了 `--enable-native-access=ALL-UNNAMED`：测试里真的发起 HTTP 调用的模块
+（响应式栈）会让 Netty 加载平台原生库，JDK 24 起未声明原生访问会打印 restricted method 警告。
 
 ```bash
 mvn clean install                                     # 全量 + 契约测试

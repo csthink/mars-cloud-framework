@@ -124,9 +124,11 @@ mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 Spring Framework 7（Boot 4 基线）靠参数名解析 `@RequestParam` / `@PathVariable`，
 缺了它会在运行期抛 `IllegalArgumentException`，而编译期不报错。
 
-BOM 同时为 `spring-boot-maven-plugin` 统一配置了 JVM 参数 `--sun-misc-unsafe-memory-access=allow`，
+BOM 同时为 `spring-boot-maven-plugin` 统一配置了两个 JVM 参数：`--sun-misc-unsafe-memory-access=allow`
 让 `mvn spring-boot:run` 拉起的应用不再打印 nacos-client 的 `sun.misc.Unsafe` 弃用警告；
-打包后的 jar 需要在启动命令里自带同一个参数，见
+`--enable-native-access=ALL-UNNAMED` 让 classpath 上带 Netty 平台原生库的应用（响应式栈即如此）
+不再打印 JDK 24 起（JEP 472）的 restricted method 警告，没有原生库的应用带上无副作用。
+打包后的 jar 需要在启动命令里自带同一组参数，见
 [nacos starter README](mars-cloud-nacos-spring-boot-starter/README.md) 的「运行时 JVM 参数」。
 
 仓内 `.mvn/jvm.config` 给 **Maven 自己的 JVM** 带上 `--sun-misc-unsafe-memory-access=allow`：

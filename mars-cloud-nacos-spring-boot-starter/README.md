@@ -99,6 +99,10 @@ spring:
 
 明确离线的进程（含测试）不会调用 Nacos 客户端，也就不会触发这组警告，不需要这个参数。
 
+与本 starter 无关但常一起出现的另一个参数：classpath 上带 Netty 平台原生库的应用（响应式栈即如此）
+在 JDK 24 及以上还需要 `--enable-native-access=ALL-UNNAMED`（JEP 472）。`mars-cloud-dependencies`
+给 `spring-boot:run` 与测试 JVM 的配置已同时带上两者；`java -jar` 与容器入口同样需要自己写上。
+
 ## 验证
 
 ```bash

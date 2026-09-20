@@ -271,8 +271,14 @@
                           必须依赖 spring-boot-starter-test（它带来 mockito-core）；不满足时该属性
                           不会被解析，测试 JVM 会因 -javaagent 指向字面量而起不来——这是故意的
                           fail-loud，不要用 skip 绕过。见 CONTRIBUTING.md。
+
+                          enable-native-access=ALL-UNNAMED（JVM 参数，前置两个连字符）：classpath 上带 Netty
+                          平台原生库的模块（Reactor Netty 即如此：macOS 的 DNS 解析器、Linux 的 epoll）在 JDK 24 起
+                          （JEP 472）调用 System::loadLibrary 时会打印「A restricted method in
+                          java.lang.System has been called」警告，后续版本会改为拒绝。测试 JVM 会真的
+                          发起 HTTP 调用，所以这里也要带上；没有原生库的模块带上无副作用。
                         -->
-                        <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                        <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} --enable-native-access=ALL-UNNAMED</argLine>
                     </configuration>
                 </plugin>
 
@@ -307,11 +313,16 @@
                           （https://github.com/alibaba/nacos/issues/14070），业务服务只要引入
                           nacos starter 就会触发；本参数是 JDK 给出的规避方式。
 
+                          enable-native-access=ALL-UNNAMED（JVM 参数，前置两个连字符）：classpath 上带 Netty
+                          平台原生库的服务（响应式栈的网关即如此）在 JDK 24 起（JEP 472）加载原生库时会打印
+                          「A restricted method in java.lang.System has been called」警告，后续版本会
+                          改为拒绝。没有原生库的服务带上无副作用，所以统一给出。
+
                           打包后的 jar 不经过本插件启动，容器与脚本里的 java -jar 命令需要
-                          自行带上同一个参数。测试 JVM 不经过本插件，也不需要它：测试明确离线，
-                          Nacos 客户端不会被调用。
+                          自行带上同一组参数。测试 JVM 不经过本插件：Unsafe 那条它不需要（测试明确
+                          离线，Nacos 客户端不会被调用），native-access 那条由上面的 surefire argLine 给出。
                         -->
-                        <jvmArguments>--sun-misc-unsafe-memory-access=allow</jvmArguments>
+                        <jvmArguments>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED</jvmArguments>
                     </configuration>
                 </plugin>
             </plugins>

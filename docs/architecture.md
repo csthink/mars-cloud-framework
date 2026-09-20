@@ -52,7 +52,7 @@ common ◄──────── core-starter ◄─── mvc-starter        
 ```
 
 - `common` **不依赖任何 Spring / Servlet / Swagger**。它是唯一能被所有栈复用的模块，
-  包括将来的 WebFlux 网关。
+  包括 WebFlux 栈的网关。
 - starter 只**向下**依赖 `common`、`dependencies` 与更底层的 starter
   （例如 mvc starter 依赖 core starter 以获得分布式 ID）；**不允许反向依赖**，
   也不允许出现环。
@@ -71,7 +71,7 @@ Servlet starter 里，外部调用方就会看到「网关一种错误格式、�
 | --- | --- |
 | `common` | `UnifyResponse` 信封、`ErrorCode` 契约（纯 POJO / 纯接口） |
 | Servlet 栈 | `mars-cloud-mvc-spring-boot-starter` 的 `ResponseBodyAdvice` + `@ControllerAdvice` |
-| WebFlux 栈 | 网关侧自行实现过滤器与异常处理，复用 `common` 的信封 |
+| WebFlux 栈 | 网关侧自行实现 `ErrorWebExceptionHandler`，复用 `common` 的信封；业务服务的响应原样透传，不二次包装 |
 
 信封本身**不做 i18n 查找**——文案由各栈的 advice 层解析完成后传入。这样 `common`
 才能保持无 Spring 依赖。
