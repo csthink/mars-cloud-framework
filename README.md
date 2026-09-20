@@ -142,7 +142,7 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 所以**有测试的模块必须依赖 `spring-boot-starter-test`**（它带来 mockito-core）；不满足时测试 JVM 会因
 `-javaagent` 指向未解析的占位符而起不来，报错里会直接显示 `${org.mockito:mockito-core:jar}`。
 
-契约测试共有 **74 个**（common 9 个、mvc starter 41 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
+契约测试共有 **76 个**（common 9 个、mvc starter 43 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
