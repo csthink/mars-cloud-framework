@@ -21,7 +21,28 @@
 | `com.mars.cloud.common.response` | 统一响应信封 `UnifyResponse` |
 | `com.mars.cloud.common.error` | 错误码契约 `ErrorCode` |
 | `com.mars.cloud.common.exception` | 与实现无关的通用异常，目前是 `LockFailureException` |
+| `com.mars.cloud.common.context` | 调用方上下文 `CallerContext`、阻塞线程上下文持有者与内部请求头名 |
 | `com.mars.cloud.common.domain.util` | 通用工具：`IDGenerator`、`JsonUtil`、`TimeUtils` |
+
+### CallerContext
+
+`CallerContext` 固定承载已验证令牌中的 `subject`、`clientId` 与 `tenantId`。三个字段都必须有值，
+不会由 common 猜测或补默认值。`InternalCallHeaders` 给出服务之间传递这三个字段时使用的固定请求头名。
+
+Servlet、Feign 与消息消费等阻塞线程模型可以用 `CallerContextHolder`：
+
+```java
+CallerContext context = new CallerContext(subject, clientId, "default");
+try (CallerContextHolder.Scope ignored = CallerContextHolder.open(context)) {
+    callDownstream();
+}
+```
+
+scope 支持嵌套，关闭内层后会恢复外层值，关闭最外层后会清理 `ThreadLocal`。scope 必须由创建它的
+线程按后进先出顺序关闭，违反时会立即失败，避免静默污染线程池。
+
+Reactive 代码只复用 `CallerContext` 值对象与 `InternalCallHeaders`，上下文放入 Reactor Context，
+不得使用 `CallerContextHolder`。
 
 ### UnifyResponse
 

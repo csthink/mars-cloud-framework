@@ -71,6 +71,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- 测试基础设施只在 test scope，不进入 common 的发布依赖。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- 注意：请不要引入任何 Spring / Servlet / Swagger 相关依赖 -->
     </dependencies>
 

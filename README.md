@@ -99,7 +99,7 @@ mars:
 | 模块 | 定位 |
 | --- | --- |
 | `mars-cloud-dependencies` | 依赖管理 BOM。全仓**版本唯一出口**，所有模块以它为 parent |
-| `mars-cloud-common` | 纯工具与模型库。**不依赖任何 Spring / Servlet 组件** |
+| `mars-cloud-common` | 纯工具与模型库：统一信封、错误码、调用方上下文。**不依赖任何 Spring / Servlet 运行时组件** |
 | `mars-cloud-core-spring-boot-starter` | 核心自动装配，目前提供分布式 ID（雪花算法） |
 | `mars-cloud-mvc-spring-boot-starter` | Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间校验、i18n、请求上下文 |
 | `mars-cloud-mysql` | MyBatis-Plus 约定：基础实体、逻辑删除、审计字段填充、ID 生成器 |
@@ -142,10 +142,13 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 所以**有测试的模块必须依赖 `spring-boot-starter-test`**（它带来 mockito-core）；不满足时测试 JVM 会因
 `-javaagent` 指向未解析的占位符而起不来，报错里会直接显示 `${org.mockito:mockito-core:jar}`。
 
-契约测试共有 **65 个**（mvc starter 41 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
+契约测试共有 **74 个**（common 9 个、mvc starter 41 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
+| `CallerContextTest` | 调用方身份三个字段都必须有值且按原值保存 |
+| `CallerContextHolderTest` | 阻塞线程上下文的嵌套恢复、清理、线程隔离与关闭顺序 |
+| `InternalCallHeadersTest` | 服务之间传递身份的三个请求头名固定 |
 | `MvcContractTest` | 成功/失败信封、HTTP 状态码、错误码 |
 | `ResponseAdviceEdgeCaseTest` | 跳过包装、dev/非 dev 的调试详情差异 |
 | `AutoconfigurationBoundaryTest` | 错误码归属/越界/重复/段间重叠在启动期拦截、配置自检、响应式栈不装配 Servlet advice |
