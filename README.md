@@ -90,6 +90,18 @@ mars:
 该 starter 固定 Namespace、Group、Data ID、配置导入顺序与失败语义。完整配置模板、离线方式和
 约定说明见 [`mars-cloud-nacos-spring-boot-starter/README.md`](mars-cloud-nacos-spring-boot-starter/README.md)。
 
+Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
+
+```xml
+<dependency>
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-feign-spring-boot-starter</artifactId>
+</dependency>
+```
+
+该 starter 固定 OpenFeign、LoadBalancer、调用方身份头、统一信封失败映射、超时和幂等重试边界。
+接入方式见 [`mars-cloud-feign-spring-boot-starter/README.md`](mars-cloud-feign-spring-boot-starter/README.md)。
+
 ### 参与本仓开发
 
 构建、测试与依赖约束见下文「[构建](#构建)」一节。
@@ -104,6 +116,7 @@ mars:
 | `mars-cloud-mvc-spring-boot-starter` | Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间校验、i18n、请求上下文 |
 | `mars-cloud-mysql` | MyBatis-Plus 约定：基础实体、逻辑删除、审计字段填充、ID 生成器 |
 | `mars-cloud-nacos-spring-boot-starter` | Nacos 注册发现与配置中心：固定 Namespace、Group、Data ID、导入顺序与 fail-fast 约定 |
+| `mars-cloud-feign-spring-boot-starter` | Servlet 服务间同步读调用：OpenFeign、LoadBalancer、上下文传播、失败映射、超时与幂等重试 |
 
 依赖方向是单向的：starter → `common` / `dependencies` / 更底层的 starter
 （mvc starter 依赖 core starter 以获得分布式 ID），不允许反向依赖或成环。
@@ -142,7 +155,7 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 所以**有测试的模块必须依赖 `spring-boot-starter-test`**（它带来 mockito-core）；不满足时测试 JVM 会因
 `-javaagent` 指向未解析的占位符而起不来，报错里会直接显示 `${org.mockito:mockito-core:jar}`。
 
-契约测试共有 **76 个**（common 9 个、mvc starter 43 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
+契约测试共有 **98 个**（common 9 个、mvc starter 43 个、mysql 14 个、nacos starter 10 个、feign starter 22 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
@@ -159,6 +172,10 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 | `DataSourceDialectTest` | 方言显式指定（达梦/金仓/大小写）、配置错误启动期失败、分页参数 |
 | `OpenApiSmokeTest` | `/v3/api-docs` 与 Swagger UI 可访问、接口清单非空 |
 | `NacosConventionTest` | 自动装配、应用命名、离线模式、Namespace 一致性、Group、Data ID、导入顺序与禁止 `optional:` |
+| `FeignAutoConfigurationTest` | 超时、固定 URL、Feign Retryer、LoadBalancer 重试次数与写请求重试的启动期守卫 |
+| `FeignContractTest` | 身份头、统一信封解码、下游失败分类与调用方 mapper 唯一性 |
+| `FeignLoadBalancerRetryContractTest` | GET 只换下一实例重试一次，POST 不重试 |
+| `FeignTracingContractTest` | Micrometer 自动传播 W3C `traceparent`，且与当前父 span 保持同一 trace |
 
 > 改到统一响应、异常映射、i18n 或错误码时，这几张测试表是必须跑绿的契约面。
 

@@ -23,7 +23,8 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ├── mars-cloud-mvc-spring-boot-starter/
 ├── mars-cloud-mysql/
 ├── mars-cloud-nacos-spring-boot-starter/
-└── （后续：feign / sentinel / security starter）
+├── mars-cloud-feign-spring-boot-starter/
+└── （后续：sentinel / security starter）
 ```
 
 ## 划分三规则
@@ -45,10 +46,10 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
                  │  mars-cloud-dependencies  │  ← 版本唯一出口（BOM）
                  └─────────────┬─────────────┘
                                │ 所有模块的 parent
-   ┌──────────────────┬────────┼──────────┬──────────────────┐
-   ▼                  ▼        ▼          ▼                  ▼
-common ◄──────── core-starter ◄─── mvc-starter           mysql        nacos-starter
-（无 Spring）      （自动装配）      （Web 横切）       （持久化）     （注册配置）
+   ┌──────────────────┬────────┼──────────┬─────────────┬────────────────┐
+   ▼                  ▼        ▼          ▼             ▼                ▼
+common ◄──────── core-starter ◄─── mvc-starter       mysql         nacos-starter    feign-starter
+（无 Spring）      （自动装配）      （Web 横切）    （持久化）      （注册配置）      （同步读调用）
 ```
 
 - `common` **不依赖任何 Spring / Servlet / Swagger**。它是唯一能被所有栈复用的模块，
@@ -123,6 +124,20 @@ Boot 4 带的是 Jackson 3，包名从 `com.fasterxml.jackson.*` 变为 `tools.j
 Spring Cloud Alibaba 2025.1.x 使用 `spring.config.import`，不使用 `bootstrap.yml`。
 测试或明确不接入 Nacos 的进程必须同时关闭 Config 与 Discovery。配置模板见模块 README。
 
+### 服务间同步读：单层幂等重试与调用方失败映射
+
+`mars-cloud-feign-spring-boot-starter` 只服务 Servlet / 阻塞调用。内部客户端只写服务名，经
+Spring Cloud LoadBalancer 与注册中心选择实例；固定 URL 会在启动期被拒绝。WebFlux 链路使用
+由 `WebClient` 驱动的 Spring HTTP Service Client，不能在事件线程中调用 Feign。
+
+重试只由 LoadBalancer 执行，Feign 自身固定为 `Retryer.NEVER_RETRY`，避免两层重试相乘。
+GET 最多换一个实例重试一次，写请求不重试；连接与读取超时的上限分别是 1 秒和 3 秒。
+
+调用方用 `CallerContextHolder` 在阻塞线程中提供身份，starter 覆盖写入三个内部请求头。
+`traceparent` 由 Micrometer Tracing 自动传播。下游成功与失败都使用统一信封，但失败不会把
+下游的 message 或原始响应体传给上游；每个客户端必须通过一个 `DownstreamFailureMapper`
+把失败翻译为调用方自己的异常和错误码。
+
 ## 已知行为与偏差
 
 ### String 返回值：统一协商为 JSON
@@ -178,7 +193,7 @@ Boot 就认为使用者已自定义字符串转换器而跳过，默认链里的
 | 信封与错误码契约下沉到 `common` | 网关是 WebFlux 栈，用不了 Servlet 的 `ResponseBodyAdvice`；契约只放 Servlet starter 会导致「网关一种错误格式、业务服务另一种」 | `common` 必须保持无 Spring 依赖，易被无意破坏 |
 | 错误码**区间化 + 启动期校验** | 把「两个模块抢同一个码」从运行期提前到启动期 | 每个服务多一段配置 |
 | 框架**不绑定具体锁实现** | 第三方锁组件会把无条件自动装配带进使用方 classpath，可能让使用方启动失败 | 使用方需自己实现锁并抛框架的异常类型 |
-| 服务之间**不加编译期依赖** | 服务本就无编译期耦合，将来拆库拆服务是零成本的 | 跨服务调用要自己写客户端（后续由 Feign starter 提供） |
+| 服务之间**不加编译期依赖** | 服务本就无编译期耦合，将来拆库拆服务是零成本的 | 调用方声明自己的 Feign 接口与本地 DTO，由 Feign starter 统一横切契约 |
 | 按**消费者数量**决定能力下沉 | 第一个消费者时写在业务服务里，避免框架被单点需求污染 | 第二个消费者出现时需要一次搬迁 |
 | 配置项进版本库、环境取值只走环境变量 | 新克隆的仓不因缺配置文件而起不来；也避免把某人本机配置当成默认值 | 环境差异要靠环境变量表达 |
 | Nacos 配置导入 fail-fast，禁止 `optional:` | 配置中心不可用或 Data ID 写错时立即停止，避免服务使用残缺配置运行 | 本地离线测试必须显式关闭 Config 与 Discovery |
