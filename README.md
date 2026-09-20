@@ -134,6 +134,12 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 打印一组弃用警告。`mvn` 启动脚本会自动读取该文件，本机与 CI 同一份，无需设置环境变量；
 它只作用于 Maven 进程，不会传给测试或应用的 JVM。
 
+测试 JVM 由 BOM 统一配置 surefire 以 `-javaagent` 预加载 mockito-core：Mockito 5 的 inline mock maker
+默认在运行期动态附加 agent，JDK 21 起会打印「A Java agent has been loaded dynamically」并预告未来默认禁止，
+预加载是 Mockito 官方推荐的做法。agent 的 jar 路径由 `dependency:properties` 从各模块的测试 classpath 取得，
+所以**有测试的模块必须依赖 `spring-boot-starter-test`**（它带来 mockito-core）；不满足时测试 JVM 会因
+`-javaagent` 指向未解析的占位符而起不来，报错里会直接显示 `${org.mockito:mockito-core:jar}`。
+
 契约测试共有 **65 个**（mvc starter 41 个、mysql 14 个、nacos starter 10 个），随 `mvn clean install` 一起跑：
 
 | 测试类 | 固定下来的契约 |

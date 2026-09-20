@@ -48,6 +48,12 @@
 需要 **JDK 25**。仓内 `.mvn/jvm.config` 会给 Maven 进程带上
 `--sun-misc-unsafe-memory-access=allow`（Lombok 在 JDK 24 及以上编译期需要），无需手动设置。
 
+**有测试的模块必须以 test scope 依赖 `spring-boot-starter-test`。** BOM 让 surefire 以
+`-javaagent:${org.mockito:mockito-core:jar}` 预加载 mockito-core，该路径属性来自模块自己的测试 classpath；
+缺了这个依赖，测试 JVM 会起不来，报错里直接显示未解析的 `${org.mockito:mockito-core:jar}`。
+这是有意的 fail-loud，不要用 `-Dmdep.skip` 或覆盖 `argLine` 绕过；要给测试 JVM 追加参数，
+改 BOM 的 `argLine` 属性（`@{argLine}` 会把它接在前面），不要覆盖 `pluginManagement` 里那一行。
+
 ```bash
 mvn clean install                                     # 全量 + 契约测试
 mvn -pl mars-cloud-common clean test                  # 单模块

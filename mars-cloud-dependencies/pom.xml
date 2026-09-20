@@ -63,6 +63,19 @@
           **不要升到 3.1.x**——它的 parent 是 Boot 4.1.0。
         -->
         <springdoc-openapi.version>3.0.3</springdoc-openapi.version>
+
+        <!-- 构建插件版本：surefire 钉在 Maven 3.9.14 默认绑定的同一版本，避免随 Maven 安装漂移 -->
+        <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+        <maven-dependency-plugin.version>3.11.0</maven-dependency-plugin.version>
+        <!-- compiler 钉在各框架模块已在用的版本；pluginManagement 里不钉版本会让 Maven 每次构建 BOM 都去解析最新版 -->
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <!--
+          surefire argLine 的晚绑定基座。下面 pluginManagement 里的 argLine 以 @{argLine} 开头，
+          这里必须存在（可以为空），否则 @{argLine} 会以字面量进测试 JVM 命令行。
+          将来接 jacoco 之类会改写 argLine 属性的工具时，它们的参数会自动接在前面，不要覆盖
+          pluginManagement 里那一行。
+        -->
+        <argLine></argLine>
     </properties>
 
     <!--
@@ -216,11 +229,57 @@
     </dependencyManagement>
 
     <build>
+        <!--
+          写在 <plugins> 而不是 <pluginManagement>：pluginManagement 只管「被用到时的配置」，
+          不会让一个没人声明的插件执行。这里需要 dependency:properties 在每个子模块真的跑起来，
+          把每个依赖的 jar 绝对路径暴露成 Maven 属性（形如 ${groupId:artifactId:type}），
+          供下面 surefire 的 -javaagent 引用。
+        -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>${maven-dependency-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>expose-dependency-paths</id>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
         <pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                    <configuration>
+                        <!--
+                          测试 JVM 以 -javaagent 预加载 mockito-core。
+
+                          原因：Mockito 5 的 inline mock maker 默认在运行期通过 byte-buddy-agent 自附加，
+                          JDK 21 起（JEP 451）动态加载 agent 会打印
+                          「A Java agent has been loaded dynamically」并预告未来默认禁止。
+                          预加载是 Mockito 官方推荐的做法；-XX:+EnableDynamicAgentLoading 只是关掉警告。
+
+                          ${org.mockito:mockito-core:jar} 由上面的 dependency:properties 提供，
+                          只在测试 classpath 含 mockito-core 的模块里存在。全仓约定：有测试的模块
+                          必须依赖 spring-boot-starter-test（它带来 mockito-core）；不满足时该属性
+                          不会被解析，测试 JVM 会因 -javaagent 指向字面量而起不来——这是故意的
+                          fail-loud，不要用 skip 绕过。见 CONTRIBUTING.md。
+                        -->
+                        <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
                     <configuration>
                         <!--
                           保留方法参数名。Spring 6.1 起靠参数名解析 @RequestParam /
@@ -237,6 +296,7 @@
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
                     <configuration>
                         <!--
                           mvn spring-boot:run / spring-boot:start 拉起的应用 JVM 统一带上这个参数。
