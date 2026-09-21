@@ -26,6 +26,9 @@
         <module>mars-cloud-mysql</module>
         <module>mars-cloud-nacos-spring-boot-starter</module>
         <module>mars-cloud-feign-spring-boot-starter</module>
+        <module>mars-cloud-security-spring-boot-starter</module>
+        <module>mars-cloud-security-feign</module>
+        <module>mars-cloud-security-test-support</module>
     </modules>
 
 </project>

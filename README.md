@@ -117,6 +117,9 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 | `mars-cloud-mysql` | MyBatis-Plus 约定：基础实体、逻辑删除、审计字段填充、ID 生成器 |
 | `mars-cloud-nacos-spring-boot-starter` | Nacos 注册发现与配置中心：固定 Namespace、Group、Data ID、导入顺序与 fail-fast 约定 |
 | `mars-cloud-feign-spring-boot-starter` | Servlet 服务间同步读调用：OpenFeign、LoadBalancer、上下文传播、失败映射、超时与幂等重试 |
+| [`mars-cloud-security-spring-boot-starter`](mars-cloud-security-spring-boot-starter/README.md) | Servlet / WebFlux JWT 验证、身份上下文与方法权限检查 |
+| [`mars-cloud-security-feign`](mars-cloud-security-feign/README.md) | Servlet 权限服务调用及当前用户令牌转发 |
+| [`mars-cloud-security-test-support`](mars-cloud-security-test-support/README.md) | 仅测试使用的临时 RSA 签发器与 JWKS 服务 |
 
 依赖方向是单向的：starter → `common` / `dependencies` / 更底层的 starter
 （mvc starter 依赖 core starter 以获得分布式 ID），不允许反向依赖或成环。
@@ -157,13 +160,15 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 所以**有测试的模块必须依赖 `spring-boot-starter-test`**（它带来 mockito-core）；不满足时测试 JVM 会因
 `-javaagent` 指向未解析的占位符而起不来，报错里会直接显示 `${org.mockito:mockito-core:jar}`。
 
-契约测试共有 **107 个**（common 9 个、mvc starter 43 个、mysql 14 个、nacos starter 10 个、feign starter 31 个），随 `mvn clean install` 一起跑：
+契约测试随 `mvn clean install` 一起运行，实际数量以构建报告为准：
 
 | 测试类 | 固定下来的契约 |
 | --- | --- |
 | `CallerContextTest` | 调用方身份三个字段都必须有值且按原值保存 |
 | `CallerContextHolderTest` | 阻塞线程上下文的嵌套恢复、清理、线程隔离与关闭顺序 |
 | `InternalCallHeadersTest` | 服务之间传递身份的三个请求头名固定 |
+| `SensitiveHttpHeadersTest` | 大小写不敏感的凭据请求头识别 |
+| security 模块契约测试 | 两栈真实签名、缓存轮换、方法权限、并发身份隔离、自动配置与权限 HTTP 故障 |
 | `MvcContractTest` | 成功/失败信封、HTTP 状态码、错误码 |
 | `ResponseAdviceEdgeCaseTest` | 跳过包装、dev/非 dev 的调试详情差异 |
 | `AutoconfigurationBoundaryTest` | 错误码归属/越界/重复/段间重叠在启动期拦截、配置自检、响应式栈不装配 Servlet advice |

@@ -1,0 +1,37 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent><groupId>com.mars.cloud</groupId><artifactId>mars-cloud-dependencies</artifactId><version>1.0.0-SNAPSHOT</version><relativePath>../mars-cloud-dependencies/pom.xml</relativePath></parent>
+    <artifactId>mars-cloud-security-spring-boot-starter</artifactId>
+    <name>mars-cloud-security-spring-boot-starter</name>
+    <dependencies>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-cache</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>com.github.ben-manes.caffeine</groupId><artifactId>caffeine</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>com.mars.cloud</groupId><artifactId>mars-cloud-common</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId></dependency>
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-config</artifactId></dependency>
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-web</artifactId></dependency>
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-oauth2-resource-server</artifactId></dependency>
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-oauth2-jose</artifactId></dependency>
+        <dependency><groupId>jakarta.servlet</groupId><artifactId>jakarta.servlet-api</artifactId><optional>true</optional></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId><optional>true</optional></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-webmvc</artifactId><optional>true</optional></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-webflux</artifactId><optional>true</optional></dependency>
+        <dependency><groupId>io.projectreactor.netty</groupId><artifactId>reactor-netty-http</artifactId><optional>true</optional></dependency>
+        <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-loadbalancer</artifactId><optional>true</optional></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc-test</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webflux-test</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>com.mars.cloud</groupId><artifactId>mars-cloud-security-test-support</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+    </dependencies>
+    <profiles>
+        <profile><id>macos-arm64-test-dns</id><activation><os><family>mac</family><arch>aarch64</arch></os></activation>
+            <dependencies><dependency><groupId>io.netty</groupId><artifactId>netty-resolver-dns-native-macos</artifactId><classifier>osx-aarch_64</classifier><scope>test</scope></dependency></dependencies>
+        </profile>
+    </profiles>
+    <build><plugins>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.13.0</version><configuration><release>${maven.compiler.release}</release><parameters>true</parameters></configuration></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-source-plugin</artifactId><version>3.3.1</version><executions><execution><id>attach-sources</id><goals><goal>jar</goal></goals></execution></executions></plugin>
+        <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-javadoc-plugin</artifactId><version>3.11.2</version><configuration><doclint>none</doclint></configuration><executions><execution><id>attach-javadocs</id><goals><goal>jar</goal></goals></execution></executions></plugin>
+    </plugins></build>
+</project>

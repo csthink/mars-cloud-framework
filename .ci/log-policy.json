@@ -143,6 +143,14 @@
     {
       "pattern": "WARN\\ SpringDocAppInitializer:\\ SpringDoc\\ /v3/api\\-docs\\ endpoint\\ is\\ enabled\\ by\\ default\\.\\ To\\ disable\\ it\\ in\\ production,\\ set\\ the\\ property\\ 'springdoc\\.api\\-docs\\.enabled=false'",
       "reason": "API documentation is intentionally enabled in test contexts."
+    },
+    {
+      "pattern": "WARN\\ (?:AnnotationConfigServletWebApplicationContext|tationConfigServletWebApplicationContext):\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsAuthorization'\\ defined\\ in\\ com\\.mars\\.cloud\\.security\\.autoconfigure\\.ServletSecurityAutoConfiguration:\\ Failed\\ to\\ instantiate\\ \\[com\\.mars\\.cloud\\.security\\.servlet\\.ServletAuthorization\\]:\\ Factory\\ method\\ 'marsAuthorization'\\ threw\\ exception\\ with\\ message:\\ Enabled\\ Servlet\\ authorization\\ requires\\ a\\ PdpClient\\ adapter",
+      "reason": "Negative resource server configuration test: missing mandatory audience or enabled Servlet permission adapter."
+    },
+    {
+      "pattern": "WARN\\ (?:AnnotationConfigServletWebApplicationContext|tationConfigServletWebApplicationContext):\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.UnsatisfiedDependencyException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'org\\.springframework\\.security\\.config\\.annotation\\.web\\.configuration\\.WebSecurityConfiguration':\\ Unsatisfied\\ dependency\\ expressed\\ through\\ method\\ 'setFilterChains'\\ parameter\\ 0:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsSecurityFilterChain'\\ defined\\ in\\ com\\.mars\\.cloud\\.security\\.autoconfigure\\.ServletSecurityAutoConfiguration:\\ Unsatisfied\\ dependency\\ expressed\\ through\\ method\\ 'marsSecurityFilterChain'\\ parameter\\ 1:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsJwtDecoder'\\ defined\\ in\\ com\\.mars\\.cloud\\.security\\.autoconfigure\\.ServletSecurityAutoConfiguration:\\ Failed\\ to\\ instantiate\\ \\[org\\.springframework\\.security\\.oauth2\\.jwt\\.JwtDecoder\\]:\\ Factory\\ method\\ 'marsJwtDecoder'\\ threw\\ exception\\ with\\ message:\\ mars\\.security\\.audience\\ must\\ be\\ configured",
+      "reason": "Negative resource server configuration test: missing mandatory audience or enabled Servlet permission adapter."
     }
   ],
   "service": [
@@ -217,6 +225,10 @@
     {
       "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 502\\ code=63003\\ GET\\ /refused/anything:\\ finishConnect\\(\\.\\.\\)\\ failed\\ with\\ error\\(\\-111\\):\\ Connection\\ refused:\\ /127\\.0\\.0\\.1:[0-9]{1,5}",
       "reason": "Gateway unavailable-upstream contract test: Linux epoll reports ECONNREFUSED for the intentionally closed local port."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 404\\ code=63001\\ GET\\ /security\\-test/missing:\\ No\\ static\\ resource\\ security\\-test/missing\\ for\\ request\\ 'http://localhost:[0-9]+/security\\-test/missing'\\.",
+      "reason": "Gateway credential response test deliberately requests the missing security-test path."
     }
   ]
 }

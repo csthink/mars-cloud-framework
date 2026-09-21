@@ -298,7 +298,9 @@ public class GlobalExceptionAdvice {
             Enumeration<String> names = request.getHeaderNames();
             while (names != null && names.hasMoreElements()) {
                 String n = names.nextElement();
-                headers.put(n, request.getHeader(n));
+                if (!com.mars.cloud.common.http.SensitiveHttpHeaders.isSensitive(n)) {
+                    headers.put(n, request.getHeader(n));
+                }
             }
             details.put("headers", headers);
         }

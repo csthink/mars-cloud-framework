@@ -1,0 +1,2 @@
+com.mars.cloud.security.autoconfigure.ServletSecurityAutoConfiguration
+com.mars.cloud.security.autoconfigure.ReactiveSecurityAutoConfiguration
