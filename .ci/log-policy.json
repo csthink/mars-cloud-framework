@@ -213,6 +213,10 @@
     {
       "pattern": "org\\.springframework\\.web\\.bind\\.MethodArgumentNotValidException:\\ Validation\\ failed\\ for\\ argument\\ \\[0\\]\\ in\\ public\\ java\\.util\\.Map<java\\.lang\\.String,\\ java\\.lang\\.Object>\\ com\\.mars\\.cloud\\.service\\.sample\\.web\\.OrderController\\.create\\(com\\.mars\\.cloud\\.service\\.sample\\.web\\.CreateOrderRequest\\)\\ with\\ 2\\ errors:\\ \\[Field\\ error\\ in\\ object\\ 'createOrderRequest'\\ on\\ field\\ 'quantity':\\ rejected\\ value\\ \\[0\\];\\ codes\\ \\[Min\\.createOrderRequest\\.quantity,Min\\.quantity,Min\\.int,Min\\];\\ arguments\\ \\[org\\.springframework\\.context\\.support\\.DefaultMessageSourceResolvable:\\ codes\\ \\[createOrderRequest\\.quantity,quantity\\];\\ arguments\\ \\[\\];\\ default\\ message\\ \\[quantity\\],1\\];\\ default\\ message\\ \\[quantity\\ 至少为\\ 1\\]\\]\\ \\[Field\\ error\\ in\\ object\\ 'createOrderRequest'\\ on\\ field\\ 'sku':\\ rejected\\ value\\ \\[\\];\\ codes\\ \\[NotBlank\\.createOrderRequest\\.sku,NotBlank\\.sku,NotBlank\\.java\\.lang\\.String,NotBlank\\];\\ arguments\\ \\[org\\.springframework\\.context\\.support\\.DefaultMessageSourceResolvable:\\ codes\\ \\[createOrderRequest\\.sku,sku\\];\\ arguments\\ \\[\\];\\ default\\ message\\ \\[sku\\]\\];\\ default\\ message\\ \\[sku\\ 不能为空\\]\\]",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 502\\ code=63003\\ GET\\ /refused/anything:\\ finishConnect\\(\\.\\.\\)\\ failed\\ with\\ error\\(\\-111\\):\\ Connection\\ refused:\\ /127\\.0\\.0\\.1:[0-9]{1,5}",
+      "reason": "Gateway unavailable-upstream contract test: Linux epoll reports ECONNREFUSED for the intentionally closed local port."
     }
   ]
 }

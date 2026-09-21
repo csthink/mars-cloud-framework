@@ -102,6 +102,16 @@ class VerificationTest(unittest.TestCase):
         for args in ('-DskipTests', '-ntp -Dmaven.test.skip=true', '-DargLine=override', '-pl module'):
             with self.assertRaises(ValueError): v.maven_environment({'MAVEN_ARGS': args})
 
+    def test_linux_connection_refusal_rule_is_limited_to_fixture(self):
+        policy = json.loads((v.ROOT / '.ci/log-policy.json').read_text())['service']
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'log'
+            message = '12:30:00 [main] WARN example.EnvelopeErrorWebExceptionHandler -- 网关错误 502 code=63003 GET /refused/anything: finishConnect(..) failed with error(-111): Connection refused: /127.0.0.1:43369'
+            path.write_text(message + '\n' + message.replace('/refused/anything', '/actual-service/orders'))
+            result = v.inspect_log(path, policy)
+            self.assertEqual(len(result['expected']), 1)
+            self.assertEqual(len(result['unknown']), 1)
+
     def test_policy_excludes_native_dns_error(self):
         policy = json.loads((v.ROOT / '.ci/log-policy.json').read_text())
         self.assertFalse(any('DnsServerAddressStreamProviders' in x['pattern'] for x in policy['service']))
