@@ -1,46 +1,44 @@
-# 持续集成
+# 持续集成与正式验证
 
-本仓的流水线定义在 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)，在 `main` 的 push、
-指向 `main` 的 pull request、以及手动触发时运行。
+所有分支的 push、指向 main 的 pull request 和手动触发都会运行 [CI](../.github/workflows/ci.yml)。工作流不推送 main。框架候选在合并前即可与 service main 构建，验证使用方兼容性。
 
-## 流水线做了什么
+## 统一构建入口
 
-1. **构建 + 测试**：`mvn clean install`（Java 25 / Temurin）
-2. **公开安全扫描**：`tools/check-public-safety-generic.sh`
+本地与 CI 共用 `tools/verify.sh` / `tools/verify.py`。工具链是 **Amazon Corretto JDK 25、Apache Maven 3.9.14、Python 3**。CI 通过 `tools/install-maven.sh` 下载 Maven 官方分发包并核验固定 SHA512；完整运行版本写进报告。测试 JVM 参数来自 BOM，不覆盖 `argLine`。
 
-> **本仓目前不发布制品。** 私有制品仓库尚未选定，所以流水线只构建到本地仓库。
-> 下游服务仓的 CI 会检出本仓源码并 `mvn install` 来拿到依赖——
-> 等制品库定下来，再补发布步骤与下游的拉取配置（见
-> [docs/architecture.md](architecture.md) 的版本策略）。
-
-## 为什么安全扫描在 CI 里也要跑
-
-本仓装了 pre-commit hook，但 hook 可以被 `git commit --no-verify` 绕过。
-**内容一旦 push 到公开仓，即使随后删除，Git 历史里仍在**——只能改写历史或轮换凭据。
-所以 CI 是最后一道，不能只靠本地 hook。
-
-本地随时可以自己跑一遍：
+正式验证明确两仓源码路径和完整 SHA，源码必须已提交且干净：
 
 ```bash
-bash tools/check-public-safety-generic.sh .
+bash tools/verify.sh \
+  --framework-sha "$(git rev-parse HEAD)" \
+  --service "$SERVICE_DIR" --service-sha "$(git -C "$SERVICE_DIR" rev-parse HEAD)" \
+  --framework-source candidate --purpose compatibility \
+  --cache "$CACHE_DIR" --output "$NEW_REPORT_DIR"
 ```
 
-扫描器拦下的是三类：凭据与私钥、本机绝对路径与家目录引用、内网地址段。
-**扫描器只能拦已知模式**——它拦不住「语气里透出的内部判断」，写文档与注释时仍要自己把关。
+`SERVICE_DIR` 是待验证的 service main 源码，`CACHE_DIR` 是本次开发环境的依赖缓存，`NEW_REPORT_DIR` 必须是源码树外尚不存在的目录。路径由调用方选择。带 `mars.slot` 配置的工作树只能使用对应隔离缓存。开发中可加 `--development`，其报告不可作为正式验证证据。
 
-**因此「CI 绿」不等于「没有内部信息外泄」**：上述三类之外的判断（内部代号与里程碑、
-对其他系统的评价、未公开的计划与结论）没有任何自动化检查，只能靠人工复核。
-CI 通过只说明它检查过的那三类没问题。
+驱动在缓存内为每次运行创建新 Maven 仓。只复用第三方依赖，移除复制来的 `com/mars/cloud`，并拒绝 symlink；不会把项目制品写回缓存。构建持有缓存锁，第二个构建或刷新遇锁冲突时拒绝，释放后重试。先执行 framework `clean install`，再执行 service `clean verify`，不接受任意 Maven 参数或跳过测试。
 
-## 让它更严：接入专用 secret 扫描
+## 日志与报告
 
-当前「凭据」规则是 `关键词 + 赋值 + 8 位以上字面量`（占位符与空值不匹配），
-这是在没有外部依赖前提下误报最低的写法。若要更强的检测，建议引入专用工具而不是手写关键词 grep——
-关键词 grep 会在扫描脚本自身、测试代码、`password: ""` 这类合法配置上产生大量误报。
+`report.json` 记录两仓实际 SHA、工作区状态、构建目的、依赖来源、完整工具版本、Maven 命令、退出状态、测试数量、日志诊断和 CI 运行身份。PR 的临时合并 SHA 与源分支 SHA 分别记录。完整 Maven 日志和 Surefire XML 随报告上传，artifact 名含 run ID 与 attempt；保留 30 天。报告过期后须重新验证。
+
+所有有测试源码的模块必须产生报告，每个测试类必须出现；失败、错误、跳过或缺失报告都失败。JUnit 嵌套容器按实际 testcase 计数，不能因外层计数为零而漏掉子测试。
+
+`.ci/log-policy.json` 仅允许已知负向契约测试的精确诊断及已有 JVM 提示，每条附原因；未知 Maven、JVM、应用 WARN / ERROR 使验证失败。新增允许项需解释对应测试或运行条件，不允许忽略整类警告。已有 Mockito bootstrap instrumentation 的 CDS 提示不影响测试执行，单独列出。
+
+## CI 输入和必需检查
+
+framework CI 直接固定自身提交与 service main 的提交，**不调用 service 的依赖解析器**，因此不会把 framework 候选替换成 main。service CI 的依赖声明与选择规则见 [service CI](https://github.com/csthink/mars-cloud-service/blob/main/docs/ci.md)。
+
+CI 运行工具回归、统一构建、两仓公开扫描并上传证据。必需检查名称保持 `构建 + 测试 + 安全扫描`；汇总始终运行，必要步骤缺失、跳过、取消或不是 success 都不能通过。审核结果须对应指定的 workflow、run、最新 attempt 和源码 SHA。源码或依赖改变须重新验证。
+
+安全扫描只覆盖凭据 / 私钥、本机路径、内网地址等已知模式；公开内容仍需人工复核。`tools/check-public-safety-generic.sh` 是 hook 与 CI 的同一实现。当前不发布 Maven 制品。
 
 ## 触发 mars-cloud-service
 
-本仓构建成功后，会向 `csthink/mars-cloud-service` 发送 `framework-updated` 事件，
+本仓 main 的 push 构建成功后，会向 `csthink/mars-cloud-service` 发送 `framework-updated` 事件，
 让下游在框架变更后自动重建——否则「框架改了、服务没跟上」只能靠人记得去跑。
 
 跨仓触发**必须用 PAT**：工作流自带的 `GITHUB_TOKEN` 只能操作本仓，
@@ -71,8 +69,8 @@ fine-grained PAT **只能在 GitHub 网页创建，没有 API 或 CLI 可以生�
 7. 验证：
 
    ```bash
-   # 触发一次本仓流水线，看 dispatch 步骤是否真的发出事件
-   gh workflow run ci.yml -R csthink/mars-cloud-framework
+   # 查看最近一次 main push 的通知 job；手动触发不发送跨仓事件
+   gh run list -R csthink/mars-cloud-framework --branch main --event push --limit 5
    gh run list -R csthink/mars-cloud-service --limit 5   # 应出现 event=repository_dispatch 的 run
    ```
 

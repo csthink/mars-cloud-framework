@@ -1,9 +1,6 @@
 name: CI
 
 on:
-  # 不过滤分支：安全扫描必须在**每个分支**上跑。
-  # 只过滤 main 的话，特性分支上累积的违规要等到开 PR 才被发现——
-  # 那时可能已经 push 过，而历史泄漏不可挽回。
   push:
   pull_request:
     branches: [main]
@@ -13,37 +10,115 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: 构建 + 测试 + 安全扫描
+  verify:
+    name: Verify sources and tests
     runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
+      - name: Checkout framework
         uses: actions/checkout@v7
-
-      - name: 安装 JDK 25
+        with:
+          repository: csthink/mars-cloud-framework
+          path: sources/framework
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - name: Checkout service
+        uses: actions/checkout@v7
+        with:
+          repository: csthink/mars-cloud-service
+          path: sources/service
+          fetch-depth: 0
+          ref: main
+      - name: Resolve source commits
+        id: sources
+        env:
+          EVENT_REF: ${{ github.ref }}
+        run: |
+          echo "sha=$(git -C sources/framework rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT_REF" = refs/heads/main ]; then source=main; else source=candidate; fi
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+          echo "declared=" >> "$GITHUB_OUTPUT"
+      - name: Install Corretto
+        id: java
         uses: actions/setup-java@v6
         with:
-          distribution: temurin
+          distribution: corretto
           java-version: '25'
           cache: maven
+          cache-dependency-path: |
+            sources/framework/**/pom.xml
+            sources/service/**/pom.xml
 
-      # -Dmaven.repo.local 显式指向 runner 上的路径：
-      # 本地开发机把 Maven 本地仓库配在别处，CI 上不能依赖「恰好是默认值」。
-      - name: 构建并安装到本地仓库
-        run: mvn -B -Dmaven.repo.local="$HOME/.m2/repository" clean install
+      - name: Install Maven
+        id: maven
+        run: |
+          bash sources/framework/tools/install-maven.sh "$RUNNER_TEMP/maven"
+          echo "$RUNNER_TEMP/maven/apache-maven-3.9.14/bin" >> "$GITHUB_PATH"
 
-      - name: 公开安全扫描（通用版）
-        run: bash tools/check-public-safety-generic.sh .
+      - name: Test verification tools
+        id: tools
+        run: |
+          python3 -m unittest discover -s sources/framework/tools/tests -v
 
-      # 说明：**没有**单独的「关键词扫描 secret」步骤。
-      # 那种写法（命中 password/secret 等词即报警）在真实仓库上全是误报——
-      # 它会打中扫描脚本自身、测试代码、以及 `password: ""` 这类合法配置。
-      # 通用扫描里的「凭据」规则已经更准：**关键词 + 赋值 + 8 位以上字面量**，
-      # 占位符与空值不匹配。要更强的检测应上专用工具（gitleaks 等），而不是手写关键词 grep。
+      - name: Build exact sources
+        id: compile
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          FRAMEWORK_DIR: ${{ github.workspace }}/sources/framework
+          FRAMEWORK_SHA: ${{ steps.sources.outputs.sha }}
+          FRAMEWORK_SOURCE: ${{ steps.sources.outputs.source }}
+          DECLARED_FRAMEWORK: ${{ steps.sources.outputs.declared }}
+        run: |
+          bash sources/framework/tools/verify.sh \
+            --framework "$FRAMEWORK_DIR" --framework-sha "$FRAMEWORK_SHA" \
+            --service "$GITHUB_WORKSPACE/sources/service" \
+            --service-sha "$(git -C sources/service rev-parse HEAD)" \
+            --framework-source "$FRAMEWORK_SOURCE" --declared-framework "$DECLARED_FRAMEWORK" \
+            --purpose compatibility --cache "$HOME/.m2/repository" --output "$RUNNER_TEMP/verification"
+
+      - name: Scan public sources
+        id: scan
+        run: |
+          bash sources/framework/tools/check-public-safety-generic.sh sources/framework
+          bash sources/service/tools/check-public-safety-generic.sh sources/service
+
+      - name: Upload verification evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/verification/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Require every verification step
+        if: always()
+        env:
+          OUTCOMES: ${{ toJSON(steps) }}
+        run: |
+          python3 - <<'PYCODE'
+          import json, os
+          steps = json.loads(os.environ['OUTCOMES'])
+          required = ('sources', 'java', 'maven', 'tools', 'compile', 'scan', 'evidence')
+          failed = [name for name in required if steps.get(name, {}).get('outcome') != 'success']
+          if failed:
+              raise SystemExit('Required steps did not succeed: ' + ', '.join(failed))
+          PYCODE
+
+  build:
+    name: 构建 + 测试 + 安全扫描
+    needs: verify
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful verification
+        env:
+          RESULT: ${{ needs.verify.result }}
+        run: test "$RESULT" = success
 
   dispatch-service:
     name: 通知 service 仓重建

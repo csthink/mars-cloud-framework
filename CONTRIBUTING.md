@@ -45,7 +45,7 @@
 
 ## 构建与验证
 
-需要 **JDK 25**。仓内 `.mvn/jvm.config` 会给 Maven 进程带上
+正式验证需要 **Corretto JDK 25 与 Maven 3.9.14**，入口及报告要求见 [docs/ci.md](docs/ci.md)。下列直接 Maven 命令用于开发迭代。仓内 `.mvn/jvm.config` 会给 Maven 进程带上
 `--sun-misc-unsafe-memory-access=allow`（Lombok 在 JDK 24 及以上编译期需要），无需手动设置。
 
 **有测试的模块必须以 test scope 依赖 `spring-boot-starter-test`。** BOM 让 surefire 以

@@ -1,0 +1,218 @@
+{
+  "framework": [
+    {
+      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ HttpException,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ MethodArgumentTypeMismatchException,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ MissingServletRequestParameterException,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ Unhandled\\ Exception,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "OpenJDK\\ 64\\-Bit\\ Server\\ VM\\ warning:\\ Sharing\\ is\\ only\\ supported\\ for\\ boot\\ loader\\ classes\\ because\\ bootstrap\\ classpath\\ has\\ been\\ appended",
+      "reason": "Mockito bootstrap instrumentation disables class data sharing for application classes; tests remain enabled."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ \\[business\\]\\ 声明的区间\\ \\[66000,\\ 100000\\]\\ 超出该归属的分配区段\\ \\[66000,\\ 99999\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ mars\\.error\\-code\\.framework\\-layers\\ 里的\\ \\[nope\\]\\ 不是框架层；可选值:\\ \\[common,\\ mvc,\\ security,\\ gateway,\\ auth\\-service,\\ upms\\-service,\\ business\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ mars\\.error\\-code\\.ranges\\ 里的归属名\\ \\[not\\-a\\-layer\\]\\ 不存在；可选值:\\ \\[common,\\ mvc,\\ security,\\ gateway,\\ auth\\-service,\\ upms\\-service,\\ business\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ 内部\\ Feign\\ client\\ 不得配置\\ URL；必须经服务名与\\ LoadBalancer\\ 调用",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ 错误码\\ 62001\\ 属于\\ \\[security\\]\\ 区段，但该区段未启用；请在\\ mars\\.error\\-code\\.framework\\-layers\\ 或\\ mars\\.error\\-code\\.ranges\\ 中声明\\ security",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ 错误码\\ 66099\\ 不在\\ \\[business\\]\\ 已声明的任何区间内；已声明:\\ \\[business\\[66000,\\ 66050\\]\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ 错误码区间重叠:\\ business\\[66000,\\ 66499\\]\\ 与\\ business\\[66400,\\ 66899\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ 错误码区间重叠:\\ mvc\\[61000,\\ 61999\\]\\ 与\\ mvc\\[61000,\\ 61999\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ 错误码重复注册:\\ 66002",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'feignConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.autoconfigure\\.MarsFeignAutoConfiguration:\\ Feign\\ client\\ \\[orders\\]\\ 不得配置\\ Retryer；重试只走\\ Spring\\ Cloud\\ LoadBalancer",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'feignConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.autoconfigure\\.MarsFeignAutoConfiguration:\\ Feign\\ client\\ \\[orders\\]\\ 的\\ readTimeout\\ 必须在\\ 1\\.\\.3000ms",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'feignConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.autoconfigure\\.MarsFeignAutoConfiguration:\\ Feign\\ 默认连接超时必须在\\ 1\\.\\.1000ms",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'feignConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.autoconfigure\\.MarsFeignAutoConfiguration:\\ 内部\\ Feign\\ client\\ \\[orders\\]\\ 不得配置\\ URL；必须经服务名与\\ LoadBalancer\\ 调用",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'feignConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.autoconfigure\\.MarsFeignAutoConfiguration:\\ 默认\\ LoadBalancer\\ retryable\\-status\\-codes\\ 只能是\\ 502、503、504\\ 的子集",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'feignConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.autoconfigure\\.MarsFeignAutoConfiguration:\\ 默认\\ LoadBalancer\\ 不得给写请求开启重试",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'feignConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.autoconfigure\\.MarsFeignAutoConfiguration:\\ 默认\\ LoadBalancer\\ 不得重试同一个实例",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'mybatisPlusInterceptor'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/mysql/autoconfigure/MysqlMybatisPlusAutoConfiguration\\.class\\]:\\ Failed\\ to\\ instantiate\\ \\[com\\.baomidou\\.mybatisplus\\.extension\\.plugins\\.MybatisPlusInterceptor\\]:\\ Factory\\ method\\ 'mybatisPlusInterceptor'\\ threw\\ exception\\ with\\ message:\\ mars\\.datasource\\.dialect\\-auto\\-detect=false\\ 时必须同时指定\\ mars\\.datasource\\.db\\-type，例如\\ dm\\ /\\ kingbase_es\\ /\\ gauss\\ /\\ oscar",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'nacosConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.nacos\\.autoconfigure\\.NacosConventionAutoConfiguration:\\ Nacos\\ Config\\ 与\\ Discovery\\ 必须使用同一个\\ Namespace\\ ID",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'nacosConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.nacos\\.autoconfigure\\.NacosConventionAutoConfiguration:\\ Nacos\\ Discovery\\ group\\ 必须是\\ DEFAULT_GROUP",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'nacosConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.nacos\\.autoconfigure\\.NacosConventionAutoConfiguration:\\ spring\\.cloud\\.nacos\\.config\\.namespace\\ 必须显式配置且不能为空",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'nacosConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.nacos\\.autoconfigure\\.NacosConventionAutoConfiguration:\\ spring\\.config\\.import\\ 必须先导入共享配置，再导入应用配置",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'nacosConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.nacos\\.autoconfigure\\.NacosConventionAutoConfiguration:\\ spring\\.config\\.import\\ 必须包含且不得\\ optional:\\ \\[nacos:shared\\-common\\.yaml\\?group=COMMON\\&refreshEnabled=true,\\ nacos:mars\\-cloud\\-upms\\-service\\.yaml\\?group=DEFAULT_GROUP\\&refreshEnabled=true\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.UnsatisfiedDependencyException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'eagerlyCreate'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.FeignClientConfigurationContractTest\\$OptionsApplication:\\ Unsatisfied\\ dependency\\ expressed\\ through\\ method\\ 'eagerlyCreate'\\ parameter\\ 0:\\ Error\\ creating\\ bean\\ with\\ name\\ 'com\\.mars\\.cloud\\.feign\\.FeignClientConfigurationContractTest\\$OptionsClient':\\ FactoryBean\\ threw\\ exception\\ on\\ object\\ creation",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.UnsatisfiedDependencyException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'eagerlyCreate'\\ defined\\ in\\ com\\.mars\\.cloud\\.feign\\.FeignClientConfigurationContractTest\\$RetryApplication:\\ Unsatisfied\\ dependency\\ expressed\\ through\\ method\\ 'eagerlyCreate'\\ parameter\\ 0:\\ Error\\ creating\\ bean\\ with\\ name\\ 'com\\.mars\\.cloud\\.feign\\.FeignClientConfigurationContractTest\\$RetryClient':\\ FactoryBean\\ threw\\ exception\\ on\\ object\\ creation",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.UnsatisfiedDependencyException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'mybatisPlusInterceptor'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/mysql/autoconfigure/MysqlMybatisPlusAutoConfiguration\\.class\\]:\\ Unsatisfied\\ dependency\\ expressed\\ through\\ method\\ 'mybatisPlusInterceptor'\\ parameter\\ 0:\\ Error\\ creating\\ bean\\ with\\ name\\ 'mars\\.datasource\\-com\\.mars\\.cloud\\.mysql\\.env\\.DataSourceDialectProperties':\\ Could\\ not\\ bind\\ properties\\ to\\ 'DataSourceDialectProperties'\\ :\\ prefix=mars\\.datasource,\\ ignoreInvalidFields=false,\\ ignoreUnknownFields=true",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ I18nUtil:\\ No\\ such\\ message\\ source:\\ 61990",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ I18nUtil:\\ No\\ such\\ message\\ source:\\ 61998",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ I18nUtil:\\ No\\ such\\ message\\ source:\\ error\\.code\\.61990",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ I18nUtil:\\ No\\ such\\ message\\ source:\\ error\\.code\\.61998",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ SpringDocAppInitializer:\\ SpringDoc\\ /swagger\\-ui\\.html\\ endpoint\\ is\\ enabled\\ by\\ default\\.\\ To\\ disable\\ it\\ in\\ production,\\ set\\ the\\ property\\ 'springdoc\\.swagger\\-ui\\.enabled=false'",
+      "reason": "API documentation is intentionally enabled in test contexts."
+    },
+    {
+      "pattern": "WARN\\ SpringDocAppInitializer:\\ SpringDoc\\ /v3/api\\-docs\\ endpoint\\ is\\ enabled\\ by\\ default\\.\\ To\\ disable\\ it\\ in\\ production,\\ set\\ the\\ property\\ 'springdoc\\.api\\-docs\\.enabled=false'",
+      "reason": "API documentation is intentionally enabled in test contexts."
+    }
+  ],
+  "service": [
+    {
+      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ HttpException,\\ URL=\\[GET\\ \\-\\ /v1/orders/missing\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ HttpException,\\ URL=\\[POST\\ \\-\\ /v1/orders\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ MethodArgumentNotValidException,\\ URL=\\[POST\\ \\-\\ /v1/orders\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "OpenJDK\\ 64\\-Bit\\ Server\\ VM\\ warning:\\ Sharing\\ is\\ only\\ supported\\ for\\ boot\\ loader\\ classes\\ because\\ bootstrap\\ classpath\\ has\\ been\\ appended",
+      "reason": "Mockito bootstrap instrumentation disables class data sharing for application classes; tests remain enabled."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ \\[business\\]\\ 声明的区间\\ \\[1000,\\ 1999\\]\\ 超出该归属的分配区段\\ \\[66000,\\ 99999\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ \\[business\\]\\ 的区间起止写反了:\\ \\[66199,\\ 66100\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ mars\\.error\\-code\\.ranges\\ 里的归属名\\ \\[no\\-such\\-owner\\]\\ 不存在；可选值:\\ \\[common,\\ mvc,\\ security,\\ gateway,\\ auth\\-service,\\ upms\\-service,\\ business\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ 错误码区间重叠:\\ business\\[66100,\\ 66199\\]\\ 与\\ business\\[66150,\\ 66299\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ DecisionService:\\ failed\\ to\\ record\\ deny\\ audit\\ event\\ for\\ decision_id=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 404\\ code=63001\\ GET\\ /nothing\\-here:\\ No\\ static\\ resource\\ nothing\\-here\\ for\\ request\\ 'http://localhost:[0-9]{1,5}/nothing\\-here'\\.",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 502\\ code=63003\\ GET\\ /refused/anything:\\ Connection\\ refused\\ \\(connect\\ failed\\):\\ /127\\.0\\.0\\.1:[0-9]{1,5}",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 503\\ code=63002\\ GET\\ /no\\-instance/anything:\\ Unable\\ to\\ find\\ instance\\ for\\ no\\-such\\-service",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 504\\ code=63004\\ GET\\ /upms/slow:\\ Response\\ took\\ longer\\ than\\ timeout:\\ PT0\\.2S",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ RoundRobinLoadBalancer:\\ No\\ servers\\ available\\ for\\ service:\\ no\\-such\\-service",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ SpringDocAppInitializer:\\ SpringDoc\\ /swagger\\-ui\\.html\\ endpoint\\ is\\ enabled\\ by\\ default\\.\\ To\\ disable\\ it\\ in\\ production,\\ set\\ the\\ property\\ 'springdoc\\.swagger\\-ui\\.enabled=false'",
+      "reason": "API documentation is intentionally enabled in test contexts."
+    },
+    {
+      "pattern": "WARN\\ SpringDocAppInitializer:\\ SpringDoc\\ /v3/api\\-docs\\ endpoint\\ is\\ enabled\\ by\\ default\\.\\ To\\ disable\\ it\\ in\\ production,\\ set\\ the\\ property\\ 'springdoc\\.api\\-docs\\.enabled=false'",
+      "reason": "API documentation is intentionally enabled in test contexts."
+    },
+    {
+      "pattern": "org\\.springframework\\.web\\.bind\\.MethodArgumentNotValidException:\\ Validation\\ failed\\ for\\ argument\\ \\[0\\]\\ in\\ public\\ java\\.util\\.Map<java\\.lang\\.String,\\ java\\.lang\\.Object>\\ com\\.mars\\.cloud\\.service\\.sample\\.web\\.OrderController\\.create\\(com\\.mars\\.cloud\\.service\\.sample\\.web\\.CreateOrderRequest\\)\\ with\\ 2\\ errors:\\ \\[Field\\ error\\ in\\ object\\ 'createOrderRequest'\\ on\\ field\\ 'quantity':\\ rejected\\ value\\ \\[0\\];\\ codes\\ \\[Min\\.createOrderRequest\\.quantity,Min\\.quantity,Min\\.int,Min\\];\\ arguments\\ \\[org\\.springframework\\.context\\.support\\.DefaultMessageSourceResolvable:\\ codes\\ \\[createOrderRequest\\.quantity,quantity\\];\\ arguments\\ \\[\\];\\ default\\ message\\ \\[quantity\\],1\\];\\ default\\ message\\ \\[quantity\\ 至少为\\ 1\\]\\]\\ \\[Field\\ error\\ in\\ object\\ 'createOrderRequest'\\ on\\ field\\ 'sku':\\ rejected\\ value\\ \\[\\];\\ codes\\ \\[NotBlank\\.createOrderRequest\\.sku,NotBlank\\.sku,NotBlank\\.java\\.lang\\.String,NotBlank\\];\\ arguments\\ \\[org\\.springframework\\.context\\.support\\.DefaultMessageSourceResolvable:\\ codes\\ \\[createOrderRequest\\.sku,sku\\];\\ arguments\\ \\[\\];\\ default\\ message\\ \\[sku\\]\\];\\ default\\ message\\ \\[sku\\ 不能为空\\]\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    }
+  ]
+}

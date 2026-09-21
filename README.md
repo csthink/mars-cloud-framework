@@ -6,7 +6,7 @@ mars-cloud 微服务框架的**公共库仓**：依赖管理 BOM + 一组 Spring
 
 本仓只产出 jar，不部署任何东西。可部署的应用在配套的服务仓中。
 
-> 本仓构建成功后会**自动触发** `mars-cloud-service` 的 CI，避免「框架改了、服务没跟上」。
+> 本仓 main 的 push 构建成功后会**自动触发** `mars-cloud-service` 的 CI，避免「框架改了、服务没跟上」。
 > 流水线内容与配置见 [docs/ci.md](docs/ci.md)。
 
 ## 快速开始
@@ -126,6 +126,8 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 > 只有第一个消费者时，代码应留在那个业务服务里。可部署的应用都在配套服务仓。
 
 ## 构建
+
+正式验证使用与 CI 相同的 [tools/verify.sh](tools/verify.sh)，固定两仓源码 SHA、Corretto JDK 25 与 Maven 3.9.14，生成测试及日志报告。参数见 [docs/ci.md](docs/ci.md)。以下 Maven 命令用于开发迭代。
 
 ```bash
 mvn clean install            # 全量构建（父 POM 通过显式 relativePath 解析）
