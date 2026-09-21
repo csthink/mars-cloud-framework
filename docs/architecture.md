@@ -24,7 +24,10 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ├── mars-cloud-mysql/
 ├── mars-cloud-nacos-spring-boot-starter/
 ├── mars-cloud-feign-spring-boot-starter/
-└── （后续：sentinel / security starter）
+├── mars-cloud-security-spring-boot-starter/
+├── mars-cloud-security-feign/
+├── mars-cloud-security-test-support/
+└── （后续：sentinel starter）
 ```
 
 ## 划分三规则
@@ -57,6 +60,9 @@ common ◄──────── core-starter ◄─── mvc-starter       m
 - starter 只**向下**依赖 `common`、`dependencies` 与更底层的 starter
   （例如 mvc starter 依赖 core starter 以获得分布式 ID）；**不允许反向依赖**，
   也不允许出现环。
+- `security starter` 依赖 `common` 与 Spring Security 标准资源服务器库，按宿主选择 Servlet 或 Reactive；
+  不依赖 MVC starter、Feign 或具体 IdP。`security-feign` 单向依赖 security starter 与 Feign starter，
+  供 Servlet 宿主使用；`security-test-support` 只供测试使用，不进入部署包。
 - 各模块的 `<parent>` 都是 `mars-cloud-dependencies`，根聚合 POM 只聚合、不做 parent。
 
 ## 横切能力设计
@@ -137,6 +143,17 @@ GET 最多换一个实例重试一次，写请求不重试；连接与读取超�
 `traceparent` 由 Micrometer Tracing 自动传播。下游成功与失败都使用统一信封，但失败不会把
 下游的 message 或原始响应体传给上游；每个客户端必须通过一个 `DownstreamFailureMapper`
 把失败翻译为调用方自己的异常和错误码。
+
+### JWT 身份验证与方法权限
+
+`mars-cloud-security-spring-boot-starter` 验证 Bearer JWT 的 RS256 签名、issuer、audience、有效期和身份字段，
+从已验证的身份建立请求上下文。Servlet 使用有明确关闭范围的 `CallerContextHolder.Scope`，
+Reactive 使用 Reactor Context；入站身份头不能代替令牌验证。
+
+权限检查通过 UPMS 决策接口完成：Servlet 使用 `mars-cloud-security-feign`，Reactive 使用
+WebClient 驱动的 HTTP Service Client。两个客户端都按固定服务名调用，只携带当前用户令牌，
+禁止重定向和重试。拒绝决策阻止受保护方法，调用失败也不继续执行。
+配置、错误码和自定义过滤链接入见 [security starter 使用说明](../mars-cloud-security-spring-boot-starter/README.md)。
 
 ## 已知行为与偏差
 
