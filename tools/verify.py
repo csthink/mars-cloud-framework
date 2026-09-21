@@ -46,6 +46,19 @@ def lock(cache):
         yield
 
 
+@contextlib.contextmanager
+def source_locks(paths):
+    with contextlib.ExitStack() as stack:
+        for path in sorted(paths):
+            metadata = Path(command(['git', 'rev-parse', '--absolute-git-dir'], path))
+            handle = stack.enter_context((metadata / '.mars-source-build.lock').open('a'))
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise ValueError('Source checkout is already being built or refreshed') from exc
+        yield
+
+
 def seed(cache, destination):
     """Copy only dependency data into a fresh repository; never share mutable files."""
     destination.mkdir(parents=True, exist_ok=False)
@@ -193,7 +206,7 @@ def build(args):
                 raise ValueError("Worktree builds must use their own slot cache")
         policy = json.loads((ROOT / ".ci/log-policy.json").read_text())
         report["policy_sha256"] = hashlib.sha256((ROOT / ".ci/log-policy.json").read_bytes()).hexdigest()
-        with lock(cache):
+        with lock(cache), source_locks([path for _, path, _ in inputs]):
             run_root = cache / ".verification" / uuid.uuid4().hex
             repository = run_root / "repository"
             seed(cache, repository)

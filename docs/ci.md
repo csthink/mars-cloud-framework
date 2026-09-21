@@ -18,7 +18,7 @@ bash tools/verify.sh \
 
 `SERVICE_DIR` 是待验证的 service main 源码，`CACHE_DIR` 是本次开发环境的依赖缓存，`NEW_REPORT_DIR` 必须是源码树外尚不存在的目录。路径由调用方选择。带 `mars.slot` 配置的工作树只能使用对应隔离缓存。开发中可加 `--development`，其报告不可作为正式验证证据。
 
-驱动在缓存内为每次运行创建新 Maven 仓。只复用第三方依赖，移除复制来的 `com/mars/cloud`，并拒绝 symlink；不会把项目制品写回缓存。构建持有缓存锁，第二个构建或刷新遇锁冲突时拒绝，释放后重试。先执行 framework `clean install`，再执行 service `clean verify`，不接受任意 Maven 参数或跳过测试。
+驱动在缓存内为每次运行创建新 Maven 仓。只复用第三方依赖，移除复制来的 `com/mars/cloud`，并拒绝 symlink；不会把项目制品写回缓存。构建持有缓存锁和各源码 checkout 的构建锁，第二个构建或刷新遇锁冲突时拒绝，释放后重试。先执行 framework `clean install`，再执行 service `clean verify`，不接受任意 Maven 参数或跳过测试。
 
 ## 日志与报告
 

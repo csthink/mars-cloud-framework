@@ -62,6 +62,10 @@ class VerificationTest(unittest.TestCase):
             git('init', '-q'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid')
             (root / 'file').write_text('one'); git('add', 'file'); git('commit', '-qm', 'one'); sha = git('rev-parse', 'HEAD')
             self.assertTrue(v.source(root, sha)['clean'])
+            with v.source_locks([root]):
+                with self.assertRaises(ValueError):
+                    with v.source_locks([root]):
+                        self.fail('source directory was built twice')
             with self.assertRaises(ValueError): v.source(root, '0' * 40)
             (root / 'file').write_text('two')
             with self.assertRaises(ValueError): v.source(root, sha)
