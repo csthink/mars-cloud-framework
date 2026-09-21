@@ -209,3 +209,10 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 ## 许可
 
 内部项目，暂未公开发布 artifact。
+
+## HTTP 凭据头判断
+
+`mars-cloud-common` 的 `com.mars.cloud.common.http.SensitiveHttpHeaders.isSensitive(name)`
+可以在构造响应详情或日志时识别应省略值的头名：Authorization、Proxy-Authorization、Cookie、Set-Cookie、X-Api-Key。
+判断大小写不敏感，null 与空字符串返回 false；普通头名不受影响。调用方须显式调用该工具完成过滤，
+并单独处理自己的其他凭据头；引入 common 不会自动修改 HTTP 请求或日志。

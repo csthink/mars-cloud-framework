@@ -33,6 +33,9 @@
         <mars-cloud-mysql.version>1.0.0-SNAPSHOT</mars-cloud-mysql.version>
         <mars-cloud-nacos-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-nacos-spring-boot-starter.version>
         <mars-cloud-feign-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-feign-spring-boot-starter.version>
+        <mars-cloud-security-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-security-spring-boot-starter.version>
+        <mars-cloud-security-feign.version>1.0.0-SNAPSHOT</mars-cloud-security-feign.version>
+        <mars-cloud-security-test-support.version>1.0.0-SNAPSHOT</mars-cloud-security-test-support.version>
 
         <!-- 常用依赖版本 -->
         <lombok.version>1.18.40</lombok.version>
@@ -72,11 +75,12 @@
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <!--
           surefire argLine 的晚绑定基座。下面 pluginManagement 里的 argLine 以 @{argLine} 开头，
-          这里必须存在（可以为空），否则 @{argLine} 会以字面量进测试 JVM 命令行。
+          这里必须存在，否则 @{argLine} 会以字面量进测试 JVM 命令行。
+          -Xshare:off 关闭测试 JVM 的类数据共享，避免 Mockito agent 扩展 bootstrap classpath 时的提示。
           将来接 jacoco 之类会改写 argLine 属性的工具时，它们的参数会自动接在前面，不要覆盖
           pluginManagement 里那一行。
         -->
-        <argLine></argLine>
+        <argLine>-Xshare:off</argLine>
     </properties>
 
     <!--
@@ -149,6 +153,24 @@
                 <groupId>com.mars.cloud</groupId>
                 <artifactId>mars-cloud-feign-spring-boot-starter</artifactId>
                 <version>${mars-cloud-feign-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-security-spring-boot-starter</artifactId>
+                <version>${mars-cloud-security-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-security-feign</artifactId>
+                <version>${mars-cloud-security-feign.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-security-test-support</artifactId>
+                <version>${mars-cloud-security-test-support.version}</version>
             </dependency>
 
             <!-- 常用依赖版本声明 -->
