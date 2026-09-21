@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -166,6 +167,17 @@ def test_reports(root, output):
     return {**total, "suites": suites}
 
 
+def maven_environment(environment):
+    # Hosted runners can set the display-only -ntp flag. No inherited build overrides.
+    for argument in shlex.split(environment.get('MAVEN_ARGS', '')):
+        if argument not in ('-ntp', '--no-transfer-progress') and not re.fullmatch(r'-Dmaven.repo.local=\S+', argument):
+            raise ValueError('MAVEN_ARGS contains an unsupported build override')
+    result = environment.copy()
+    for key in ('MAVEN_ARGS', 'MAVEN_OPTS', 'JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS'):
+        result.pop(key, None)
+    return result
+
+
 def build(args):
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -189,12 +201,7 @@ def build(args):
         if args.declared_framework and not SHA.fullmatch(args.declared_framework):
             raise ValueError("Invalid dependency revision")
         # CLI has no arbitrary Maven arguments; inherited overrides cannot silently skip tests.
-        inherited = os.environ.get("MAVEN_ARGS", "")
-        if inherited and not re.fullmatch(r"-Dmaven.repo.local=\S+", inherited):
-            raise ValueError("MAVEN_ARGS may only select the development repository")
-        env = os.environ.copy()
-        for key in ("MAVEN_ARGS", "MAVEN_OPTS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "_JAVA_OPTIONS"):
-            env.pop(key, None)
+        env = maven_environment(os.environ)
         version = subprocess.check_output(["mvn", "--version"], env=env, cwd=framework, text=True, stderr=subprocess.STDOUT)
         report["toolchain"] = ANSI.sub("", version)
         if not re.search(r"Apache Maven 3\.9\.14(?:\s|$)", version) or not re.search(r"Java version: 25[.,]", version) or "Amazon.com Inc." not in version:

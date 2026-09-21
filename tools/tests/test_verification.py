@@ -96,6 +96,12 @@ class VerificationTest(unittest.TestCase):
             (cache / 'org/.metadata/link').symlink_to(external, target_is_directory=True)
             with self.assertRaises(ValueError): v.seed(cache, root / 'fresh')
 
+    def test_runner_display_flag_is_allowed_but_build_overrides_are_rejected(self):
+        for args in ('-ntp', '--no-transfer-progress', '-ntp -Dmaven.repo.local=cache'):
+            self.assertNotIn('MAVEN_ARGS', v.maven_environment({'MAVEN_ARGS': args}))
+        for args in ('-DskipTests', '-ntp -Dmaven.test.skip=true', '-DargLine=override', '-pl module'):
+            with self.assertRaises(ValueError): v.maven_environment({'MAVEN_ARGS': args})
+
     def test_policy_excludes_native_dns_error(self):
         policy = json.loads((v.ROOT / '.ci/log-policy.json').read_text())
         self.assertFalse(any('DnsServerAddressStreamProviders' in x['pattern'] for x in policy['service']))
