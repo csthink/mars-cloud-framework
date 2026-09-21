@@ -80,7 +80,7 @@ public class MvcTestApplication {
      * 测试宿主。
      *
      * <p><b>刻意用显式 {@code @Import} 而不是 {@code @ComponentScan}：</b>
-     * 后者会连同包下的测试夹具（故意制造错误码越界/重复的 {@code @Configuration}）
+     * 后者会连同包下供测试用例使用的配置类（故意制造错误码越界/重复的 {@code @Configuration}）
      * 一起扫进来，让正常测试的上下文也被它们污染而启动失败。
      * 业务服务的真实形态是 {@code @SpringBootApplication}（含扫描），
      * 但测试宿主不需要它——starter 的装配只依赖 {@code @EnableAutoConfiguration}。

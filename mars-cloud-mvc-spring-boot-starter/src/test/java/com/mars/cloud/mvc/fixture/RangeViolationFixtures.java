@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 /**
- * 故意制造错误码区间违规的测试夹具。
+ * 测试用例使用的配置类，用于故意制造错误码区间违规。
  *
  * <p><b>刻意放在 {@code com.mars.cloud.mvc.fixture} 子包</b>：测试宿主
  * {@code MvcTestApplication.App} 不做组件扫描（改用显式 {@code @Import}），
