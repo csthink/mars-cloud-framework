@@ -60,9 +60,11 @@
         <!--
           实例监控：Spring Boot Admin 4.0.4 依赖 spring-boot-starter 4.0.5，与本项目的 Boot 4.0.x 同线。
           **不要升到 4.1.x**，它依赖 Boot 4.1.0。
-          链路追踪与指标不在这里登记版本：spring-boot-starter-opentelemetry、micrometer-registry-prometheus
-          与 opentelemetry-exporter-sender-jdk 都由 spring-boot-dependencies 及其导入的 opentelemetry-bom
-          托管，单独钉版本会与 Boot 基线脱钩。
+          链路追踪与指标不在这里登记版本，它们各自的托管来源是：
+          spring-boot-starter-opentelemetry 由 spring-boot-dependencies 直接托管；
+          micrometer-registry-prometheus 由它导入的 micrometer-bom 托管；
+          opentelemetry-exporter-sender-jdk 由它导入的 opentelemetry-bom 托管。
+          在这里单独钉版本会与 Boot 基线脱钩。
         -->
         <spring-boot-admin.version>4.0.4</spring-boot-admin.version>
         <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
@@ -198,6 +200,10 @@
                 <version>${mars-cloud-rocketmq-spring-boot-starter.version}</version>
             </dependency>
 
+            <!--
+              预登记的版本出口：模块目录尚未创建，因此它不在根聚合 POM 的 modules 里，
+              这不是遗漏。模块建好后这一条不需要再改。
+            -->
             <dependency>
                 <groupId>com.mars.cloud</groupId>
                 <artifactId>mars-cloud-observability-spring-boot-starter</artifactId>
@@ -230,7 +236,7 @@
                 <version>${rocketmq-tools.version}</version>
             </dependency>
 
-            <!-- 实例监控服务端：只登记版本，由服务仓的 mars-cloud-monitor 引用 -->
+            <!-- 实例监控服务端：只登记版本，计划中的消费方是服务仓的 mars-cloud-monitor，该部署物尚未创建 -->
             <dependency>
                 <groupId>de.codecentric</groupId>
                 <artifactId>spring-boot-admin-starter-server</artifactId>
