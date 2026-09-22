@@ -11,18 +11,22 @@ import com.mars.cloud.rocketmq.publish.LocalTransaction;
 public final class PendingLocalTransaction {
 
     private static final ThreadLocal<PendingLocalTransaction> CURRENT = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> EXECUTING = new ThreadLocal<>();
 
     private final LocalTransaction transaction;
     private boolean executed;
     private Thread executedOn;
-    private RuntimeException failure;
+    private Throwable failure;
 
     private PendingLocalTransaction(LocalTransaction transaction) {
         this.transaction = transaction;
     }
 
-    /** 在当前线程登记待执行的本地事务；前一个未取走的登记是编程错误。 */
+    /** 在当前线程登记待执行的本地事务；本地事务执行中再发事务消息、或前一个登记未取走，都是编程错误。 */
     public static PendingLocalTransaction register(LocalTransaction transaction) {
+        if (Boolean.TRUE.equals(EXECUTING.get())) {
+            throw new IllegalStateException("本地事务执行中不能再发送事务消息：两条消息的提交不可能互相绑定");
+        }
         if (CURRENT.get() != null) {
             CURRENT.remove();
             throw new IllegalStateException("当前线程已有未完成的事务消息发送，不能嵌套");
@@ -46,15 +50,18 @@ public final class PendingLocalTransaction {
         }
     }
 
+    /** 执行本地事务；任何 Throwable 都记为失败并重新抛出，由监听器答回滚。 */
     void execute() {
         executedOn = Thread.currentThread();
+        EXECUTING.set(Boolean.TRUE);
         try {
             transaction.execute();
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
             failure = e;
             throw e;
         } finally {
             executed = true;
+            EXECUTING.remove();
         }
     }
 
@@ -66,7 +73,7 @@ public final class PendingLocalTransaction {
         return executedOn;
     }
 
-    public RuntimeException failure() {
+    public Throwable failure() {
         return failure;
     }
 }

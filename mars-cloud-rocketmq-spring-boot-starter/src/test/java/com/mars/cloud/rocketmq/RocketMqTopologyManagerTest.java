@@ -108,8 +108,8 @@ class RocketMqTopologyManagerTest {
     void verifyFailsWithTheCommandsToCreateWhatIsMissing() throws Exception {
         DefaultMQAdminExt admin = admin(Set.of("s1-order-event"), Set.of());
         assertThatIllegalStateException()
-                .isThrownBy(() -> manager(admin).apply(RocketMqTopologyMode.VERIFY, catalog("s1-"), 4))
-                .withMessageContaining("mqadmin updateTopic -c LocalCluster -t s1-entitlement-event -r 4 -w 4")
+                .isThrownBy(() -> manager(admin).apply(RocketMqTopologyMode.VERIFY, catalog("s1-"), 8))
+                .withMessageContaining("mqadmin updateTopic -c LocalCluster -t s1-entitlement-event -r 8 -w 8")
                 .withMessageContaining("mqadmin updateSubGroup -c LocalCluster -g s1-mars-cloud-product-service-order-event")
                 .withMessageContaining("MARS_ROCKETMQ_TOPOLOGY=provision");
         verify(admin, never()).createAndUpdateTopicConfig(any(), any());
@@ -117,7 +117,7 @@ class RocketMqTopologyManagerTest {
     }
 
     @Test
-    void provisionCreatesMissingItemsOnEveryMasterAndReChecks() throws Exception {
+    void provisionCreatesMissingItemsOnTheMasterAndReChecks() throws Exception {
         Set<String> topics = new HashSet<>(Set.of("order-event"));
         Set<String> groups = new HashSet<>();
         DefaultMQAdminExt admin = admin(topics, groups);

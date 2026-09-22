@@ -177,10 +177,6 @@
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
-      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ 有消费\\ binding\\ 时\\ spring\\.application\\.name\\ 必须是小写连字符形态的应用名，收到:\\ Order\\ Service",
-      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
-    },
-    {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ prefix\\ 必须形如\\ s1\\-（小写片段加结尾连字符）或为空，收到:\\ S1",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
@@ -259,6 +255,38 @@
     {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[orderPaid\\-in\\-0\\]\\ 的\\ enable\\-msg\\-trace\\ 必须关闭：消息轨迹主题不在本项目的可观测性设计里",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ 有消息\\ binding\\ 时\\ spring\\.application\\.name\\ 必须是小写连字符形态的应用名，收到:\\ Order\\ Service",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ 函数\\ \\[order\\]\\ 在\\ spring\\.cloud\\.function\\.definition\\ 里声明，但没有配置任何\\ binding（order\\-in\\-0\\ 或\\ order\\-out\\-0）",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ 生产\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 必须显式配置\\ producer\\.group：binder\\ 默认的\\ anonymous\\ 组会让同主题的生产者共用客户端实例，事务回查也按生产者组路由",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ 生产\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ producer\\.group\\ 必须是小写连字符形态，前缀由\\ starter\\ 按\\ MARS_MQ_PREFIX\\ 加上，收到:\\ Payment_Producer",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ 生产\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ producer\\.group\\ 必须以\\ <应用名>\\-\\ 开头（如\\ mars\\-cloud\\-order\\-service\\-paymentplain），收到:\\ payment\\-plain",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ 生产\\ binding\\ \\[paymentTx\\-out\\-0\\]\\ 的\\ producer\\.group\\ mars\\-cloud\\-order\\-service\\-payment\\-tx\\ 与另一个生产\\ binding\\ 重复，每个生产\\ binding\\ 一个组",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ MarsTransactionListener:\\ 事务消息\\ topic=order\\-event\\ keys=k\\ 的本地事务失败，消息回滚:\\ java\\.lang\\.AssertionError:\\ invariant\\ broken",
+      "reason": "Negative contract test: the transaction listener is exercised with a failing local transaction, a missing registration, a missing checker, a malformed body or a mismatched prefix."
+    },
+    {
+      "pattern": "WARN\\ MarsTransactionListener:\\ 事务消息\\ topic=order\\-event\\ keys=k\\ 的本地事务失败，消息回滚:\\ java\\.lang\\.IllegalStateException:\\ 本地事务执行中不能再发送事务消息：两条消息的提交不可能互相绑定",
+      "reason": "Negative contract test: the transaction listener is exercised with a failing local transaction, a missing registration, a missing checker, a malformed body or a mismatched prefix."
     }
   ],
   "service": [

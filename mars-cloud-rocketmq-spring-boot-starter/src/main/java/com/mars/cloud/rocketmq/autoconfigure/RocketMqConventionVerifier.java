@@ -11,14 +11,16 @@ import org.springframework.core.env.Environment;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 /**
  * 启动期核对消息约定，不满足即启动失败。
  *
  * <p>核对项：名字服务器显式配置、binder 与每个 binding 的消息轨迹关闭、运行环境前缀形态、binding 名形态、主题名形态、配置里不写前缀、
- * 消费组等于应用名加主题、进程内重试关闭、不用批量消费、事务生产者指向 starter 的监听器且有唯一的回查检查器、
+ * 消费组等于应用名加主题、生产者组显式配置且以应用名开头、进程内唯一并带前缀、进程内重试关闭、不用批量消费、事务生产者指向 starter 的监听器且有唯一的回查检查器、
  * 函数定义里的每个函数都有配置好的 binding。最后按 {@code mars.rocketmq.topology} 核验或创建主题与消费组。
  *
  * @since 2026-09-22
@@ -55,12 +57,13 @@ public final class RocketMqConventionVerifier implements InitializingBean {
         verifyBinder();
         String prefix = MessagingNames.requirePrefix(properties.getPrefix());
         String application = environment.getProperty(APPLICATION_NAME_PROPERTY, "");
-        if (!catalog.consumers().isEmpty()) {
+        if (!catalog.bindings().isEmpty()) {
             require(MessagingNames.isName(application),
-                    "有消费 binding 时 spring.application.name 必须是小写连字符形态的应用名，收到: " + application);
+                    "有消息 binding 时 spring.application.name 必须是小写连字符形态的应用名，收到: " + application);
         }
+        Set<String> producerGroups = new HashSet<>();
         for (RocketMqBinding binding : catalog.bindings()) {
-            verifyBinding(binding, prefix, application);
+            verifyBinding(binding, prefix, application, producerGroups);
         }
         verifyFunctionDefinition();
         if (properties.getTopology() != RocketMqTopologyMode.OFF) {
@@ -77,7 +80,7 @@ public final class RocketMqConventionVerifier implements InitializingBean {
                 "spring.cloud.stream.rocketmq.binder.enable-msg-trace 必须关闭：消息轨迹主题不在本项目的可观测性设计里");
     }
 
-    private void verifyBinding(RocketMqBinding binding, String prefix, String application) {
+    private void verifyBinding(RocketMqBinding binding, String prefix, String application, Set<String> producerGroups) {
         String name = binding.name();
         Matcher matcher = RocketMqBindingCatalog.BINDING_NAME.matcher(name);
         require(matcher.matches(), "binding [" + name + "] 的名字必须形如 <函数名>-in-<n> 或 <函数名>-out-<n>");
@@ -92,7 +95,7 @@ public final class RocketMqConventionVerifier implements InitializingBean {
         if (binding.kind() == RocketMqBinding.Kind.CONSUMER) {
             verifyConsumer(binding, prefix, application);
         } else {
-            verifyProducer(binding);
+            verifyProducer(binding, prefix, application, producerGroups);
         }
     }
 
@@ -110,11 +113,24 @@ public final class RocketMqConventionVerifier implements InitializingBean {
         require(!binding.batchMode(), "消费 binding [" + name + "] 不得开启 batch-mode：一个事件一个函数调用");
     }
 
-    private void verifyProducer(RocketMqBinding binding) {
+    private void verifyProducer(RocketMqBinding binding, String prefix, String application, Set<String> producerGroups) {
         String name = binding.name();
         String type = binding.producerType();
         require("Normal".equalsIgnoreCase(type) || "Trans".equalsIgnoreCase(type),
                 "生产 binding [" + name + "] 的 producer.producer-type 只能是 Normal 或 Trans，收到: " + type);
+        String group = binding.producerGroup();
+        require(group != null && !group.isBlank() && !"anonymous".equals(group),
+                "生产 binding [" + name + "] 必须显式配置 producer.group：binder 默认的 anonymous 组会让同主题的生产者共用客户端实例，事务回查也按生产者组路由");
+        String rawGroup;
+        try {
+            rawGroup = MessagingNames.stripPrefix(prefix, group);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("生产 binding [" + name + "] 的 producer.group 必须是小写连字符形态，前缀由 starter 按 MARS_MQ_PREFIX 加上，收到: " + group, e);
+        }
+        require(MessagingNames.isName(application) && rawGroup.startsWith(application + "-") && rawGroup.length() > application.length() + 1,
+                "生产 binding [" + name + "] 的 producer.group 必须以 <应用名>- 开头（如 " + application + "-" + name.substring(0, name.indexOf("-out-")).toLowerCase()
+                        + "），收到: " + rawGroup);
+        require(producerGroups.add(group), "生产 binding [" + name + "] 的 producer.group " + rawGroup + " 与另一个生产 binding 重复，每个生产 binding 一个组");
         if (binding.transactional()) {
             require(MarsTransactionListener.BEAN_NAME.equals(binding.transactionListener()),
                     "事务生产 binding [" + name + "] 的 producer.transaction-listener 必须是 " + MarsTransactionListener.BEAN_NAME);
@@ -138,7 +154,10 @@ public final class RocketMqConventionVerifier implements InitializingBean {
             return;
         }
         for (String function : Arrays.stream(definition.split("[;|,]")).map(String::trim).filter(s -> !s.isEmpty()).toList()) {
-            boolean configured = catalog.bindings().stream().anyMatch(binding -> binding.name().startsWith(function + "-"));
+            boolean configured = catalog.bindings().stream().anyMatch(binding -> {
+                Matcher matcher = RocketMqBindingCatalog.BINDING_NAME.matcher(binding.name());
+                return matcher.matches() && matcher.group(1).equals(function);
+            });
             require(configured, "函数 [" + function + "] 在 spring.cloud.function.definition 里声明，但没有配置任何 binding（"
                     + function + "-in-0 或 " + function + "-out-0）");
         }

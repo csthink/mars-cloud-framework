@@ -20,12 +20,12 @@ spring:
         bindings:
           contractTx-out-0:
             producer:
-              group: contract-tx-producer
+              group: mars-cloud-contract-service-tx
               producer-type: Trans
               transaction-listener: marsTransactionListener
           contractPlain-out-0:
             producer:
-              group: contract-plain-producer
+              group: mars-cloud-contract-service-plain
           contractEvent-in-0:
             consumer:
               push:

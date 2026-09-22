@@ -24,7 +24,7 @@ public final class IdempotentEventHandler {
 
     private final ProcessedEventStore store;
     private final TransactionOperations transaction;
-    private final String consumerGroupHeader;
+    private final String topicHeader;
 
     /**
      * @param store 已处理事件登记
@@ -34,16 +34,16 @@ public final class IdempotentEventHandler {
         this(store, transaction, RocketMqHeaders.RECEIVED_TOPIC);
     }
 
-    IdempotentEventHandler(ProcessedEventStore store, TransactionOperations transaction, String consumerGroupHeader) {
+    IdempotentEventHandler(ProcessedEventStore store, TransactionOperations transaction, String topicHeader) {
         this.store = Objects.requireNonNull(store, "store 不能为空");
         this.transaction = Objects.requireNonNull(transaction, "transaction 不能为空");
-        this.consumerGroupHeader = consumerGroupHeader;
+        this.topicHeader = topicHeader;
     }
 
     /**
      * 按消费组与事件标识只处理一次。
      *
-     * @param consumerGroup 带运行环境前缀的消费组名，与 binding 的 group 相同
+     * @param consumerGroup 登记用的消费组名，按配置里不带前缀的 group 写；同一应用的多个消费函数各用自己的组名
      * @param message 收到的消息
      * @param business 业务处理
      * @param <T> 事件内容类型
@@ -55,7 +55,7 @@ public final class IdempotentEventHandler {
         Boolean executed = transaction.execute(status -> {
             if (!store.markProcessed(consumerGroup, envelope.eventId())) {
                 log.info("跳过重复投递的事件 group={} event_id={} key={} topic={}", consumerGroup, envelope.eventId(),
-                        envelope.key(), message.getHeaders().get(consumerGroupHeader));
+                        envelope.key(), message.getHeaders().get(topicHeader));
                 return false;
             }
             business.accept(envelope);

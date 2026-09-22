@@ -43,9 +43,12 @@ final class StreamTestSupport {
     static ApplicationContextRunner runner() {
         return new ApplicationContextRunner()
                 .withInitializer(context -> {
+                    // 测试不吃开发机上的环境变量（如 MARS_MQ_PREFIX）：把系统环境变量源换成空的，环境变量映射由专门的测试覆盖
+                    context.getEnvironment().getPropertySources().replace(
+                            org.springframework.core.env.StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME,
+                            new org.springframework.core.env.MapPropertySource(
+                                    org.springframework.core.env.StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, java.util.Map.of()));
                     new MarsRocketMqDefaultsEnvironmentPostProcessor().postProcessEnvironment(context.getEnvironment(), null);
-                    // 测试不吃开发机上的环境变量：环境变量映射由专门的测试覆盖
-                    context.getEnvironment().getPropertySources().remove("marsRocketMqEnvironment");
                 })
                 .withConfiguration(AutoConfigurations.of(
                         JacksonAutoConfiguration.class,
@@ -71,11 +74,39 @@ final class StreamTestSupport {
                 "spring.cloud.stream.bindings.orderPaid-in-0.group=" + GROUP,
                 "spring.cloud.stream.output-bindings=paymentTx;paymentPlain;orderLoop",
                 "spring.cloud.stream.bindings.paymentTx-out-0.destination=" + OUT_TOPIC,
+                "spring.cloud.stream.rocketmq.bindings.paymentTx-out-0.producer.group=" + APPLICATION + "-payment-tx",
                 "spring.cloud.stream.rocketmq.bindings.paymentTx-out-0.producer.producer-type=Trans",
                 "spring.cloud.stream.rocketmq.bindings.paymentTx-out-0.producer.transaction-listener=marsTransactionListener",
                 "spring.cloud.stream.bindings.paymentPlain-out-0.destination=" + OUT_TOPIC,
-                "spring.cloud.stream.bindings.orderLoop-out-0.destination=" + TOPIC
+                "spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=" + APPLICATION + "-payment-plain",
+                "spring.cloud.stream.bindings.orderLoop-out-0.destination=" + TOPIC,
+                "spring.cloud.stream.rocketmq.bindings.orderLoop-out-0.producer.group=" + APPLICATION + "-order-loop"
         };
+    }
+
+    /** 只记录提交与回滚次数的事务管理器，供需要真实事务同步的测试使用。 */
+    static final class RecordingTransactionManager extends org.springframework.transaction.support.AbstractPlatformTransactionManager {
+        int commits;
+        int rollbacks;
+
+        @Override
+        protected Object doGetTransaction() {
+            return new Object();
+        }
+
+        @Override
+        protected void doBegin(Object transaction, org.springframework.transaction.TransactionDefinition definition) {
+        }
+
+        @Override
+        protected void doCommit(org.springframework.transaction.support.DefaultTransactionStatus status) {
+            commits++;
+        }
+
+        @Override
+        protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus status) {
+            rollbacks++;
+        }
     }
 
     /** 收到的消息与当时的线程上下文。 */

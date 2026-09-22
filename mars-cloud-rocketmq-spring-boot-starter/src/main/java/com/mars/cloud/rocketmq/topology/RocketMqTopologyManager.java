@@ -78,39 +78,18 @@ public class RocketMqTopologyManager {
                 return;
             }
             if (mode == RocketMqTopologyMode.VERIFY) {
-                throw new IllegalStateException(describe(missing, clusterName));
+                throw new IllegalStateException(describe(missing, clusterName, queues));
             }
             provision(admin, masters, missing, queues);
             Missing again = inspect(admin, masters, topics, groups);
             if (!again.isEmpty()) {
-                throw new IllegalStateException("创建后仍缺失，" + describe(again, clusterName));
+                throw new IllegalStateException("创建后仍缺失，" + describe(again, clusterName, queues));
             }
             log.info("RocketMQ 主题与消费组已创建并核验: topics={} groups={}", topics, groups);
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("RocketMQ 主题与消费组核验失败（name-server " + nameServer + "）: " + e, e);
-        } finally {
-            admin.shutdown();
-        }
-    }
-
-    /** 删除主题（含 NameServer 路由）与消费组，供测试收尾使用。 */
-    public void delete(Set<String> topics, Set<String> groups) throws Exception {
-        DefaultMQAdminExt admin = admin();
-        try {
-            ClusterInfo cluster = admin.examineBrokerClusterInfo();
-            Set<String> masters = new java.util.HashSet<>(masters(cluster));
-            Set<String> nameServers = new java.util.HashSet<>(List.of(nameServer.split("[;,]")));
-            for (String master : masters) {
-                for (String group : groups) {
-                    admin.deleteSubscriptionGroup(master, group, true);
-                }
-            }
-            for (String topic : topics) {
-                admin.deleteTopicInBroker(masters, topic);
-                admin.deleteTopicInNameServer(nameServers, topic);
-            }
         } finally {
             admin.shutdown();
         }
@@ -187,10 +166,11 @@ public class RocketMqTopologyManager {
         }
     }
 
-    private static String describe(Missing missing, String clusterName) {
+    private static String describe(Missing missing, String clusterName, int queues) {
         StringBuilder text = new StringBuilder("RocketMQ 缺少 binding 需要的主题或消费组，请创建后再启动，或在本机运行环境设置 MARS_ROCKETMQ_TOPOLOGY=provision：");
         for (String topic : missing.topics()) {
-            text.append("\n  mqadmin updateTopic -c ").append(clusterName).append(" -t ").append(topic).append(" -r 4 -w 4");
+            text.append("\n  mqadmin updateTopic -c ").append(clusterName).append(" -t ").append(topic)
+                    .append(" -r ").append(queues).append(" -w ").append(queues);
         }
         Set<String> groups = new LinkedHashSet<>();
         missing.groupsByBroker().values().forEach(groups::addAll);

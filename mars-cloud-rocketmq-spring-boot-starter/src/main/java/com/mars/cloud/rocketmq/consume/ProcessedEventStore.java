@@ -22,7 +22,7 @@ public interface ProcessedEventStore {
     /**
      * 登记事件已处理。
      *
-     * @param consumerGroup 带运行环境前缀的消费组名
+     * @param consumerGroup 登记用的消费组名（配置里不带前缀的 group）
      * @param eventId 事件标识
      * @return 首次登记返回 true；已存在返回 false
      */

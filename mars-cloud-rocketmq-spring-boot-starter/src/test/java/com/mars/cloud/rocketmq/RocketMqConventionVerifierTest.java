@@ -85,6 +85,16 @@ class RocketMqConventionVerifierTest {
     }
 
     @Test
+    void producerGroupRules() {
+        assertFails(runner.withPropertyValues("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group="), "必须显式配置 producer.group");
+        assertFails(runner.withPropertyValues("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=anonymous"), "必须显式配置 producer.group");
+        assertFails(runner.withPropertyValues("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=Payment_Producer"), "小写连字符形态");
+        assertFails(runner.withPropertyValues("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=payment-plain"), "必须以 <应用名>- 开头");
+        assertFails(runner.withPropertyValues("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=" + StreamTestSupport.APPLICATION + "-payment-tx"),
+                "与另一个生产 binding 重复");
+    }
+
+    @Test
     void transactionalTopicNeedsExactlyOneChecker() {
         assertFails(StreamTestSupport.runner().withUserConfiguration(StreamTestSupport.OrderApplication.class)
                         .withPropertyValues(StreamTestSupport.typicalBindings())
@@ -95,5 +105,7 @@ class RocketMqConventionVerifierTest {
     @Test
     void declaredFunctionsNeedBindings() {
         assertFails(runner.withPropertyValues("spring.cloud.function.definition=orderPaid;ghost"), "函数 [ghost]");
+        // 函数名是另一个 binding 名的前缀时也不算已配置
+        assertFails(runner.withPropertyValues("spring.cloud.function.definition=orderPaid;order"), "函数 [order]");
     }
 }

@@ -67,6 +67,34 @@ class MarsTransactionListenerTest {
     }
 
     @Test
+    void errorsThrownByTheLocalTransactionAlsoRollBack() {
+        MarsTransactionListener listener = new MarsTransactionListener(List.of(), mapper, "");
+        AssertionError boom = new AssertionError("invariant broken");
+        PendingLocalTransaction pending = PendingLocalTransaction.register(() -> { throw boom; });
+
+        LocalTransactionState state = listener.executeLocalTransaction(new Message("order-event", "PAID", "k", new byte[0]), null);
+
+        assertThat(state).isEqualTo(LocalTransactionState.ROLLBACK_MESSAGE);
+        assertThat(pending.failure()).isSameAs(boom);
+        pending.release();
+    }
+
+    @Test
+    void publishingAnotherTransactionalMessageInsideTheLocalTransactionIsRejected() {
+        MarsTransactionListener listener = new MarsTransactionListener(List.of(), mapper, "");
+        PendingLocalTransaction pending = PendingLocalTransaction.register(() ->
+                PendingLocalTransaction.register(() -> { }));
+
+        LocalTransactionState state = listener.executeLocalTransaction(new Message("order-event", "PAID", "k", new byte[0]), null);
+
+        assertThat(state).isEqualTo(LocalTransactionState.ROLLBACK_MESSAGE);
+        assertThat(pending.failure()).isInstanceOf(IllegalStateException.class).hasMessageContaining("本地事务执行中不能再发送事务消息");
+        pending.release();
+        PendingLocalTransaction again = PendingLocalTransaction.register(() -> { });
+        again.release();
+    }
+
+    @Test
     void messageWithoutRegisteredTransactionIsRolledBack() {
         MarsTransactionListener listener = new MarsTransactionListener(List.of(), mapper, "");
         assertThat(listener.executeLocalTransaction(new Message("order-event", "PAID", "k", new byte[0]), null))

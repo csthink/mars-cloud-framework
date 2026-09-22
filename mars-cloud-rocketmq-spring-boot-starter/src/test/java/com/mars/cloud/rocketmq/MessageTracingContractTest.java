@@ -72,6 +72,26 @@ class MessageTracingContractTest {
     }
 
     @Test
+    void tracerRegisteredByALaterAutoConfigurationIsStillPickedUp() {
+        // Spring Boot 的 tracing 自动配置按类名排在本 starter 之后；选择必须发生在实例化期而不是条件求值期
+        StreamTestSupport.runner()
+                .withConfiguration(org.springframework.boot.autoconfigure.AutoConfigurations.of(
+                        com.mars.cloud.rocketmq.zz.LateTracingAutoConfiguration.class))
+                .withUserConfiguration(StreamTestSupport.OrderApplication.class)
+                .withPropertyValues(StreamTestSupport.typicalBindings())
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(MessageTracing.class)).isInstanceOf(MicrometerMessageTracing.class);
+                    PlainEventPublisher publisher = context.getBean(PlainEventPublisher.class);
+                    OutputDestination output = context.getBean(OutputDestination.class);
+                    publisher.publish("paymentPlain-out-0", EventEnvelope.of("CREATED", StreamTestSupport.APPLICATION, "order-late", Map.of()));
+                    Message<byte[]> sent = output.receive(1000, "payment-event");
+                    assertThat(sent).isNotNull();
+                    assertThat(sent.getHeaders()).containsKey(MessagingHeaders.TRACEPARENT);
+                });
+    }
+
+    @Test
     void publisherWritesW3cTraceparentOfAProducerSpanAndFillsTraceIdIntoTheEnvelope() {
         runner.run(context -> {
             Tracer tracer = context.getBean(Tracer.class);

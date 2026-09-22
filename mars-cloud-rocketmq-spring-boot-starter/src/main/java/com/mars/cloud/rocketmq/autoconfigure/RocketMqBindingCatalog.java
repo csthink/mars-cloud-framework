@@ -44,14 +44,14 @@ public final class RocketMqBindingCatalog {
             if (kind == RocketMqBinding.Kind.PRODUCER) {
                 RocketMQProducerProperties producer = extended.getExtendedProducerProperties(name);
                 result.add(new RocketMqBinding(name, kind, properties.getDestination(), raw.rawDestination(),
-                        null, null, producer.getProducerType(), producer.getTransactionListener(), 0, false,
-                        producer.getEnableMsgTrace()));
+                        null, null, producer.getProducerType(), producer.getGroup(), producer.getTransactionListener(),
+                        0, false, producer.getEnableMsgTrace()));
             } else {
                 int maxAttempts = properties.getConsumer() == null ? 3 : properties.getConsumer().getMaxAttempts();
                 boolean batch = properties.getConsumer() != null && properties.getConsumer().isBatchMode();
                 boolean trace = kind == null || extended.getExtendedConsumerProperties(name).getEnableMsgTrace();
                 result.add(new RocketMqBinding(name, kind, properties.getDestination(), raw.rawDestination(),
-                        properties.getGroup(), raw.rawGroup(), null, null, maxAttempts, batch, trace));
+                        properties.getGroup(), raw.rawGroup(), null, null, null, maxAttempts, batch, trace));
             }
         }
         this.bindings = Collections.unmodifiableList(result);

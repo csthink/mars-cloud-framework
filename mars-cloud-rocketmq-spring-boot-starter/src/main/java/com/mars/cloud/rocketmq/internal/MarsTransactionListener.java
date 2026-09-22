@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * starter 提供的唯一事务监听器，bean 名固定为 {@value #BEAN_NAME}。
  *
- * <p>{@code executeLocalTransaction} 执行发布器登记的本地事务：正常返回答提交，抛异常答回滚；没有登记说明
+ * <p>{@code executeLocalTransaction} 执行发布器登记的本地事务：正常返回答提交，抛出任何 Throwable 都答回滚；没有登记说明
  * 这条事务消息不是经发布器发出的，答回滚并记录 ERROR。{@code checkLocalTransaction} 按主题找唯一的
  * {@link TransactionStateChecker} 答复；找不到答 {@code UNKNOW} 让 broker 继续回查，而不是静默丢弃。
  */
@@ -52,7 +52,7 @@ public final class MarsTransactionListener implements TransactionListener {
         try {
             pending.execute();
             return LocalTransactionState.COMMIT_MESSAGE;
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
             log.warn("事务消息 topic={} keys={} 的本地事务失败，消息回滚: {}", message.getTopic(), message.getKeys(), e.toString());
             return LocalTransactionState.ROLLBACK_MESSAGE;
         }

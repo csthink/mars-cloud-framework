@@ -11,9 +11,12 @@ import com.mars.cloud.rocketmq.RocketMqHeaders;
 import com.mars.cloud.rocketmq.autoconfigure.MarsRocketMqProperties;
 import com.mars.cloud.rocketmq.publish.PlainEventPublisher;
 import com.mars.cloud.rocketmq.publish.TransactionalEventPublisher;
-import com.mars.cloud.rocketmq.topology.RocketMqTopologyManager;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
+import org.apache.rocketmq.client.producer.LocalTransactionState;
+import org.apache.rocketmq.client.producer.TransactionListener;
+import org.apache.rocketmq.client.producer.TransactionMQProducer;
+import org.apache.rocketmq.common.message.MessageExt;
 import org.apache.rocketmq.remoting.protocol.admin.TopicStatsTable;
 import org.apache.rocketmq.tools.admin.DefaultMQAdminExt;
 import org.junit.jupiter.api.AfterAll;
@@ -63,6 +66,8 @@ class RocketMqContractTest {
     Tracer tracer;
     @Autowired
     MarsRocketMqProperties properties;
+    @Autowired
+    tools.jackson.databind.ObjectMapper mapper;
 
     @BeforeAll
     static void recordClientLogSize() throws IOException {
@@ -77,7 +82,7 @@ class RocketMqContractTest {
             return;
         }
         String group = prefix + GROUP;
-        new RocketMqTopologyManager(nameServer).delete(
+        ContractTopology.delete(nameServer,
                 Set.of(prefix + "contract-event", "%RETRY%" + group, "%DLQ%" + group), Set.of(group));
     }
 
@@ -165,21 +170,55 @@ class RocketMqContractTest {
 
     @Test
     @Order(6)
-    void crashBeforeAnsweringBrokerIsResolvedByCheckBack() {
+    void localTransactionErrorRollsBackTheMessage() {
+        String key = "crash-error-" + UUID.randomUUID();
+        assertThatThrownBy(() -> transactional.publish("contractTx-out-0", event(key), () -> {
+            throw new AssertionError("本地事务里的 Error 样本");
+        })).isInstanceOf(MessagePublishException.class).hasMessageContaining("消息已回滚").hasCauseInstanceOf(AssertionError.class);
+        await().pollDelay(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(4)).untilAsserted(() ->
+                assertThat(deliveriesOf(key)).isEmpty());
+    }
+
+    @Test
+    @Order(7)
+    void crashBeforeAnsweringBrokerIsResolvedByCheckBack() throws Exception {
         String key = "crash-commit-" + UUID.randomUUID();
-        // 本地事务抛出 Error：监听器不接管，RocketMQ 客户端把它记为 UNKNOW，等同于进程在答复 broker 前崩溃
-        transactional.publish("contractTx-out-0", event(key), () -> {
-            throw new SimulatedCrash();
+        // 用同一生产者组的另一个客户端发半消息并答 UNKNOW，随后关闭它：等同于该进程在答复 broker 前崩溃，
+        // broker 回查时组里只剩本应用的生产者，回查落到 starter 的监听器与检查器
+        EventEnvelope<Map<String, Object>> envelope = event(key);
+        TransactionMQProducer crashed = new TransactionMQProducer(prefix + APPLICATION + "-tx");
+        crashed.setNamesrvAddr(System.getenv("ROCKETMQ_NAME_SERVER"));
+        crashed.setInstanceName("contract-crash-" + UUID.randomUUID());
+        crashed.setTransactionListener(new TransactionListener() {
+            @Override
+            public LocalTransactionState executeLocalTransaction(org.apache.rocketmq.common.message.Message msg, Object arg) {
+                return LocalTransactionState.UNKNOW;
+            }
+
+            @Override
+            public LocalTransactionState checkLocalTransaction(MessageExt msg) {
+                throw new IllegalStateException("崩溃的进程不该再收到回查");
+            }
         });
+        crashed.start();
+        try {
+            org.apache.rocketmq.common.message.Message half = new org.apache.rocketmq.common.message.Message(
+                    prefix + "contract-event", "PAID", key, mapper.writeValueAsBytes(envelope));
+            half.putUserProperty(MessagingHeaders.EVENT_ID, envelope.eventId());
+            crashed.sendMessageInTransaction(half, null);
+        } finally {
+            crashed.shutdown();
+        }
         await().atMost(Duration.ofSeconds(90)).untilAsserted(() -> {
             assertThat(ContractApplication.CHECKED).contains(key);
             assertThat(deliveriesOf(key)).hasSize(1);
         });
         assertThat(deliveriesOf(key).get(0).headers()).containsKey(RocketMqHeaders.TRANSACTION_CHECK_TIMES);
+        assertThat(deliveriesOf(key).get(0).envelope().eventId()).isEqualTo(envelope.eventId());
     }
 
     @Test
-    @Order(7)
+    @Order(8)
     void verifyModeFailsForMissingTopicWithTheCreateCommand() {
         String nameServer = System.getenv("ROCKETMQ_NAME_SERVER");
         new ApplicationContextRunner()
@@ -201,16 +240,18 @@ class RocketMqContractTest {
                         "spring.cloud.stream.rocketmq.binder.enable-msg-trace=false",
                         "spring.cloud.stream.rocketmq.default.producer.enable-msg-trace=false",
                         "spring.cloud.stream.output-bindings=missing",
-                        "spring.cloud.stream.bindings.missing-out-0.destination=missing-event")
+                        "spring.cloud.stream.bindings.missing-out-0.destination=missing-event",
+                        "spring.cloud.stream.rocketmq.bindings.missing-out-0.producer.group=" + prefix + APPLICATION + "-missing")
                 .run(context -> {
                     assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure()).hasStackTraceContaining(
-                            "mqadmin updateTopic -c LocalCluster -t " + prefix + "missing-event -r 4 -w 4");
+                    assertThat(context.getStartupFailure())
+                            .hasStackTraceContaining("mqadmin updateTopic -c ")
+                            .hasStackTraceContaining(" -t " + prefix + "missing-event -r 4 -w 4");
                 });
     }
 
     @Test
-    @Order(8)
+    @Order(9)
     void clientLogsGoToStdoutNotToTheHomeDirectory() throws IOException {
         long now = Files.exists(CLIENT_LOG) ? Files.size(CLIENT_LOG) : -1;
         assertThat(now).as("RocketMQ 客户端日志文件不得增长").isEqualTo(clientLogSizeAtStart);
@@ -228,12 +269,6 @@ class RocketMqContractTest {
             return 0;
         } finally {
             admin.shutdown();
-        }
-    }
-
-    static final class SimulatedCrash extends Error {
-        SimulatedCrash() {
-            super("模拟进程在答复 broker 前崩溃");
         }
     }
 }

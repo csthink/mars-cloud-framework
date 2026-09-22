@@ -10,6 +10,7 @@ package com.mars.cloud.rocketmq.autoconfigure;
  * @param group 带前缀的消费组名，生产 binding 为 null
  * @param rawGroup 不带前缀的消费组名，生产 binding 为 null
  * @param producerType binder 的生产者类型，{@code Normal} 或 {@code Trans}；消费 binding 为 null
+ * @param producerGroup 带运行环境前缀的生产者组名；消费 binding 为 null
  * @param transactionListener 事务监听器 bean 名；没有配置为 null
  * @param maxAttempts Spring Cloud Stream 进程内重试次数；生产 binding 为 0
  * @param batchMode 是否批量消费；生产 binding 为 false
@@ -24,6 +25,7 @@ public record RocketMqBinding(
         String group,
         String rawGroup,
         String producerType,
+        String producerGroup,
         String transactionListener,
         int maxAttempts,
         boolean batchMode,

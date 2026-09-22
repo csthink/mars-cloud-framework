@@ -52,6 +52,10 @@ class MarsRocketMqAssemblyTest {
             assertThat(catalog.bindings()).allMatch(binding -> !binding.messageTrace());
             assertThat(catalog.find("paymentTx-out-0").orElseThrow().transactional()).isTrue();
             assertThat(catalog.find("paymentPlain-out-0").orElseThrow().transactional()).isFalse();
+            // 生产者组由 EnvironmentPostProcessor 在环境层加前缀，binder 子上下文与主上下文看到同一个值
+            assertThat(catalog.find("paymentTx-out-0").orElseThrow().producerGroup()).isEqualTo("s1-" + StreamTestSupport.APPLICATION + "-payment-tx");
+            assertThat(context.getEnvironment().getProperty("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group"))
+                    .isEqualTo("s1-" + StreamTestSupport.APPLICATION + "-payment-plain");
         });
     }
 
@@ -62,6 +66,58 @@ class MarsRocketMqAssemblyTest {
             BindingServiceProperties bindings = context.getBean(BindingServiceProperties.class);
             assertThat(bindings.getBindingProperties("orderPaid-in-0").getDestination()).isEqualTo("order-event");
             assertThat(bindings.getBindingProperties("orderPaid-in-0").getGroup()).isEqualTo(StreamTestSupport.GROUP);
+            RocketMqBindingCatalog catalog = context.getBean(RocketMqBindingCatalog.class);
+            assertThat(catalog.find("paymentTx-out-0").orElseThrow().producerGroup()).isEqualTo(StreamTestSupport.APPLICATION + "-payment-tx");
+        });
+    }
+
+    @Test
+    void transactionalPublisherRefusesToRunInsideAnOuterSpringTransaction() {
+        runner.run(context -> {
+            TransactionalEventPublisher publisher = context.getBean(TransactionalEventPublisher.class);
+            EventEnvelope<Object> envelope = EventEnvelope.of("PAID", StreamTestSupport.APPLICATION, "order-10", null);
+            StreamTestSupport.RecordingTransactionManager manager = new StreamTestSupport.RecordingTransactionManager();
+            assertThatThrownBy(() -> new org.springframework.transaction.support.TransactionTemplate(manager)
+                    .executeWithoutResult(status -> publisher.publish("paymentTx-out-0", envelope, () -> { })))
+                    .isInstanceOf(MessagePublishException.class).hasMessageContaining("外层 Spring 事务");
+            assertThat(manager.rollbacks).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void publishAfterCommitSendsOnlyAfterTheTransactionCommitsAndValidatesUpFront() {
+        runner.run(context -> {
+            PlainEventPublisher publisher = context.getBean(PlainEventPublisher.class);
+            OutputDestination output = context.getBean(OutputDestination.class);
+            StreamTestSupport.RecordingTransactionManager manager = new StreamTestSupport.RecordingTransactionManager();
+            org.springframework.transaction.support.TransactionTemplate template = new org.springframework.transaction.support.TransactionTemplate(manager);
+            EventEnvelope<Object> envelope = EventEnvelope.of("CREATED", StreamTestSupport.APPLICATION, "order-11", null);
+
+            // 事务内登记，提交前看不到，提交后到达
+            template.executeWithoutResult(status -> {
+                publisher.publishAfterCommit("paymentPlain-out-0", envelope, DelayLevel.LEVEL_16);
+                assertThat(output.receive(200, "payment-event")).isNull();
+            });
+            Message<byte[]> sent = output.receive(1000, "payment-event");
+            assertThat(sent).isNotNull();
+            assertThat(sent.getHeaders()).containsEntry(RocketMqHeaders.DELAY, 16);
+
+            // 回滚则不发
+            EventEnvelope<Object> discarded = EventEnvelope.of("CREATED", StreamTestSupport.APPLICATION, "order-12", null);
+            template.executeWithoutResult(status -> {
+                publisher.publishAfterCommit("paymentPlain-out-0", discarded, null);
+                status.setRollbackOnly();
+            });
+            assertThat(output.receive(200, "payment-event")).isNull();
+
+            // 没有事务时立即发送
+            publisher.publishAfterCommit("paymentPlain-out-0", EventEnvelope.of("CREATED", StreamTestSupport.APPLICATION, "order-13", null), null);
+            assertThat(output.receive(1000, "payment-event")).isNotNull();
+
+            // 事务生产 binding 在登记前就被拒绝，不等到提交后
+            assertThatThrownBy(() -> template.executeWithoutResult(status ->
+                    publisher.publishAfterCommit("paymentTx-out-0", envelope, null)))
+                    .isInstanceOf(MessagePublishException.class).hasMessageContaining("不是普通生产者");
         });
     }
 
@@ -190,7 +246,7 @@ class MarsRocketMqAssemblyTest {
     }
 
     @Test
-    void consumerExceptionPropagatesAndLeavesNoCallerContextBehind() {
+    void consumerExceptionIsRoutedToTheErrorChannelAndLeavesNoCallerContextBehind() {
         runner.run(context -> {
             InputDestination input = context.getBean(InputDestination.class);
             ObjectMapper mapper = context.getBean(ObjectMapper.class);

@@ -7,9 +7,6 @@ import com.mars.cloud.rocketmq.consume.ProcessedEventStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.AbstractPlatformTransactionManager;
-import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -48,7 +45,7 @@ class IdempotentEventHandlerTest {
 
     @Test
     void businessFailureRollsBackTheRegistrationSoRedeliveryCanRetry() {
-        RecordingTransactionManager manager = new RecordingTransactionManager();
+        StreamTestSupport.RecordingTransactionManager manager = new StreamTestSupport.RecordingTransactionManager();
         TransactionalStore store = new TransactionalStore();
         IdempotentEventHandler handler = new IdempotentEventHandler(store, new TransactionTemplate(manager));
         EventEnvelope<Map<String, Object>> envelope = EventEnvelope.of("PAID", "mars-cloud-order-service", "order-2", Map.of());
@@ -68,31 +65,6 @@ class IdempotentEventHandlerTest {
         assertThat(attempts.get()).isEqualTo(2);
         assertThat(handler.handle(GROUP, message(envelope), e -> attempts.incrementAndGet())).isFalse();
         assertThat(attempts.get()).isEqualTo(2);
-    }
-
-    /** 只记录提交与回滚次数的事务管理器。 */
-    static final class RecordingTransactionManager extends AbstractPlatformTransactionManager {
-        int commits;
-        int rollbacks;
-
-        @Override
-        protected Object doGetTransaction() {
-            return new Object();
-        }
-
-        @Override
-        protected void doBegin(Object transaction, TransactionDefinition definition) {
-        }
-
-        @Override
-        protected void doCommit(DefaultTransactionStatus status) {
-            commits++;
-        }
-
-        @Override
-        protected void doRollback(DefaultTransactionStatus status) {
-            rollbacks++;
-        }
     }
 
     /** 登记只在事务提交后生效、回滚即撤销的存储替身。 */

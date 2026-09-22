@@ -22,15 +22,16 @@ RocketMQ 消息 starter：Spring Cloud Stream 函数式模型加 Spring Cloud Al
 | --- | --- |
 | `ROCKETMQ_NAME_SERVER` | 名字服务器地址 `host:port`。必填：不显式配置会启动失败，不回退到 binder 内置默认地址 |
 | `MARS_MQ_PREFIX` | 运行环境前缀，形如 `s1-`；starter 把它加到全部主题名与消费组名前面。空表示不加 |
-| `MARS_ROCKETMQ_TOPOLOGY` | `verify`（默认）：启动期核验主题与消费组存在；`provision`：缺失的在每个 master broker 创建；`off`：不检查 |
+| `MARS_ROCKETMQ_TOPOLOGY` | `verify`（默认）：启动期核验主题与消费组存在；`provision`：缺失的在每个 master broker 创建（读写队列数取 `mars.rocketmq.topic-queues`，默认 4）；`off`：不检查 |
 
 同名属性 `spring.cloud.stream.rocketmq.binder.name-server`、`mars.rocketmq.prefix`、`mars.rocketmq.topology`
 也可以直接写，环境变量优先。
 
 ## 配置约定
 
-主题名形如 `<domain>-event`，消费组名必须是 `<应用名>-<主题>`，都只写不带前缀的名字；tag 是大写事件名。
-启动期校验不满足即失败，错误消息说明违反的规则。
+主题名形如 `<domain>-event`，消费组名必须是 `<应用名>-<主题>`；每个生产 binding 必须显式配置 `producer.group`，
+以 `<应用名>-` 开头且进程内唯一（binder 默认的 anonymous 组会让同主题的生产者共用客户端实例，broker 也按生产者组路由事务回查）。
+三者都只写不带前缀的名字，starter 加运行环境前缀；tag 是大写事件名。启动期校验不满足即失败，错误消息说明违反的规则。
 
 ```yaml
 spring:
@@ -53,12 +54,12 @@ spring:
         bindings:
           entitlementGranted-out-0:
             producer:
-              group: product-entitlement-producer
+              group: mars-cloud-product-service-entitlement-granted
               producer-type: Trans
               transaction-listener: marsTransactionListener
           orderTimeout-out-0:
             producer:
-              group: product-order-timeout-producer
+              group: mars-cloud-product-service-order-timeout
 ```
 
 starter 给出的默认值：进程内重试关闭（`consumer.max-attempts=1`，校验器拒绝其他值）、RocketMQ 重投上限
@@ -75,7 +76,8 @@ transactionalEventPublisher.publish("entitlementGranted-out-0",
         () -> entitlementService.grant(orderId, resource));   // 在这里做本地事务；抛异常即回滚消息
 ```
 
-不能在外层 Spring 事务里调用它。进程在本地事务提交后、答复 broker 前崩溃时，broker 会回查：每个事务主题必须有且只有一个
+不能在外层 Spring 事务里调用它，本地事务里也不能再发事务消息；本地事务抛出任何 Throwable 都回滚消息。
+进程在本地事务提交后、答复 broker 前崩溃时，broker 会回查：每个事务主题必须有且只有一个
 `TransactionStateChecker` bean，按业务表状态答复 `COMMIT_MESSAGE`、`ROLLBACK_MESSAGE` 或 `UNKNOW`。
 
 事务消息忽略延迟档。延迟消息与不需要事务的消息走普通生产者：
@@ -85,7 +87,8 @@ plainEventPublisher.publish("orderTimeout-out-0", envelope, DelayLevel.LEVEL_16)
 plainEventPublisher.publishAfterCommit("orderTimeout-out-0", envelope, DelayLevel.LEVEL_16); // 当前事务提交后发送
 ```
 
-`publishAfterCommit` 在提交后、发送前进程崩溃会丢这条消息，兜底由对账任务承担。
+`publishAfterCommit` 在登记前就校验 binding；提交后的发送失败以异常抛给提交方，此时数据库改动已经提交。
+提交后、发送前进程崩溃会丢这条消息，兜底由对账任务承担。
 
 发布器写入的消息头：tag（事件名）、key（业务键）、`X-Mars-Event-Id`、当前调用方身份的三个 `X-Mars-*` 头，
 以及有 Tracer 时的 `traceparent` 与 `tracestate`。信封的 `trace_id` 为空时按当前 span 补上。
@@ -103,7 +106,8 @@ idempotentEventHandler.handle("mars-cloud-product-service-order-event", message,
 ```
 
 应用提供 `ProcessedEventStore` bean，实现必须与业务写入同一个数据库事务；接口注释给出建表语句。
-`InMemoryProcessedEventStore` 只供测试与本机演示。
+事务模板取自唯一的 `PlatformTransactionManager`；有多个事务管理器时必须提供 `TransactionOperations` bean，否则启动失败。
+登记用的消费组名按配置里不带前缀的 `group` 写。`InMemoryProcessedEventStore` 只供测试与本机演示。
 
 ## 主题与消费组
 

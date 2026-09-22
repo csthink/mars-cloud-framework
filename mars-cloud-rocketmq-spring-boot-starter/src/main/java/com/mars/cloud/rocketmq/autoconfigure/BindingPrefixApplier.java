@@ -56,7 +56,7 @@ public final class BindingPrefixApplier implements BeanPostProcessor {
     private void apply(String binding, BindingProperties properties) {
         String destination = properties.getDestination();
         String group = properties.getGroup();
-        rawNames.put(binding, new RawNames(destination, group));
+        rawNames.putIfAbsent(binding, new RawNames(destination, group));
         if (prefix.isEmpty() || !MessagingNames.PREFIX.matcher(prefix).matches()) {
             return;
         }

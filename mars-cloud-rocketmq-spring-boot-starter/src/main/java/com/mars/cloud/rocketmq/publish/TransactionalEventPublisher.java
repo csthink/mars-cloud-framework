@@ -17,8 +17,8 @@ import java.util.Objects;
 /**
  * 事务消息发送：写库与发消息绑定成「本地事务提交，消息才可见」。
  *
- * <p>调用方传入本地事务，starter 先发半消息，再在同一线程执行本地事务，正常返回即提交消息，抛异常即回滚消息并把
- * 异常包成 {@link MessagePublishException} 抛回。进程在本地事务提交后、答复 broker 前崩溃时，broker 回查
+ * <p>调用方传入本地事务，starter 先发半消息，再在同一线程执行本地事务，正常返回即提交消息，抛出任何 Throwable 即回滚消息并把
+ * 它包成 {@link MessagePublishException} 抛回。本地事务里不能再发事务消息。进程在本地事务提交后、答复 broker 前崩溃时，broker 回查
  * {@link TransactionStateChecker}。不能在外层 Spring 事务里调用：外层事务会让本地提交与消息提交脱钩。
  * 事务消息忽略延迟档，延迟消息用 {@link PlainEventPublisher}。
  *
@@ -66,7 +66,11 @@ public final class TransactionalEventPublisher {
                 sent = streamBridge.send(binding, EventMessages.message(outgoing, headers));
             } catch (RuntimeException e) {
                 scope.error(e);
-                throw new MessagePublishException("事务消息发送失败 binding=" + binding + " key=" + outgoing.key(), e);
+                if (pending.executed() && pending.failure() == null) {
+                    throw new MessagePublishException("本地事务已执行，但事务消息的提交答复失败，消息状态待 broker 回查 binding="
+                            + binding + " key=" + outgoing.key(), e);
+                }
+                throw new MessagePublishException("事务消息发送失败，本地事务未执行 binding=" + binding + " key=" + outgoing.key(), e);
             }
             if (pending.failure() != null) {
                 scope.error(pending.failure());
