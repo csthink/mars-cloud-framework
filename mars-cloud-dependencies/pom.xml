@@ -37,6 +37,7 @@
         <mars-cloud-security-feign.version>1.0.0-SNAPSHOT</mars-cloud-security-feign.version>
         <mars-cloud-security-test-support.version>1.0.0-SNAPSHOT</mars-cloud-security-test-support.version>
         <mars-cloud-rocketmq-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-rocketmq-spring-boot-starter.version>
+        <mars-cloud-observability-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-observability-spring-boot-starter.version>
 
         <!-- 常用依赖版本 -->
         <lombok.version>1.18.40</lombok.version>
@@ -56,6 +57,14 @@
           本项目代码不使用它，也不单独抬 fastjson2 核心的版本。
         -->
         <rocketmq-tools.version>5.3.1</rocketmq-tools.version>
+        <!--
+          实例监控：Spring Boot Admin 4.0.4 依赖 spring-boot-starter 4.0.5，与本项目的 Boot 4.0.x 同线。
+          **不要升到 4.1.x**，它依赖 Boot 4.1.0。
+          链路追踪与指标不在这里登记版本：spring-boot-starter-opentelemetry、micrometer-registry-prometheus
+          与 opentelemetry-exporter-sender-jdk 都由 spring-boot-dependencies 及其导入的 opentelemetry-bom
+          托管，单独钉版本会与 Boot 基线脱钩。
+        -->
+        <spring-boot-admin.version>4.0.4</spring-boot-admin.version>
         <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <!-- 3.5.9 起分页等依赖 JSqlParser 的拦截器被拆到独立 artifact -->
@@ -189,6 +198,12 @@
                 <version>${mars-cloud-rocketmq-spring-boot-starter.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-observability-spring-boot-starter</artifactId>
+                <version>${mars-cloud-observability-spring-boot-starter.version}</version>
+            </dependency>
+
             <!-- 常用依赖版本声明 -->
             <dependency>
                 <groupId>org.projectlombok</groupId>
@@ -213,6 +228,13 @@
                 <groupId>org.apache.rocketmq</groupId>
                 <artifactId>rocketmq-tools</artifactId>
                 <version>${rocketmq-tools.version}</version>
+            </dependency>
+
+            <!-- 实例监控服务端：只登记版本，由服务仓的 mars-cloud-monitor 引用 -->
+            <dependency>
+                <groupId>de.codecentric</groupId>
+                <artifactId>spring-boot-admin-starter-server</artifactId>
+                <version>${spring-boot-admin.version}</version>
             </dependency>
 
             <dependency>
