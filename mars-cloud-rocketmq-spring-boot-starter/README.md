@@ -21,7 +21,7 @@ RocketMQ 消息 starter：Spring Cloud Stream 函数式模型加 Spring Cloud Al
 | 变量 | 作用 |
 | --- | --- |
 | `ROCKETMQ_NAME_SERVER` | 名字服务器地址 `host:port`。必填：不显式配置会启动失败，不回退到 binder 内置默认地址 |
-| `MARS_MQ_PREFIX` | 运行环境前缀，形如 `s1-`；starter 把它加到全部主题名与消费组名前面。空表示不加 |
+| `MARS_MQ_PREFIX` | 运行环境前缀，形如 `s1-`；starter 把它加到全部主题名、消费组名与生产者组名前面。空表示不加 |
 | `MARS_ROCKETMQ_TOPOLOGY` | `verify`（默认）：启动期核验主题与消费组存在；`provision`：缺失的在每个 master broker 创建（读写队列数取 `mars.rocketmq.topic-queues`，默认 4）；`off`：不检查 |
 
 同名属性 `spring.cloud.stream.rocketmq.binder.name-server`、`mars.rocketmq.prefix`、`mars.rocketmq.topology`
@@ -105,7 +105,7 @@ plainEventPublisher.publishAfterCommit("orderTimeout-out-0", envelope, DelayLeve
 idempotentEventHandler.handle("mars-cloud-product-service-order-event", message, envelope -> grant(envelope));
 ```
 
-应用提供 `ProcessedEventStore` bean，实现必须与业务写入同一个数据库事务；接口注释给出建表语句。
+应用必须先提供 `ProcessedEventStore` bean，`IdempotentEventHandler` 才会装配；实现必须与业务写入同一个数据库事务，接口注释给出建表语句。
 事务模板取自唯一的 `PlatformTransactionManager`；有多个事务管理器时必须提供 `TransactionOperations` bean，否则启动失败。
 登记用的消费组名按配置里不带前缀的 `group` 写。`InMemoryProcessedEventStore` 只供测试与本机演示。
 

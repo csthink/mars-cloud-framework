@@ -15,8 +15,10 @@ import com.mars.cloud.rocketmq.publish.TransactionalEventPublisher;
 import com.mars.cloud.rocketmq.topology.RocketMqTopologyManager;
 import io.micrometer.tracing.Tracer;
 import io.micrometer.tracing.propagation.Propagator;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
@@ -104,19 +106,17 @@ public class MarsRocketMqAutoConfiguration {
     }
 
     /**
-     * 幂等助手。应用提供 {@link ProcessedEventStore} bean 后装配；事务模板取自唯一的
+     * 幂等助手。应用在自己的配置类里提供 {@link ProcessedEventStore} bean 后装配（用户配置先于自动配置登记，
+     * 所以这里的 {@code @ConditionalOnBean} 能看到它）；事务模板取自唯一的
      * {@link PlatformTransactionManager}，有多个事务管理器时必须由应用提供 {@link TransactionOperations} bean，
      * 否则启动失败，不静默退化为无事务。
      */
     @Bean
+    @ConditionalOnBean(ProcessedEventStore.class)
     @ConditionalOnMissingBean
-    public IdempotentEventHandler idempotentEventHandler(ObjectProvider<ProcessedEventStore> store,
+    public IdempotentEventHandler idempotentEventHandler(ProcessedEventStore processedEventStore,
                                                          ObjectProvider<TransactionOperations> operations,
                                                          ObjectProvider<PlatformTransactionManager> transactionManagers) {
-        ProcessedEventStore processedEventStore = store.getIfAvailable();
-        if (processedEventStore == null) {
-            return null;
-        }
         TransactionOperations explicit = operations.getIfUnique();
         if (explicit != null) {
             return new IdempotentEventHandler(processedEventStore, explicit);
@@ -145,7 +145,13 @@ public class MarsRocketMqAutoConfiguration {
         public MessageTracing messageTracing(ObjectProvider<Tracer> tracer, ObjectProvider<Propagator> propagator) {
             Tracer t = tracer.getIfUnique();
             Propagator p = propagator.getIfUnique();
-            return t == null || p == null ? MessageTracing.NONE : new MicrometerMessageTracing(t, p);
+            if (t == null || p == null) {
+                LoggerFactory.getLogger(MarsRocketMqAutoConfiguration.class).info(
+                        "消息不传播 trace：容器里 Tracer {} 个、Propagator {} 个，需要各恰好一个",
+                        tracer.stream().count(), propagator.stream().count());
+                return MessageTracing.NONE;
+            }
+            return new MicrometerMessageTracing(t, p);
         }
     }
 

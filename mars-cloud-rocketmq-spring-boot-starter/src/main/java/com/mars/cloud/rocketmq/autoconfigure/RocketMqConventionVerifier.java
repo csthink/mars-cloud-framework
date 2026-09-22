@@ -119,8 +119,13 @@ public final class RocketMqConventionVerifier implements InitializingBean {
         require("Normal".equalsIgnoreCase(type) || "Trans".equalsIgnoreCase(type),
                 "生产 binding [" + name + "] 的 producer.producer-type 只能是 Normal 或 Trans，收到: " + type);
         String group = binding.producerGroup();
+        String configured = environment.getProperty(MarsRocketMqDefaultsEnvironmentPostProcessor.RAW_PRODUCER_GROUP_PREFIX + name);
         require(group != null && !group.isBlank() && !"anonymous".equals(group),
                 "生产 binding [" + name + "] 必须显式配置 producer.group：binder 默认的 anonymous 组会让同主题的生产者共用客户端实例，事务回查也按生产者组路由");
+        require(configured != null,
+                "生产 binding [" + name + "] 的生产者组只能写在 spring.cloud.stream.rocketmq.bindings." + name + ".producer.group，不支持 default.producer.group：每个生产 binding 一个组");
+        require(prefix.isEmpty() || !configured.startsWith(prefix),
+                "生产 binding [" + name + "] 的 producer.group 不得自带运行环境前缀 " + prefix + "，前缀由 starter 按 MARS_MQ_PREFIX 加上: " + configured);
         String rawGroup;
         try {
             rawGroup = MessagingNames.stripPrefix(prefix, group);

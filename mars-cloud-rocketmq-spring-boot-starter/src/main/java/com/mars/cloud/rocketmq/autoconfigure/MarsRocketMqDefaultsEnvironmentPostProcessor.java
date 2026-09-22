@@ -11,6 +11,7 @@ import org.springframework.core.env.PropertySource;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -27,8 +28,10 @@ public final class MarsRocketMqDefaultsEnvironmentPostProcessor implements Envir
     static final String DEFAULTS_SOURCE = "marsRocketMqDefaults";
     static final String ENVIRONMENT_SOURCE = "marsRocketMqEnvironment";
     static final String PRODUCER_GROUP_SOURCE = "marsRocketMqProducerGroups";
+    /** 改写前的生产者组原值按 binding 记录在这个前缀下，供校验器拒绝配置里自带的前缀。 */
+    public static final String RAW_PRODUCER_GROUP_PREFIX = "mars.rocketmq.raw-producer-groups.";
     static final Pattern PRODUCER_GROUP_KEY =
-            Pattern.compile("^spring\\.cloud\\.stream\\.rocketmq\\.bindings\\.[^.]+\\.producer\\.group$");
+            Pattern.compile("^spring\\.cloud\\.stream\\.rocketmq\\.bindings\\.([^.]+)\\.producer\\.group$");
 
     static final String NAME_SERVER_VARIABLE = "ROCKETMQ_NAME_SERVER";
     static final String PREFIX_VARIABLE = "MARS_MQ_PREFIX";
@@ -56,9 +59,9 @@ public final class MarsRocketMqDefaultsEnvironmentPostProcessor implements Envir
             }
         }
         if (!environment.getPropertySources().contains(PRODUCER_GROUP_SOURCE)) {
-            Map<String, Object> prefixed = prefixProducerGroups(environment);
-            if (!prefixed.isEmpty()) {
-                environment.getPropertySources().addFirst(new MapPropertySource(PRODUCER_GROUP_SOURCE, prefixed));
+            Map<String, Object> rewritten = prefixProducerGroups(environment);
+            if (!rewritten.isEmpty()) {
+                environment.getPropertySources().addFirst(new MapPropertySource(PRODUCER_GROUP_SOURCE, rewritten));
             }
         }
     }
@@ -69,25 +72,25 @@ public final class MarsRocketMqDefaultsEnvironmentPostProcessor implements Envir
      */
     private static Map<String, Object> prefixProducerGroups(ConfigurableEnvironment environment) {
         String prefix = environment.getProperty(BindingPrefixApplier.PREFIX_PROPERTY, "").trim();
-        Map<String, Object> prefixed = new LinkedHashMap<>();
-        if (prefix.isEmpty() || !MessagingNames.PREFIX.matcher(prefix).matches()) {
-            return prefixed;
-        }
+        boolean rewrite = !prefix.isEmpty() && MessagingNames.PREFIX.matcher(prefix).matches();
+        Map<String, Object> rewritten = new LinkedHashMap<>();
         for (PropertySource<?> source : environment.getPropertySources()) {
             if (!(source instanceof EnumerablePropertySource<?> enumerable)) {
                 continue;
             }
             for (String key : enumerable.getPropertyNames()) {
-                if (!PRODUCER_GROUP_KEY.matcher(key).matches() || prefixed.containsKey(key)) {
+                Matcher matcher = PRODUCER_GROUP_KEY.matcher(key);
+                if (!matcher.matches() || rewritten.containsKey(key)) {
                     continue;
                 }
                 String value = environment.getProperty(key, "").trim();
-                if (MessagingNames.isName(value) && !value.startsWith(prefix)) {
-                    prefixed.put(key, prefix + value);
+                rewritten.put(RAW_PRODUCER_GROUP_PREFIX + matcher.group(1), value);
+                if (rewrite && MessagingNames.isName(value) && !value.startsWith(prefix)) {
+                    rewritten.put(key, prefix + value);
                 }
             }
         }
-        return prefixed;
+        return rewritten;
     }
 
     private static void map(ConfigurableEnvironment environment, String variable, String property, Map<String, Object> target) {

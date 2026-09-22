@@ -19,12 +19,10 @@ class RocketMqHeadersAndDelayLevelTest {
 
     @Test
     void consumerHeadersMatchTheNamesTheBinderConverterProduces() {
-        var support = com.alibaba.cloud.stream.binder.rocketmq.support.RocketMQMessageConverterSupport.class;
         assertThat(RocketMqHeaders.RECEIVED_TAGS).isEqualTo(toRocketHeaderKey("TAGS"));
         assertThat(RocketMqHeaders.RECEIVED_KEYS).isEqualTo(toRocketHeaderKey("KEYS"));
         assertThat(RocketMqHeaders.RECEIVED_MESSAGE_ID).isEqualTo(toRocketHeaderKey(com.alibaba.cloud.stream.binder.rocketmq.constant.RocketMQConst.Headers.MESSAGE_ID));
         assertThat(RocketMqHeaders.RECEIVED_TOPIC).isEqualTo(toRocketHeaderKey(com.alibaba.cloud.stream.binder.rocketmq.constant.RocketMQConst.Headers.TOPIC));
-        assertThat(support).isNotNull();
     }
 
     private static String toRocketHeaderKey(String key) {

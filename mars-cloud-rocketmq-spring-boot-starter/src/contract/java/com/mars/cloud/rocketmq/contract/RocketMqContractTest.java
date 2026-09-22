@@ -222,6 +222,9 @@ class RocketMqContractTest {
     void verifyModeFailsForMissingTopicWithTheCreateCommand() {
         String nameServer = System.getenv("ROCKETMQ_NAME_SERVER");
         new ApplicationContextRunner()
+                // 真实应用里由 spring.factories 登记的 EnvironmentPostProcessor 负责默认值与生产者组前缀，这里手工执行一次
+                .withInitializer(context -> new com.mars.cloud.rocketmq.autoconfigure.MarsRocketMqDefaultsEnvironmentPostProcessor()
+                        .postProcessEnvironment(context.getEnvironment(), null))
                 .withConfiguration(org.springframework.boot.autoconfigure.AutoConfigurations.of(
                         org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration.class,
                         org.springframework.boot.integration.autoconfigure.IntegrationAutoConfiguration.class,
@@ -236,12 +239,9 @@ class RocketMqContractTest {
                         "spring.cloud.stream.rocketmq.binder.name-server=" + nameServer,
                         "mars.rocketmq.prefix=" + prefix,
                         "mars.rocketmq.topology=verify",
-                        "spring.cloud.stream.default.consumer.max-attempts=1",
-                        "spring.cloud.stream.rocketmq.binder.enable-msg-trace=false",
-                        "spring.cloud.stream.rocketmq.default.producer.enable-msg-trace=false",
                         "spring.cloud.stream.output-bindings=missing",
                         "spring.cloud.stream.bindings.missing-out-0.destination=missing-event",
-                        "spring.cloud.stream.rocketmq.bindings.missing-out-0.producer.group=" + prefix + APPLICATION + "-missing")
+                        "spring.cloud.stream.rocketmq.bindings.missing-out-0.producer.group=" + APPLICATION + "-missing")
                 .run(context -> {
                     assertThat(context).hasFailed();
                     assertThat(context.getStartupFailure())

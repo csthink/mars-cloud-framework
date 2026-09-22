@@ -92,6 +92,17 @@ class RocketMqConventionVerifierTest {
         assertFails(runner.withPropertyValues("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=payment-plain"), "必须以 <应用名>- 开头");
         assertFails(runner.withPropertyValues("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=" + StreamTestSupport.APPLICATION + "-payment-tx"),
                 "与另一个生产 binding 重复");
+        assertFails(runner.withPropertyValues("mars.rocketmq.prefix=s1-",
+                "spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group=s1-" + StreamTestSupport.APPLICATION + "-payment-plain"),
+                "producer.group 不得自带运行环境前缀");
+        // 只经 default.producer.group 给出的组：binder 会把它套到没有显式配置的 binding 上，但每个生产 binding 必须各自一个组
+        String[] withoutPlainGroup = java.util.Arrays.stream(StreamTestSupport.typicalBindings())
+                .filter(property -> !property.startsWith("spring.cloud.stream.rocketmq.bindings.paymentPlain-out-0.producer.group="))
+                .toArray(String[]::new);
+        assertFails(StreamTestSupport.runner().withUserConfiguration(StreamTestSupport.OrderApplication.class)
+                        .withPropertyValues(withoutPlainGroup)
+                        .withPropertyValues("spring.cloud.stream.rocketmq.default.producer.group=" + StreamTestSupport.APPLICATION + "-shared"),
+                "不支持 default.producer.group");
     }
 
     @Test

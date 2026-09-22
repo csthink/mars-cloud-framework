@@ -60,6 +60,8 @@ class MarsRocketMqDefaultsEnvironmentPostProcessorTest {
         assertThat(environment.getProperty("spring.cloud.stream.rocketmq.bindings.bad-out-0.producer.group"))
                 .as("不合法的值原样留给校验器报错").isEqualTo("Bad Group");
         assertThat(environment.getProperty("spring.cloud.stream.rocketmq.bindings.orderPaid-in-0.consumer.push.max-reconsume-times")).isEqualTo("2");
+        assertThat(environment.getProperty("mars.rocketmq.raw-producer-groups.orderTx-out-0")).isEqualTo("mars-cloud-order-service-order-tx");
+        assertThat(environment.getProperty("mars.rocketmq.raw-producer-groups.orderPlain-out-0")).isEqualTo("s3-mars-cloud-order-service-order-plain");
 
         MockEnvironment noPrefix = new MockEnvironment()
                 .withProperty("spring.cloud.stream.rocketmq.bindings.orderTx-out-0.producer.group", "mars-cloud-order-service-order-tx");
