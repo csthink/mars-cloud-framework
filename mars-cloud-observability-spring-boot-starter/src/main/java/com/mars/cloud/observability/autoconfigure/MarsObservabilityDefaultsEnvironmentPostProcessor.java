@@ -67,6 +67,12 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
             defaults.put(TRACING_ENDPOINT_PROPERTY, endpoint);
         }
 
+        // 日志的 traceId 取自线程本地的 MDC。响应式栈的请求在 Reactor 线程之间切换，
+        // Boot 默认的 limited 不会在切换后把当前观测恢复进来，切换之后的日志行因此丢失 traceId，
+        // 而调用链在追踪后端里是完整的。auto 让 Reactor 在每个操作符上恢复它。
+        // 不按 Web 栈区分：Servlet 部署物里经 Reactor 执行的调用（例如 WebClient）切换线程时是同一机制。
+        defaults.put("spring.reactor.context-propagation", "auto");
+
         // 结构化日志：默认 ECS JSON 到控制台；plain 只在本机调试时用，那时不写这个键。
         String consoleFormat = environment.getProperty("mars.observability.logging.console-format", "ecs");
         if (!"plain".equalsIgnoreCase(consoleFormat)) {
