@@ -27,6 +27,7 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ├── mars-cloud-security-spring-boot-starter/
 ├── mars-cloud-security-feign/
 ├── mars-cloud-security-test-support/
+├── mars-cloud-rocketmq-spring-boot-starter/
 └── （后续：sentinel starter）
 ```
 
@@ -63,6 +64,8 @@ common ◄──────── core-starter ◄─── mvc-starter       m
 - `security starter` 依赖 `common` 与 Spring Security 标准资源服务器库，按宿主选择 Servlet 或 Reactive；
   不依赖 MVC starter、Feign 或具体 IdP。`security-feign` 单向依赖 security starter 与 Feign starter，
   供 Servlet 宿主使用；`security-test-support` 只供测试使用，不进入部署包。
+- `rocketmq starter` 依赖 `common`、Spring Cloud Stream 与 Spring Cloud Alibaba 的 RocketMQ binder；
+  消息信封、消息头名与命名规则在 `common`，供生产方与消费方共用；不依赖 MVC、Feign 或 security starter。
 - 各模块的 `<parent>` 都是 `mars-cloud-dependencies`，根聚合 POM 只聚合、不做 parent。
 
 ## 横切能力设计
@@ -154,6 +157,22 @@ Reactive 使用 Reactor Context；入站身份头不能代替令牌验证。
 WebClient 驱动的 HTTP Service Client。两个客户端都按固定服务名调用，只携带当前用户令牌，
 禁止重定向和重试。拒绝决策阻止受保护方法，调用失败也不继续执行。
 配置、错误码和自定义过滤链接入见 [security starter 使用说明](../mars-cloud-security-spring-boot-starter/README.md)。
+
+### 事件消息：事务发送、消费约定与运行环境前缀
+
+`mars-cloud-rocketmq-spring-boot-starter` 只提供 Spring Cloud Stream 的函数式模型：生产者经 `StreamBridge`，
+消费者是 `Consumer<Message<EventEnvelope<T>>>` bean。消息体固定为 `common` 的 `EventEnvelope`，
+主题名 `<domain>-event`、消费组名 `<应用名>-<主题>`、tag 为事件名，由启动期校验强制；运行环境前缀由环境变量给出，
+starter 加到全部主题与消费组上，重试与死信主题随消费组派生。
+
+写库与发消息一律用 RocketMQ 事务消息：`TransactionalEventPublisher` 先发半消息，再在调用线程执行调用方的本地事务，
+正常返回提交、抛异常回滚；broker 回查交给每个主题唯一的 `TransactionStateChecker` 按业务表状态答复。事务消息忽略延迟档，
+延迟消息由 `PlainEventPublisher` 经普通生产者发送，可以登记到当前事务提交后再发，提交后发送前的丢失由对账任务兜底。
+
+进程内重试关闭，消费失败交给 RocketMQ 按 `maxReconsumeTimes` 重投，超过进入死信主题；`IdempotentEventHandler`
+用 `event_id` 登记吞掉重复投递。调用方身份的三个内部头与 `traceparent` 随消息传递，消费侧在函数执行期间还原。
+broker 关闭自动创建时，starter 在启动期核验或创建主题与消费组，缺失即启动失败并给出 `mqadmin` 命令。
+接入方式见 [rocketmq starter 使用说明](../mars-cloud-rocketmq-spring-boot-starter/README.md)。
 
 ## 已知行为与偏差
 

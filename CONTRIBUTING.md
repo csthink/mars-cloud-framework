@@ -62,6 +62,7 @@ JDK 24 起默认打印弃用警告，验证脚本把它视为未知诊断；应�
 ```bash
 mvn clean install                                     # 全量 + 契约测试
 mvn -pl mars-cloud-common clean test                  # 单模块
+tools/rocketmq-contract.sh 127.0.0.1:9876 s1- <报告目录>  # rocketmq starter 对真实 RocketMQ 的契约测试（profile rocketmq-contract）
 mvn -pl mars-cloud-mvc-spring-boot-starter -am test   # 单模块 + 其依赖
 mvn -pl mars-cloud-nacos-spring-boot-starter -am test # Nacos 约定 + 其依赖
 ```

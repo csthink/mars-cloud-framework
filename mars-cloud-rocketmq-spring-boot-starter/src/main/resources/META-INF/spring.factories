@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+com.mars.cloud.rocketmq.autoconfigure.MarsRocketMqDefaultsEnvironmentPostProcessor

@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mars.cloud</groupId>
+        <artifactId>mars-cloud-dependencies</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../mars-cloud-dependencies/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>mars-cloud-rocketmq-spring-boot-starter</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>mars-cloud-rocketmq-spring-boot-starter</name>
+    <description>RocketMQ 消息 Starter：Spring Cloud Stream 函数式模型、事务发送、消费约定、上下文透传、主题核验与运行环境前缀</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.mars.cloud</groupId>
+            <artifactId>mars-cloud-common</artifactId>
+        </dependency>
+
+        <!--
+          SCA 的 RocketMQ binder（binder 类就在这个 starter jar 里）。
+          排除 OTLP 导出器：RocketMQ 客户端不导出 OTLP，它只会把 okhttp 与 kotlin-stdlib 带进业务服务，
+          并让 Spring Cloud Function 在启动时提示缺少 jackson-module-kotlin。
+          排除 reflections：rocketmq-remoting 只在服务端的 RequestHeaderRegistry 里用它扫描请求头类，客户端与管理接口
+          都不调用；它依赖的 javassist 3.21.0-GA 的 POM 有模型问题，会让每次依赖解析打印一条 Maven WARNING。
+        -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-stream-rocketmq</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>opentelemetry-exporter-otlp</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.reflections</groupId>
+                    <artifactId>reflections</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- 主题与消费组的核验与创建（DefaultMQAdminExt）；同样排除只有服务端用到的 reflections -->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-tools</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.reflections</groupId>
+                    <artifactId>reflections</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Jackson 3 的 ObjectMapper bean：binder 头映射与 Spring Cloud Function 都要用它 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jackson</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- 发布器检查外层事务、幂等助手在事务内登记 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+
+        <!-- 有 Tracer 与 Propagator bean 时传播 traceparent；没有时只传身份头 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-stream-test-binder</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <encoding>UTF-8</encoding>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                            <version>${spring-boot.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <encoding>UTF-8</encoding>
+                    <doclint>none</doclint>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals><goal>jar</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Automatic-Module-Name>com.mars.cloud.rocketmq</Automatic-Module-Name>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+          契约测试对真实 RocketMQ 运行，源码放 src/contract/java，只有这个 profile 把它加入测试源码目录。
+          远端 CI 没有 RocketMQ，默认构建不激活它；本机用 tools/rocketmq-contract.sh 执行。
+        -->
+        <profile>
+            <id>rocketmq-contract</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <version>3.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>add-contract-sources</id>
+                                <phase>generate-test-sources</phase>
+                                <goals><goal>add-test-source</goal></goals>
+                                <configuration>
+                                    <sources>
+                                        <source>src/contract/java</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>add-contract-resources</id>
+                                <phase>generate-test-resources</phase>
+                                <goals><goal>add-test-resource</goal></goals>
+                                <configuration>
+                                    <resources>
+                                        <resource>
+                                            <directory>src/contract/resources</directory>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

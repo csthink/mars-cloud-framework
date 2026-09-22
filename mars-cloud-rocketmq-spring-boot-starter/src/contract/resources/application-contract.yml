@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: mars-cloud-contract-service
+  main:
+    banner-mode: off
+  cloud:
+    function:
+      definition: contractEvent
+    stream:
+      output-bindings: contractTx;contractPlain
+      bindings:
+        contractEvent-in-0:
+          destination: contract-event
+          group: mars-cloud-contract-service-contract-event
+        contractTx-out-0:
+          destination: contract-event
+        contractPlain-out-0:
+          destination: contract-event
+      rocketmq:
+        bindings:
+          contractTx-out-0:
+            producer:
+              group: contract-tx-producer
+              producer-type: Trans
+              transaction-listener: marsTransactionListener
+          contractPlain-out-0:
+            producer:
+              group: contract-plain-producer
+          contractEvent-in-0:
+            consumer:
+              push:
+                max-reconsume-times: 2
+                delay-level-when-next-consume: 1
+mars:
+  rocketmq:
+    topology: provision
+logging:
+  level:
+    root: warn
+    com.mars.cloud.rocketmq: info
+    com.alibaba.cloud.stream.binder.rocketmq: info

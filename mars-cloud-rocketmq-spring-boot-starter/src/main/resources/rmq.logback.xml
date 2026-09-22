@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RocketMQ 客户端自带的 shaded logback 从 classpath 读取这份配置。
+  默认模板会把客户端日志写到用户目录下的文件；这里只留 stdout，让容器日志采集拿到它。
+  级别由系统属性 rocketmq.log.level 控制，默认 info。
+-->
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p --- [rocketmq-client] [%t] %logger{40} : %m%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    <root level="${rocketmq.log.level:-info}">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

@@ -102,6 +102,18 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 该 starter 固定 OpenFeign、LoadBalancer、调用方身份头、统一信封失败映射、超时和幂等重试边界。
 接入方式见 [`mars-cloud-feign-spring-boot-starter/README.md`](mars-cloud-feign-spring-boot-starter/README.md)。
 
+需要收发 RocketMQ 事件消息时，再引入：
+
+```xml
+<dependency>
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-rocketmq-spring-boot-starter</artifactId>
+</dependency>
+```
+
+该 starter 固定 Spring Cloud Stream 函数式模型、事务发送、消费约定、身份与 trace 透传、主题与消费组核验以及运行环境前缀。
+接入方式见 [`mars-cloud-rocketmq-spring-boot-starter/README.md`](mars-cloud-rocketmq-spring-boot-starter/README.md)。
+
 ### 参与本仓开发
 
 构建、测试与依赖约束见下文「[构建](#构建)」一节。
@@ -111,7 +123,7 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 | 模块 | 定位 |
 | --- | --- |
 | `mars-cloud-dependencies` | 依赖管理 BOM。全仓**版本唯一出口**，所有模块以它为 parent |
-| `mars-cloud-common` | 纯工具与模型库：统一信封、错误码、调用方上下文。**不依赖任何 Spring / Servlet 运行时组件** |
+| `mars-cloud-common` | 纯工具与模型库：统一信封、错误码、调用方上下文、消息信封与命名规则。**不依赖任何 Spring / Servlet 运行时组件** |
 | `mars-cloud-core-spring-boot-starter` | 核心自动装配，目前提供分布式 ID（雪花算法） |
 | `mars-cloud-mvc-spring-boot-starter` | Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间校验、i18n、请求上下文 |
 | `mars-cloud-mysql` | MyBatis-Plus 约定：基础实体、逻辑删除、审计字段填充、ID 生成器 |
@@ -120,6 +132,7 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 | [`mars-cloud-security-spring-boot-starter`](mars-cloud-security-spring-boot-starter/README.md) | Servlet / WebFlux JWT 验证、身份上下文与方法权限检查 |
 | [`mars-cloud-security-feign`](mars-cloud-security-feign/README.md) | Servlet 权限服务调用及当前用户令牌转发 |
 | [`mars-cloud-security-test-support`](mars-cloud-security-test-support/README.md) | 仅测试使用的临时 RSA 签发器与 JWKS 服务 |
+| [`mars-cloud-rocketmq-spring-boot-starter`](mars-cloud-rocketmq-spring-boot-starter/README.md) | RocketMQ 事件消息：事务发送、消费约定、上下文透传、主题核验与运行环境前缀 |
 
 依赖方向是单向的：starter → `common` / `dependencies` / 更底层的 starter
 （mvc starter 依赖 core starter 以获得分布式 ID），不允许反向依赖或成环。
