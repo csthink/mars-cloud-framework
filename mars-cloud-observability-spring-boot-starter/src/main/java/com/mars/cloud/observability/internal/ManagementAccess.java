@@ -29,10 +29,19 @@ public final class ManagementAccess {
                 || ClassUtils.isPresent(REACTIVE_SECURITY_MARKER, classLoader);
     }
 
-    /** 用户名与密码都非空白才算提供了凭据。 */
+    /**
+     * 用户名与密码都非空白才算提供了凭据。
+     *
+     * <p>用 {@code Binder}：部署时可能用环境变量的宽松形式给这两项，
+     * 按字面键查找会读不到，判断就会退化成「没配凭据」。
+     */
     public static boolean hasCredentials(Environment environment) {
-        return notBlank(environment.getProperty("mars.observability.management.username"))
-                && notBlank(environment.getProperty("mars.observability.management.password"));
+        return notBlank(bind(environment, "mars.observability.management.username"))
+                && notBlank(bind(environment, "mars.observability.management.password"));
+    }
+
+    private static String bind(Environment environment, String key) {
+        return Binder.get(environment).bind(key, String.class).orElse(null);
     }
 
     /** 管理端点能否受认证保护：既要有凭据，也要有 Spring Security。 */

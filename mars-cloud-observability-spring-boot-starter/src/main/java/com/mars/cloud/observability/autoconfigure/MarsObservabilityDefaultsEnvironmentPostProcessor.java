@@ -3,6 +3,7 @@ package com.mars.cloud.observability.autoconfigure;
 import com.mars.cloud.observability.internal.ManagementAccess;
 import com.mars.cloud.observability.internal.ManagementPort;
 import org.springframework.boot.EnvironmentPostProcessor;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.SpringApplication;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -81,24 +82,30 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
     }
 
     /**
-     * 取属性，没有就退回环境变量。空白按缺失处理，这样「没配」与「配成空字符串」
-     * 在后续判断里是同一件事。两者都没有时返回 {@code null}。
+     * 取属性，没有就退回环境变量。属性一侧用 {@code Binder}，这样环境变量的宽松形式
+     * （{@code MARS_OBSERVABILITY_MANAGEMENT_USERNAME}）与短名两条路都能进来。
+     * 空白按缺失处理，这样「没配」与「配成空字符串」在后续判断里是同一件事。
      */
     private String resolve(ConfigurableEnvironment environment, String property, String variable) {
-        String value = environment.getProperty(property);
+        String value = Binder.get(environment).bind(property, String.class).orElse(null);
         if (value == null || value.isBlank()) {
             value = environment.getProperty(variable);
         }
         return value == null || value.isBlank() ? null : value;
     }
 
-    /** 能认证就用完整清单，否则退回受限清单。 */
+    /**
+     * 能认证就用完整清单，否则退回受限清单。
+     *
+     * <p>用 {@code Binder} 而不是 {@code getProperty}：后者只按字面键查找，
+     * 部署时用环境变量覆盖清单会读不到，暴露面就悄悄退回内置默认值。
+     */
     private String effectiveExposure(ConfigurableEnvironment environment, boolean authenticated) {
         String key = authenticated
                 ? "mars.observability.management.exposure"
                 : "mars.observability.management.restricted-exposure";
         String fallback = authenticated ? "health,info,prometheus,metrics,loggers,threaddump,heapdump" : "health,info";
-        return environment.getProperty(key, fallback);
+        return Binder.get(environment).bind(key, String.class).orElse(fallback);
     }
 
     /**
