@@ -1,9 +1,10 @@
 package com.mars.cloud.observability.internal;
 
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.env.Environment;
 import org.springframework.util.ClassUtils;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -41,17 +42,24 @@ public final class ManagementAccess {
 
     /**
      * 当前激活的 profile 是否被 {@code mars.env.dev-profiles} 列为开发环境。
-     * 该属性由 core starter 定义，这里只读取它的原始取值，不依赖它的类。
+     *
+     * <p>该属性由别的组件定义，这里只读它的取值，不依赖它的类。用 {@code Binder} 而不是
+     * {@code getProperty(key, String[].class)}：配置文件里的列表会被展开成 {@code …[0]}、{@code …[1]}
+     * 这样的索引属性，按整键去取只会得到空值，判断会静默退化成「不是开发环境」。
+     * 比较忽略大小写，与该属性原有的语义一致。
      */
     public static boolean developmentProfile(Environment environment) {
-        String[] configured = environment.getProperty("mars.env.dev-profiles", String[].class);
-        if (configured == null || configured.length == 0) {
+        List<String> development = Binder.get(environment)
+                .bind("mars.env.dev-profiles", Bindable.listOf(String.class))
+                .orElse(List.of());
+        if (development.isEmpty()) {
             return false;
         }
-        List<String> development = Arrays.asList(configured);
         for (String active : environment.getActiveProfiles()) {
-            if (development.contains(active)) {
-                return true;
+            for (String candidate : development) {
+                if (candidate != null && candidate.equalsIgnoreCase(active)) {
+                    return true;
+                }
             }
         }
         return false;

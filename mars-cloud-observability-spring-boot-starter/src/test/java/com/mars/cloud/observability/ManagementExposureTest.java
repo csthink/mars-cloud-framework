@@ -62,7 +62,11 @@ class ManagementExposureTest {
                 .isEqualTo("health");
     }
 
-    /** 缺凭据时非开发 profile 启动失败，消息说清楚缺什么。 */
+    /**
+     * 缺凭据时非开发 profile 启动失败，消息说清楚缺什么。
+     * 本模块的测试 classpath 上有 Spring Security，走的是「配置遗漏」那条路径；
+     * 「没有 Spring Security」那条只告警不拒绝，由接入的部署物在真进程里体现。
+     */
     @Test void failsOutsideDevelopmentProfilesWithoutCredentials() {
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(MarsObservabilityAutoConfiguration.class))

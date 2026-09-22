@@ -2,9 +2,11 @@ package com.mars.cloud.observability.autoconfigure;
 
 import com.mars.cloud.observability.internal.ManagementAccess;
 import com.mars.cloud.observability.internal.ManagementPort;
+import com.mars.cloud.observability.security.ManagementCredentials;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.core.env.Environment;
 
 import java.util.Arrays;
@@ -22,21 +24,28 @@ public final class ObservabilityConventionVerifier implements InitializingBean {
             "管理端点缺少认证凭据，暴露面已收窄；生产环境必须提供 mars.observability.management.username 与 password";
     static final String MISSING_SECURITY_MESSAGE =
             "classpath 上没有 Spring Security，管理端点无法建立认证链，暴露面已收窄";
+    /** 有凭据、有 Spring Security，但部署物没有启用 Web 安全，链因此没建起来。 */
+    static final String CHAIN_NOT_BUILT_MESSAGE =
+            "管理端点的认证链没有装配：部署物没有启用 Web 安全，管理端点当前不受认证保护";
 
     private static final Log logger = LogFactory.getLog(ObservabilityConventionVerifier.class);
 
     private final Environment environment;
     private final ObservabilityProperties properties;
+    private final ListableBeanFactory beanFactory;
 
-    public ObservabilityConventionVerifier(Environment environment, ObservabilityProperties properties) {
+    public ObservabilityConventionVerifier(Environment environment, ObservabilityProperties properties,
+                                           ListableBeanFactory beanFactory) {
         this.environment = environment;
         this.properties = properties;
+        this.beanFactory = beanFactory;
     }
 
     @Override
     public void afterPropertiesSet() {
         verifyManagementPort();
         verifyCredentials();
+        verifyChainIsBuilt();
     }
 
     private void verifyManagementPort() {
@@ -72,12 +81,31 @@ public final class ObservabilityConventionVerifier implements InitializingBean {
         if (ManagementAccess.canAuthenticate(environment, classLoader)) {
             return;
         }
-        String message = ManagementAccess.securityPresent(classLoader)
-                ? MISSING_CREDENTIALS_MESSAGE
-                : MISSING_SECURITY_MESSAGE;
-        require(isDevelopmentProfile(), message + "；当前激活的 profile 是 "
+        if (!ManagementAccess.securityPresent(classLoader)) {
+            // 部署物没有接入 Spring Security。
+            // 告警即可；拒绝启动会让这类部署物在任何非开发环境都起不来。
+            logger.warn(MISSING_SECURITY_MESSAGE);
+            return;
+        }
+        // 有 Spring Security 却没配凭据是配置遗漏：放过它等于把指标与日志级别端点裸露在内网。
+        require(isDevelopmentProfile(), MISSING_CREDENTIALS_MESSAGE + "；当前激活的 profile 是 "
                 + Arrays.toString(environment.getActiveProfiles()));
-        logger.warn(message);
+        logger.warn(MISSING_CREDENTIALS_MESSAGE);
+    }
+
+    /**
+     * 凭据齐备时链应当已经装配。没装配说明部署物没有启用 Web 安全，
+     * 这时管理端点不受认证保护；只告警不拒绝启动，因为那同样是部署物自己的形态。
+     */
+    private void verifyChainIsBuilt() {
+        if (!ManagementAccess.canAuthenticate(environment, getClass().getClassLoader())) {
+            return;
+        }
+        boolean built = beanFactory.containsBeanDefinition(ManagementCredentials.SERVLET_CHAIN_BEAN)
+                || beanFactory.containsBeanDefinition(ManagementCredentials.REACTIVE_CHAIN_BEAN);
+        if (!built) {
+            logger.warn(CHAIN_NOT_BUILT_MESSAGE);
+        }
     }
 
     private boolean isDevelopmentProfile() {

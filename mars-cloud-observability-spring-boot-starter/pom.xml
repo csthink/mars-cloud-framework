@@ -64,12 +64,14 @@
         </dependency>
 
         <!--
-          管理端点的 Basic 认证链。可选：部署物的 classpath 上没有 Spring Security 时
-          不装配这两条链，暴露面由核验器收窄为 health 与 info。
+          管理端点认证链所需的端点匹配器（EndpointRequest）就在这个模块里。
+          可选：部署物没有启用 Boot 的 Web 安全时它不在 classpath 上，两条链都不装配，
+          暴露面已由环境后处理收窄为 health 与 info，核验器再把这个状态告警出来。
+          需要管理链的部署物在自己的 POM 里声明 spring-boot-starter-security。
         -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
+            <artifactId>spring-boot-security</artifactId>
             <optional>true</optional>
         </dependency>
 
@@ -92,6 +94,11 @@
             <scope>test</scope>
         </dependency>
         <!-- 两种 Web 栈各自的真端口测试：管理端口上的匿名与带凭据请求 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>

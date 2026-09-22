@@ -22,9 +22,20 @@ class AutoConfigurationBoundaryTest {
         List<String> registered = readImports();
         assertThat(registered).containsExactlyInAnyOrder(
                 "com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration",
-                "com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration$RegistrationMetadataConfiguration",
-                "com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration$ServletManagementSecurityAutoConfiguration",
-                "com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration$ReactiveManagementSecurityAutoConfiguration");
+                "com.mars.cloud.observability.autoconfigure.ManagementRegistrationAutoConfiguration",
+                "com.mars.cloud.observability.autoconfigure.ServletManagementSecurityAutoConfiguration",
+                "com.mars.cloud.observability.autoconfigure.ReactiveManagementSecurityAutoConfiguration");
+    }
+
+    /**
+     * 每个自动配置都必须是顶层类：嵌套的配置类会随外层一起被处理，
+     * {@code spring.autoconfigure.exclude} 对它们无效，部署物就关不掉其中任何一项。
+     */
+    @Test void everyAutoConfigurationIsATopLevelClass() throws Exception {
+        for (String name : readImports()) {
+            assertThat(name).doesNotContain("$");
+            assertThat(Class.forName(name).getEnclosingClass()).isNull();
+        }
     }
 
     @Test void everyRegisteredClassExists() throws Exception {
