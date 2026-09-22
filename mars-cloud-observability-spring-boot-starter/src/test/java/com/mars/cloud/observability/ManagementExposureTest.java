@@ -96,6 +96,33 @@ class ManagementExposureTest {
         assertThat(environment.getProperty("management.endpoint.health.probes.enabled")).isEqualTo("true");
     }
 
+    /**
+     * 部署时用的短环境变量名要能生效。它与属性名不在同一段，Boot 的宽松绑定接不上，
+     * 组件显式映射了这一步；漏掉映射时凭据会静默失效、暴露面被收窄，而没有任何报错。
+     */
+    @Test void shortEnvironmentVariableNamesAreMapped() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setProperty("MARS_MANAGEMENT_USERNAME", "ops");
+        environment.setProperty("MARS_MANAGEMENT_PASSWORD", "secret");
+        new MarsObservabilityDefaultsEnvironmentPostProcessor()
+                .postProcessEnvironment(environment, new SpringApplication());
+        assertThat(environment.getProperty("mars.observability.management.username")).isEqualTo("ops");
+        assertThat(environment.getProperty("mars.observability.management.password")).isEqualTo("secret");
+        assertThat(environment.getProperty("management.endpoints.web.exposure.include"))
+                .isEqualTo("health,info,prometheus,metrics,loggers,threaddump,heapdump");
+    }
+
+    /** 显式属性优先于环境变量。 */
+    @Test void explicitPropertiesWinOverEnvironmentVariables() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setProperty("MARS_MANAGEMENT_USERNAME", "from-variable");
+        environment.setProperty("mars.observability.management.username", "from-property");
+        environment.setProperty("MARS_MANAGEMENT_PASSWORD", "secret");
+        new MarsObservabilityDefaultsEnvironmentPostProcessor()
+                .postProcessEnvironment(environment, new SpringApplication());
+        assertThat(environment.getProperty("mars.observability.management.username")).isEqualTo("from-property");
+    }
+
     private static String exposureAfterPostProcessing(Map<String, Object> properties) {
         MockEnvironment mock = new MockEnvironment();
         properties.forEach((key, value) -> mock.setProperty(key, String.valueOf(value)));

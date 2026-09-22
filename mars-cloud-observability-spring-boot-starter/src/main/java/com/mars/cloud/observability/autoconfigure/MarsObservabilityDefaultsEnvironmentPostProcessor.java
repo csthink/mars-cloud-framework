@@ -23,6 +23,10 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
     /** Boot 4 的 OTLP 追踪导出端点属性名；Boot 3 的 management.otlp.tracing.endpoint 已失效。 */
     public static final String TRACING_ENDPOINT_PROPERTY =
             "management.opentelemetry.tracing.export.otlp.endpoint";
+    /** 管理端点认证账号的属性名，对应环境变量 MARS_MANAGEMENT_USERNAME。 */
+    public static final String USERNAME_PROPERTY = "mars.observability.management.username";
+    /** 管理端点认证口令的属性名，对应环境变量 MARS_MANAGEMENT_PASSWORD。 */
+    public static final String PASSWORD_PROPERTY = "mars.observability.management.password";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -31,9 +35,23 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
         }
         Map<String, Object> defaults = new LinkedHashMap<>();
 
+        // 几个部署时要填的取值用短环境变量名，它们与属性名不同段，Boot 的宽松绑定接不上，
+        // 所以在这里显式映射。部署物因此只需要认这几个名字，不用记完整属性路径。
+        String username = resolve(environment, USERNAME_PROPERTY, "MARS_MANAGEMENT_USERNAME");
+        String password = resolve(environment, PASSWORD_PROPERTY, "MARS_MANAGEMENT_PASSWORD");
+        if (username != null) {
+            defaults.put(USERNAME_PROPERTY, username);
+        }
+        if (password != null) {
+            defaults.put(PASSWORD_PROPERTY, password);
+        }
+
         // 管理端点的暴露面必须在 Actuator 读取它之前定好，所以收窄在这里完成而不是留给核验器：
         // 没有凭据或没有 Spring Security 时，除 health 与 info 外的端点在管理端口上是无认证可读的。
-        defaults.put("management.endpoints.web.exposure.include", effectiveExposure(environment));
+        // 暴露面要用映射后的凭据判断：映射结果此刻还在本方法的局部集合里，没进环境。
+        boolean authenticated = username != null && password != null
+                && ManagementAccess.securityPresent(getClass().getClassLoader());
+        defaults.put("management.endpoints.web.exposure.include", effectiveExposure(environment, authenticated));
         defaults.put("management.endpoint.health.show-details", "when-authorized");
         defaults.put("management.endpoint.health.show-components", "when-authorized");
         defaults.put("management.endpoint.health.probes.enabled", true);
@@ -62,9 +80,20 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
         environment.getPropertySources().addLast(new MapPropertySource(PROPERTY_SOURCE_NAME, defaults));
     }
 
+    /**
+     * 取属性，没有就退回环境变量。空白按缺失处理，这样「没配」与「配成空字符串」
+     * 在后续判断里是同一件事。两者都没有时返回 {@code null}。
+     */
+    private String resolve(ConfigurableEnvironment environment, String property, String variable) {
+        String value = environment.getProperty(property);
+        if (value == null || value.isBlank()) {
+            value = environment.getProperty(variable);
+        }
+        return value == null || value.isBlank() ? null : value;
+    }
+
     /** 能认证就用完整清单，否则退回受限清单。 */
-    private String effectiveExposure(ConfigurableEnvironment environment) {
-        boolean authenticated = ManagementAccess.canAuthenticate(environment, getClass().getClassLoader());
+    private String effectiveExposure(ConfigurableEnvironment environment, boolean authenticated) {
         String key = authenticated
                 ? "mars.observability.management.exposure"
                 : "mars.observability.management.restricted-exposure";
