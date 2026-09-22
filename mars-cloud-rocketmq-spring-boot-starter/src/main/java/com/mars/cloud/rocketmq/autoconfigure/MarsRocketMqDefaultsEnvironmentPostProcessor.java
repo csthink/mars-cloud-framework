@@ -84,7 +84,9 @@ public final class MarsRocketMqDefaultsEnvironmentPostProcessor implements Envir
                     continue;
                 }
                 String value = environment.getProperty(key, "").trim();
-                rewritten.put(RAW_PRODUCER_GROUP_PREFIX + matcher.group(1), value);
+                // Boot 允许用方括号保护含特殊字符的 map 键：bindings.[orderTx-out-0].producer.group
+                String binding = matcher.group(1).replaceAll("^\\[|\\]$", "");
+                rewritten.put(RAW_PRODUCER_GROUP_PREFIX + binding, value);
                 if (rewrite && MessagingNames.isName(value) && !value.startsWith(prefix)) {
                     rewritten.put(key, prefix + value);
                 }

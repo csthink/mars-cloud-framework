@@ -63,6 +63,15 @@ class MarsRocketMqDefaultsEnvironmentPostProcessorTest {
         assertThat(environment.getProperty("mars.rocketmq.raw-producer-groups.orderTx-out-0")).isEqualTo("mars-cloud-order-service-order-tx");
         assertThat(environment.getProperty("mars.rocketmq.raw-producer-groups.orderPlain-out-0")).isEqualTo("s3-mars-cloud-order-service-order-plain");
 
+        MockEnvironment bracketed = new MockEnvironment()
+                .withProperty("MARS_MQ_PREFIX", "s3-")
+                .withProperty("spring.cloud.stream.rocketmq.bindings.[orderTx-out-0].producer.group", "mars-cloud-order-service-order-tx");
+        processor.postProcessEnvironment(bracketed, null);
+        assertThat(bracketed.getProperty("mars.rocketmq.raw-producer-groups.orderTx-out-0")).as("方括号写法的 binding 键去掉括号后记录")
+                .isEqualTo("mars-cloud-order-service-order-tx");
+        assertThat(bracketed.getProperty("spring.cloud.stream.rocketmq.bindings.[orderTx-out-0].producer.group"))
+                .isEqualTo("s3-mars-cloud-order-service-order-tx");
+
         MockEnvironment noPrefix = new MockEnvironment()
                 .withProperty("spring.cloud.stream.rocketmq.bindings.orderTx-out-0.producer.group", "mars-cloud-order-service-order-tx");
         processor.postProcessEnvironment(noPrefix, null);
