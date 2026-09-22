@@ -36,6 +36,7 @@
         <mars-cloud-security-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-security-spring-boot-starter.version>
         <mars-cloud-security-feign.version>1.0.0-SNAPSHOT</mars-cloud-security-feign.version>
         <mars-cloud-security-test-support.version>1.0.0-SNAPSHOT</mars-cloud-security-test-support.version>
+        <mars-cloud-rocketmq-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-rocketmq-spring-boot-starter.version>
 
         <!-- 常用依赖版本 -->
         <lombok.version>1.18.40</lombok.version>
@@ -48,7 +49,13 @@
         <jackson-annotations.version>2.21</jackson-annotations.version>
         <hutool-all.version>5.8.47</hutool-all.version>
         <hutool-core.version>5.8.47</hutool-core.version>
-        <fastjson2.version>2.0.65</fastjson2.version>
+        <!--
+          RocketMQ 管理 API（DefaultMQAdminExt）所在的 artifact。SCA BOM 只托管 rocketmq-client 与 rocketmq-acl，
+          这里的版本必须与 SCA BOM 的 rocketmq.version 一致（2025.1.0.0 对应 5.3.1），升级 SCA 时一并核对。
+          fastjson 家族不在这里管理：binder 与 rocketmq-common 传递引入的 com.alibaba:fastjson 由 SCA BOM 钉版本，
+          本项目代码不使用它，也不单独抬 fastjson2 核心的版本。
+        -->
+        <rocketmq-tools.version>5.3.1</rocketmq-tools.version>
         <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <!-- 3.5.9 起分页等依赖 JSqlParser 的拦截器被拆到独立 artifact -->
@@ -77,10 +84,13 @@
           surefire argLine 的晚绑定基座。下面 pluginManagement 里的 argLine 以 @{argLine} 开头，
           这里必须存在，否则 @{argLine} 会以字面量进测试 JVM 命令行。
           -Xshare:off 关闭测试 JVM 的类数据共享，避免 Mockito agent 扩展 bootstrap classpath 时的提示。
+          sun-misc-unsafe-memory-access=allow（JVM 参数，前置两个连字符）：RocketMQ 客户端一旦加载就经
+          fastjson2 的 JDKUtils 调用 sun.misc.Unsafe::arrayBaseOffset，JDK 24 起（JEP 498）默认打印弃用警告，
+          验证脚本把它视为未知诊断。应用 JVM 已由下面 spring-boot-maven-plugin 的 jvmArguments 与容器入口带同一参数。
           将来接 jacoco 之类会改写 argLine 属性的工具时，它们的参数会自动接在前面，不要覆盖
           pluginManagement 里那一行。
         -->
-        <argLine>-Xshare:off</argLine>
+        <argLine>-Xshare:off --sun-misc-unsafe-memory-access=allow</argLine>
     </properties>
 
     <!--
@@ -173,6 +183,12 @@
                 <version>${mars-cloud-security-test-support.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-rocketmq-spring-boot-starter</artifactId>
+                <version>${mars-cloud-rocketmq-spring-boot-starter.version}</version>
+            </dependency>
+
             <!-- 常用依赖版本声明 -->
             <dependency>
                 <groupId>org.projectlombok</groupId>
@@ -192,10 +208,11 @@
                 <version>${hutool-core.version}</version>
             </dependency>
 
+            <!-- RocketMQ 管理 API：只登记版本，由需要核验或创建主题与消费组的 starter 引用 -->
             <dependency>
-                <groupId>com.alibaba.fastjson2</groupId>
-                <artifactId>fastjson2</artifactId>
-                <version>${fastjson2.version}</version>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-tools</artifactId>
+                <version>${rocketmq-tools.version}</version>
             </dependency>
 
             <dependency>

@@ -56,6 +56,8 @@
 该属性默认包含 `-Xshare:off`，关闭测试 JVM 的类数据共享，避免 Mockito agent 扩展 bootstrap classpath 时产生相关提示。
 同一行还给测试 JVM 带了 `--enable-native-access=ALL-UNNAMED`：测试里真的发起 HTTP 调用的模块
 （响应式栈）会让 Netty 加载平台原生库，JDK 24 起未声明原生访问会打印 restricted method 警告。
+该属性还包含 `--sun-misc-unsafe-memory-access=allow`：RocketMQ 客户端一旦加载就经 fastjson2 调用 `sun.misc.Unsafe`，
+JDK 24 起默认打印弃用警告，验证脚本把它视为未知诊断；应用 JVM 由 `spring-boot-maven-plugin` 与容器入口带同一参数。
 
 ```bash
 mvn clean install                                     # 全量 + 契约测试

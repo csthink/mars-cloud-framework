@@ -22,6 +22,7 @@
 | `com.mars.cloud.common.error` | 错误码契约 `ErrorCode` |
 | `com.mars.cloud.common.exception` | 与实现无关的通用异常，目前是 `LockFailureException` |
 | `com.mars.cloud.common.context` | 调用方上下文 `CallerContext`、阻塞线程上下文持有者与内部请求头名 |
+| `com.mars.cloud.common.messaging` | 事件消息信封 `EventEnvelope`、与中间件无关的消息头名 `MessagingHeaders`、主题与消费组命名规则 `MessagingNames` |
 | `com.mars.cloud.common.domain.util` | 通用工具：`IDGenerator`、`JsonUtil`、`TimeUtils` |
 
 ### CallerContext
@@ -43,6 +44,23 @@ scope 支持嵌套，关闭内层后会恢复外层值，关闭最外层后会�
 
 Reactive 代码只复用 `CallerContext` 值对象与 `InternalCallHeaders`，上下文放入 Reactor Context，
 不得使用 `CallerContextHolder`。
+
+### 消息约定
+
+`EventEnvelope<T>` 是事件消息体的唯一形态，字段按蛇形序列化：`event_id`、`event_type`（与 tag 相同）、
+`occurred_at`、`producer`、`trace_id`、`key`（业务键）与 `payload`。除 `trace_id` 与 `payload` 外都不能为空，
+`event_type` 必须是大写事件名，`producer` 必须是小写连字符形态的应用名。
+
+```java
+EventEnvelope<OrderPaid> event = EventEnvelope.of("PAID", "mars-cloud-order-service", orderId, new OrderPaid(orderId, amount));
+```
+
+`MessagingNames` 给出主题名 `<domain>-event`、消费组名 `<应用名>-<主题>` 与 tag 的形态校验，
+以及运行环境前缀的增删：`withPrefix("s1-", "order-event")` 得到 `s1-order-event`，已带前缀的名字再加前缀会被拒绝。
+主题名与消费组名必须一起加前缀，因为 RocketMQ 要求同一消费组的订阅完全一致。
+
+`MessagingHeaders` 只放与中间件无关的头名：`traceparent`、`tracestate` 与 `X-Mars-Event-Id`；
+调用方身份继续用 `InternalCallHeaders` 的三个头名。中间件特有的头名由对应的 starter 定义。
 
 ### UnifyResponse
 
