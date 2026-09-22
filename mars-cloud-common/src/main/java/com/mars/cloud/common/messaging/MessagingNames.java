@@ -103,6 +103,9 @@ public final class MessagingNames {
     /**
      * 给主题名或消费组名加运行环境前缀。
      *
+     * <p>双重前缀的判断按字面：不带前缀的名字若以同一片段开头（前缀 {@code s1-} 配主题 {@code s1-event}）
+     * 也会被拒绝，所以不带前缀的名字首段不得与前缀片段相同。
+     *
      * @param prefix 运行环境前缀，空字符串表示不加
      * @param name 不带前缀的名字
      * @return 带前缀的名字；已经带该前缀的名字会被拒绝，避免双重前缀
@@ -132,7 +135,7 @@ public final class MessagingNames {
         if (prefix.isEmpty()) {
             return name;
         }
-        if (!name.startsWith(prefix) || name.length() == prefix.length()) {
+        if (!name.startsWith(prefix)) {
             throw new IllegalArgumentException("name 不带前缀 " + prefix + ": " + name);
         }
         return name.substring(prefix.length());

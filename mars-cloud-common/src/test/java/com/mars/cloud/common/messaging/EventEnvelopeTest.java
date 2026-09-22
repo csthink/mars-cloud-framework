@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
@@ -67,7 +68,7 @@ class EventEnvelopeTest {
         Instant before = Instant.now();
         EventEnvelope<String> envelope = EventEnvelope.of("CREATED", "mars-cloud-order-service", "order-1", "x");
 
-        assertThat(UUID.fromString(envelope.eventId())).isNotNull();
+        assertThatCode(() -> UUID.fromString(envelope.eventId())).doesNotThrowAnyException();
         assertThat(envelope.occurredAt()).isBetween(before, Instant.now());
         assertThat(envelope.traceId()).isNull();
         assertThat(envelope.withTraceId("abc").traceId()).isEqualTo("abc");

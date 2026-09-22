@@ -365,8 +365,9 @@
                           改为拒绝。没有原生库的服务带上无副作用，所以统一给出。
 
                           打包后的 jar 不经过本插件启动，容器与脚本里的 java -jar 命令需要
-                          自行带上同一组参数。测试 JVM 不经过本插件：Unsafe 那条它不需要（测试明确
-                          离线，Nacos 客户端不会被调用），native-access 那条由上面的 surefire argLine 给出。
+                          自行带上同一组参数。测试 JVM 不经过本插件：Unsafe 那条由上面 properties 里的
+                          argLine 基座给出（RocketMQ 客户端一加载就触发），native-access 那条由 surefire 的
+                          argLine 给出。
                         -->
                         <jvmArguments>--sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED</jvmArguments>
                     </configuration>

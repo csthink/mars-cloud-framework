@@ -84,6 +84,9 @@ class MessagingNamesTest {
                 .isThrownBy(() -> MessagingNames.stripPrefix("s1-", "order-event"));
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> MessagingNames.stripPrefix("s1-", "s1-"));
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> MessagingNames.withPrefix("s1-", "s1-event"))
+                .withMessageContaining("重复");
     }
 
     @ParameterizedTest
