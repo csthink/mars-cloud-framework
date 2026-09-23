@@ -71,25 +71,30 @@ class NacosDefaultsTest {
                 .isEqualTo("192.0.2.10");
     }
 
+    /** 显式配置的注册地址即使为空也保留：Spring Cloud Alibaba 把空值当作未配置，自己选取网卡。 */
+    @Test void anEmptyExplicitRegistrationAddressIsKept() {
+        assertThat(registrationAddress(Map.of("server.address", "10.1.2.3", DISCOVERY_IP, ""))).isEmpty();
+    }
+
     /**
-     * 部署者用网卡、IP 类型或 Spring Cloud 的网卡偏好决定了注册地址怎么选取时不推导：
-     * 注册地址一旦给出，Spring Cloud Alibaba 就不再看这些配置项。
+     * 网卡、IP 类型与网卡偏好只能从本机网卡里挑地址，挑出别的地址也没有进程在那里监听，
+     * 所以它们不阻止推导，注册地址仍是业务端口监听的地址。
      */
     @ParameterizedTest
     @ValueSource(strings = {
             "spring.cloud.nacos.discovery.network-interface=en0",
-            "spring.cloud.nacos.discovery.ip-type=IPv6",
+            "spring.cloud.nacos.discovery.ip-type=IPv4",
             "spring.cloud.inetutils.use-only-site-local-interfaces=true",
             "spring.cloud.inetutils.preferred-networks[0]=10.1",
             "spring.cloud.inetutils.ignored-interfaces=docker0"})
-    void noRegistrationAddressIsDerivedWhenTheDeployerChoseHowToPickIt(String choice) {
-        String[] pair = choice.split("=", 2);
-        assertThat(registrationAddress(Map.of("server.address", "10.1.2.3", pair[0], pair[1]))).isNull();
+    void interfaceSelectionDoesNotStopTheDerivation(String selection) {
+        String[] pair = selection.split("=", 2);
+        assertThat(registrationAddress(Map.of("server.address", "10.1.2.3", pair[0], pair[1]))).isEqualTo("10.1.2.3");
     }
 
     /**
      * 业务地址不是具体的 IPv4 字面量时不推导：通配地址注册后调用方连不上，主机名不做域名解析，
-     * IPv6 地址不带方括号拼进实例地址时无效。
+     * Spring Cloud 拼实例地址时不给 IPv6 地址加方括号，拼出的地址无效。
      */
     @ParameterizedTest
     @ValueSource(strings = {"0.0.0.0", "::", "fd00::1", "[fd00::1]", "localhost", "service.example", " "})
