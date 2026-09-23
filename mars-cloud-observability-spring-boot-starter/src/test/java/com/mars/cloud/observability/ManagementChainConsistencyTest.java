@@ -164,6 +164,9 @@ class ManagementChainConsistencyTest {
     /**
      * 真端口：部署物排除了认证链，而它自己的业务安全链放行全部请求。这时若照常启动，管理端口上的指标、
      * 日志级别与线程转储会匿名可读；所以非开发 profile 在启动期就失败，端口根本不会打开。
+     *
+     * <p>Spring Boot 对任何启动失败都打一条通用的 ERROR，日志检查不能为它登记例外：那会放行所有启动失败。
+     * 这里只关掉这一个 logger，失败原因由断言核对。
      */
     @Test void refusesToStartRatherThanServeUnauthenticatedEndpoints() {
         assertThatThrownBy(() -> new SpringApplicationBuilder(ServletProbeApplication.class)
@@ -171,6 +174,7 @@ class ManagementChainConsistencyTest {
                 .run("--spring.application.name=chain-consistency-probe",
                         "--server.port=0",
                         "--management.server.port=0",
+                        "--logging.level.org.springframework.boot.SpringApplication=off",
                         "--mars.observability.management.username=ops",
                         "--mars.observability.management.password=ops-secret",
                         "--spring.autoconfigure.exclude="

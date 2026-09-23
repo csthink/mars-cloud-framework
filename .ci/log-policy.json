@@ -317,10 +317,6 @@
       "reason": "Negative management chain test on a real port: a non-development application whose management security chain is excluded must fail to start. Spring Boot shortens the context class name to 40 characters."
     },
     {
-      "pattern": "ERROR\\ SpringApplication:\\ Application\\ run\\ failed",
-      "reason": "Negative management chain test on a real port: Spring Boot reports the intended startup failure; the test catches the exception and asserts its message."
-    },
-    {
       "pattern": "WARN\\ ManagementChainVerifier:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配或排除了认证链的自动配置，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]",
       "reason": "Management chain test: a development profile whose management security chain is not built logs the warning of the observability starter instead of failing."
     },
@@ -437,10 +433,6 @@
     {
       "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsMonitorAdminAccount'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/service/monitor/MonitorSecurityConfiguration\\.class\\]:\\ 监控面板必须配置管理员账号：mars\\.monitor\\.admin\\.username\\ 与\\ password\\ 都不能为空",
       "reason": "Negative monitor startup test: an empty monitor administrator password must fail to start."
-    },
-    {
-      "pattern": "ERROR\\ SpringApplication:\\ Application\\ run\\ failed",
-      "reason": "Negative monitor startup tests: Spring Boot reports each intended startup failure; every test catches the exception and asserts its message."
     },
     {
       "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsMonitorDingTalkNotifierGuard'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/service/monitor/MonitorNotificationConfiguration\\.class\\]:\\ 监控面板暂不支持钉钉通知，请删除\\ spring\\.boot\\.admin\\.notify\\.dingtalk\\.\\*\\ 配置：面板自带的钉钉通知器把签名参数编码了两次，与钉钉要求的单次编码不一致",
