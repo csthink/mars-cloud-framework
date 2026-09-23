@@ -1,10 +1,16 @@
 package com.mars.cloud.observability;
 
+import com.mars.cloud.observability.autoconfigure.ManagementRegistrationAutoConfiguration;
+import com.mars.cloud.observability.autoconfigure.ReactiveManagementSecurityAutoConfiguration;
+import com.mars.cloud.observability.autoconfigure.ServletManagementSecurityAutoConfiguration;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,6 +56,28 @@ class AutoConfigurationBoundaryTest {
         assertThat(factories)
                 .contains("org.springframework.boot.EnvironmentPostProcessor")
                 .contains("com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvironmentPostProcessor");
+    }
+
+    /**
+     * 自动配置排序声明里的类名都必须存在：指向不存在的类时排序约束静默失效，装配顺序只剩类名的字母序。
+     * Boot 的类在本模块测试 classpath 上直接加载；安全组件不是本模块的依赖，按它登记的自动配置清单核对。
+     */
+    @Test void everyOrderingReferenceNamesAnExistingClass() throws Exception {
+        List<String> securityStarter = Files.readAllLines(
+                Path.of("../mars-cloud-security-spring-boot-starter/src/main/resources", IMPORTS));
+        for (Class<?> type : List.of(ServletManagementSecurityAutoConfiguration.class,
+                ReactiveManagementSecurityAutoConfiguration.class, ManagementRegistrationAutoConfiguration.class)) {
+            AutoConfiguration ordering = type.getAnnotation(AutoConfiguration.class);
+            for (String name : ordering.afterName()) {
+                if (name.startsWith("com.mars.cloud.security.")) {
+                    assertThat(securityStarter).as(type.getSimpleName()).contains(name);
+                }
+                else {
+                    assertThat(Class.forName(name)).as(type.getSimpleName()).isNotNull();
+                }
+            }
+            assertThat(ordering.beforeName()).as(type.getSimpleName()).isEmpty();
+        }
     }
 
     private static List<String> readImports() throws IOException {
