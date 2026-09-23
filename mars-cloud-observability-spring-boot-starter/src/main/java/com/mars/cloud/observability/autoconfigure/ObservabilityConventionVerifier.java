@@ -2,11 +2,10 @@ package com.mars.cloud.observability.autoconfigure;
 
 import com.mars.cloud.observability.internal.ManagementAccess;
 import com.mars.cloud.observability.internal.ManagementPort;
-import com.mars.cloud.observability.security.ManagementCredentials;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.core.env.Environment;
 
 import java.util.Arrays;
@@ -14,38 +13,41 @@ import java.util.Arrays;
 /**
  * 在启动期核验管理端口与管理端点的约定。不满足即启动失败，异常消息写出实际值与期望值。
  *
- * <p>凭据缺失或 classpath 上没有 Spring Security 时，开发 profile 收窄暴露面并告警，
- * 其他 profile 启动失败：没有认证的指标端点等于把运行细节放在内网任人读取。
+ * <p>管理端点不能无认证地暴露指标、日志级别与堆转储：没有认证的这些端点等于把运行细节放在内网任人读取。
+ * 缺凭据时暴露面已收窄，开发 profile 告警、其他 profile 启动失败；建不起认证链（缺 Spring Security
+ * 或 Spring Boot 的 Web 安全模块）时暴露面同样已收窄，只告警。凭据与类都具备而认证链没有装配的情况
+ * 由 {@link ManagementChainVerifier} 核验，它只对 Web 应用装配。
  */
-public final class ObservabilityConventionVerifier implements InitializingBean {
+public final class ObservabilityConventionVerifier implements InitializingBean, BeanClassLoaderAware {
 
     /** 缺少凭据时的告警。这两条消息是固定的，日志策略按它们登记理由。 */
     static final String MISSING_CREDENTIALS_MESSAGE =
             "管理端点缺少认证凭据，暴露面已收窄；生产环境必须提供 mars.observability.management.username 与 password";
     static final String MISSING_SECURITY_MESSAGE =
-            "classpath 上没有 Spring Security，管理端点无法建立认证链，暴露面已收窄";
-    /** 有凭据、有 Spring Security，但部署物没有启用 Web 安全，链因此没建起来。 */
-    static final String CHAIN_NOT_BUILT_MESSAGE =
-            "管理端点的认证链没有装配：部署物没有启用 Web 安全，管理端点当前不受认证保护";
+            "classpath 上没有 Spring Security 或 Spring Boot 的 Web 安全模块（spring-boot-starter-security），"
+                    + "管理端点无法建立认证链，暴露面已收窄";
 
     private static final Log logger = LogFactory.getLog(ObservabilityConventionVerifier.class);
 
     private final Environment environment;
     private final ObservabilityProperties properties;
-    private final ListableBeanFactory beanFactory;
+    private ClassLoader classLoader = ObservabilityConventionVerifier.class.getClassLoader();
 
-    public ObservabilityConventionVerifier(Environment environment, ObservabilityProperties properties,
-                                           ListableBeanFactory beanFactory) {
+    public ObservabilityConventionVerifier(Environment environment, ObservabilityProperties properties) {
         this.environment = environment;
         this.properties = properties;
-        this.beanFactory = beanFactory;
+    }
+
+    /** 按应用的类加载器判断类是否存在，与环境后处理及认证链自动配置的判断一致。 */
+    @Override
+    public void setBeanClassLoader(ClassLoader classLoader) {
+        this.classLoader = classLoader;
     }
 
     @Override
     public void afterPropertiesSet() {
         verifyManagementPort();
         verifyCredentials();
-        verifyChainIsBuilt();
     }
 
     private void verifyManagementPort() {
@@ -77,35 +79,19 @@ public final class ObservabilityConventionVerifier implements InitializingBean {
     }
 
     private void verifyCredentials() {
-        ClassLoader classLoader = getClass().getClassLoader();
         if (ManagementAccess.canAuthenticate(environment, classLoader)) {
             return;
         }
-        if (!ManagementAccess.securityPresent(classLoader)) {
-            // 部署物没有接入 Spring Security。
-            // 告警即可；拒绝启动会让这类部署物在任何非开发环境都起不来。
+        if (!ManagementAccess.authenticationChainSupported(classLoader)) {
+            // 部署物没有接入 Spring Security 或 Web 安全模块。
+            // 暴露面已收窄，没有无认证的端点，告警即可；拒绝启动会让这类部署物在任何非开发环境都起不来。
             logger.warn(MISSING_SECURITY_MESSAGE);
             return;
         }
-        // 有 Spring Security 却没配凭据是配置遗漏：放过它等于把指标与日志级别端点裸露在内网。
+        // 能建认证链却没配凭据是配置遗漏：放过它等于把指标与日志级别端点裸露在内网。
         require(isDevelopmentProfile(), MISSING_CREDENTIALS_MESSAGE + "；当前激活的 profile 是 "
                 + Arrays.toString(environment.getActiveProfiles()));
         logger.warn(MISSING_CREDENTIALS_MESSAGE);
-    }
-
-    /**
-     * 凭据齐备时链应当已经装配。没装配说明部署物没有启用 Web 安全，
-     * 这时管理端点不受认证保护；只告警不拒绝启动，因为那同样是部署物自己的形态。
-     */
-    private void verifyChainIsBuilt() {
-        if (!ManagementAccess.canAuthenticate(environment, getClass().getClassLoader())) {
-            return;
-        }
-        boolean built = beanFactory.containsBeanDefinition(ManagementCredentials.SERVLET_CHAIN_BEAN)
-                || beanFactory.containsBeanDefinition(ManagementCredentials.REACTIVE_CHAIN_BEAN);
-        if (!built) {
-            logger.warn(CHAIN_NOT_BUILT_MESSAGE);
-        }
     }
 
     private boolean isDevelopmentProfile() {

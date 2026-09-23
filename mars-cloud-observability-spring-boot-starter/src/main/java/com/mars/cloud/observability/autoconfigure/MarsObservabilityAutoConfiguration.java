@@ -3,6 +3,7 @@ package com.mars.cloud.observability.autoconfigure;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
@@ -24,8 +25,17 @@ public class MarsObservabilityAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     ObservabilityConventionVerifier marsObservabilityConventionVerifier(Environment environment,
-                                                                       ObservabilityProperties properties,
-                                                                       ListableBeanFactory beanFactory) {
-        return new ObservabilityConventionVerifier(environment, properties, beanFactory);
+                                                                       ObservabilityProperties properties) {
+        return new ObservabilityConventionVerifier(environment, properties);
+    }
+
+    /**
+     * 管理端点确实受认证链保护的核验，只对 Web 应用装配，判断方式与两条认证链的 Web 应用条件相同。
+     * 不提供覆盖点：它是暴露面放开之后的最后一道检查。
+     */
+    @Bean
+    @ConditionalOnWebApplication
+    ManagementChainVerifier marsManagementChainVerifier(Environment environment, ListableBeanFactory beanFactory) {
+        return new ManagementChainVerifier(environment, beanFactory);
     }
 }

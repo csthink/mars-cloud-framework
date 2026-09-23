@@ -48,10 +48,11 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
         }
 
         // 管理端点的暴露面必须在 Actuator 读取它之前定好，所以收窄在这里完成而不是留给核验器：
-        // 没有凭据或没有 Spring Security 时，除 health 与 info 外的端点在管理端口上是无认证可读的。
+        // 没有凭据或建不起认证链时，除 health 与 info 外的端点在管理端口上是无认证可读的。
         // 暴露面要用映射后的凭据判断：映射结果此刻还在本方法的局部集合里，没进环境。
+        // 类是否存在按应用自己的类加载器判断，与认证链自动配置的类条件求值用同一个加载器。
         boolean authenticated = username != null && password != null
-                && ManagementAccess.securityPresent(getClass().getClassLoader());
+                && ManagementAccess.authenticationChainSupported(application.getClassLoader());
         defaults.put("management.endpoints.web.exposure.include", effectiveExposure(environment, authenticated));
         defaults.put("management.endpoint.health.show-details", "when-authorized");
         defaults.put("management.endpoint.health.show-components", "when-authorized");

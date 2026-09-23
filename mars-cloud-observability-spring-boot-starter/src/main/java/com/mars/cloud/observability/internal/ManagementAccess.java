@@ -17,16 +17,29 @@ public final class ManagementAccess {
 
     private static final String SERVLET_SECURITY_MARKER =
             "org.springframework.security.config.annotation.web.builders.HttpSecurity";
+    private static final String SERVLET_ENDPOINT_MATCHER =
+            "org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest";
     private static final String REACTIVE_SECURITY_MARKER =
             "org.springframework.security.config.web.server.ServerHttpSecurity";
+    private static final String REACTIVE_ENDPOINT_MATCHER =
+            "org.springframework.boot.security.autoconfigure.actuate.web.reactive.EndpointRequest";
 
     private ManagementAccess() {
     }
 
-    /** classpath 上有 Spring Security 才能建立管理端点的认证链。 */
-    public static boolean securityPresent(ClassLoader classLoader) {
-        return ClassUtils.isPresent(SERVLET_SECURITY_MARKER, classLoader)
-                || ClassUtils.isPresent(REACTIVE_SECURITY_MARKER, classLoader);
+    /**
+     * classpath 上具备建立管理端点认证链所需的类：同一种 Web 栈的 Spring Security 与 Spring Boot 的端点匹配器。
+     *
+     * <p>这组类与两条认证链自动配置的类条件逐一对应。只看 Spring Security 不够：部署物带了它却没有声明
+     * {@code spring-boot-starter-security} 时，链装配不起来，而暴露面若按有认证放开，管理端点就无认证可达。
+     *
+     * @param classLoader 应用自己的类加载器，不是本组件的类加载器
+     */
+    public static boolean authenticationChainSupported(ClassLoader classLoader) {
+        return (ClassUtils.isPresent(SERVLET_SECURITY_MARKER, classLoader)
+                && ClassUtils.isPresent(SERVLET_ENDPOINT_MATCHER, classLoader))
+                || (ClassUtils.isPresent(REACTIVE_SECURITY_MARKER, classLoader)
+                && ClassUtils.isPresent(REACTIVE_ENDPOINT_MATCHER, classLoader));
     }
 
     /**
@@ -44,9 +57,9 @@ public final class ManagementAccess {
         return Binder.get(environment).bind(key, String.class).orElse(null);
     }
 
-    /** 管理端点能否受认证保护：既要有凭据，也要有 Spring Security。 */
+    /** 管理端点能否受认证保护：既要有凭据，也要具备建立认证链所需的类。 */
     public static boolean canAuthenticate(Environment environment, ClassLoader classLoader) {
-        return hasCredentials(environment) && securityPresent(classLoader);
+        return hasCredentials(environment) && authenticationChainSupported(classLoader);
     }
 
     /**

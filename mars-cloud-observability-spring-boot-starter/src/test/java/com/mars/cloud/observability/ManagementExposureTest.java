@@ -14,11 +14,10 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 管理端点的暴露面：只有凭据与 Spring Security 都具备时才放开指标一类的端点。
+ * 管理端点的暴露面：只有凭据齐备、且能建立认证链时才放开指标一类的端点。
  *
- * <p>本模块的测试 classpath 上有 Spring Security，所以「缺凭据」与「凭据齐备」两种情况
- * 都能在这里覆盖；「没有 Spring Security」那条由 {@link DependencyBoundaryTest} 的类存在性断言
- * 与运行期的收窄逻辑共同保证。
+ * <p>本模块的测试 classpath 上有 Spring Security 与 Spring Boot 的 Web 安全模块，所以「缺凭据」与
+ * 「凭据齐备」两种情况都能在这里覆盖；建不起认证链、或认证链没有装配的情况见 {@link ManagementChainConsistencyTest}。
  */
 class ManagementExposureTest {
 
