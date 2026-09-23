@@ -4,9 +4,11 @@ import com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvir
 import com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration;
 import com.mars.cloud.observability.internal.ManagementAccess;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.LazyInitializationBeanFactoryPostProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.mock.env.MockEnvironment;
 
@@ -100,6 +102,25 @@ class ManagementExposureTest {
                             .hasMessageContaining("管理端点缺少认证凭据")
                             .hasMessageContaining("mars.observability.management.username");
                 });
+    }
+
+    /**
+     * 部署物打开延迟初始化时核验照样执行：核验器没有被别的 bean 依赖，延迟初始化下它不会被创建，
+     * 核验就静默跳过。
+     */
+    @Test void verifiesEvenWithLazyInitialization() {
+        new ApplicationContextRunner()
+                .withInitializer(context -> context.addBeanFactoryPostProcessor(
+                        new LazyInitializationBeanFactoryPostProcessor()))
+                .withConfiguration(AutoConfigurations.of(MarsObservabilityAutoConfiguration.class))
+                .run(context -> assertThat(context).hasFailed());
+        new WebApplicationContextRunner()
+                .withInitializer(context -> context.addBeanFactoryPostProcessor(
+                        new LazyInitializationBeanFactoryPostProcessor()))
+                .withConfiguration(AutoConfigurations.of(MarsObservabilityAutoConfiguration.class))
+                .withPropertyValues("mars.env.dev-profiles=local", "spring.profiles.active=local")
+                .run(context -> assertThat(context.getBeanFactory().getBeanDefinition("marsManagementChainVerifier")
+                        .isLazyInit()).isFalse());
     }
 
     /** 缺凭据时开发 profile 只告警，上下文照常启动。 */

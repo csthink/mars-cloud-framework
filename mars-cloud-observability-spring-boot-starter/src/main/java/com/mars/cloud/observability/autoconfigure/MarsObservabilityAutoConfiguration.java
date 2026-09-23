@@ -1,6 +1,7 @@
 package com.mars.cloud.observability.autoconfigure;
 
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.boot.LazyInitializationExcludeFilter;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
@@ -30,12 +31,22 @@ public class MarsObservabilityAutoConfiguration {
     }
 
     /**
-     * 管理端点确实受认证链保护的核验，只对 Web 应用装配，判断方式与两条认证链的 Web 应用条件相同。
-     * 不提供覆盖点：它是暴露面放开之后的最后一道检查。
+     * 管理端点暴露面与认证链一致的核验，只对 Web 应用装配，判断方式与两条认证链的 Web 应用条件相同。
+     * 不提供覆盖点：它是生效的暴露清单与认证链之间的最后一道检查。
      */
     @Bean
     @ConditionalOnWebApplication
     ManagementChainVerifier marsManagementChainVerifier(Environment environment, ListableBeanFactory beanFactory) {
         return new ManagementChainVerifier(environment, beanFactory);
+    }
+
+    /**
+     * 部署物打开延迟初始化时，两个核验器仍在启动期创建：没有别的 bean 依赖它们，延迟后核验会静默跳过。
+     * 声明为静态方法，筛选器在其他 bean 处理之前就能取到，不需要先创建本配置类。
+     */
+    @Bean
+    static LazyInitializationExcludeFilter marsObservabilityVerifiersExcludedFromLazyInitialization() {
+        return LazyInitializationExcludeFilter.forBeanTypes(ObservabilityConventionVerifier.class,
+                ManagementChainVerifier.class);
     }
 }
