@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -30,14 +31,14 @@ import static org.awaitility.Awaitility.await;
  *
  * <p>测试自己起一个回环 HTTP 接收器当作追踪后端，断言收到的请求走的是
  * protobuf over HTTP，正文里带应用名。这样既验证了导出链路，也不依赖真实后端。
+ * 采样比例不在这里设置：用例走组件的默认值，Spring Boot 自己的默认值只采样十分之一。
  */
 @SpringBootTest(classes = PlainProbeApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
                 "spring.application.name=tracing-probe",
                 "mars.observability.management.username=ops",
-                "mars.observability.management.password=ops-secret",
-                "management.tracing.sampling.probability=1.0"
+                "mars.observability.management.password=ops-secret"
         })
 class TracingExportTest {
 
@@ -48,6 +49,7 @@ class TracingExportTest {
     private static final List<Received> received = new CopyOnWriteArrayList<>();
 
     @Autowired Tracer tracer;
+    @Autowired Environment environment;
 
     @BeforeAll
     static void startCollector() throws IOException {
@@ -75,6 +77,11 @@ class TracingExportTest {
         assertThat(MarsObservabilityDefaultsEnvironmentPostProcessor.TRACING_ENDPOINT_PROPERTY)
                 .isEqualTo("management.opentelemetry.tracing.export.otlp.endpoint")
                 .isNotEqualTo("management.otlp.tracing.endpoint");
+    }
+
+    /** 组件默认全量采样；生产按流量在配置中心调低。 */
+    @Test void samplesEveryTraceByDefault() {
+        assertThat(environment.getProperty("management.tracing.sampling.probability")).isEqualTo("1.0");
     }
 
     @Test void finishedSpansReachTheConfiguredEndpoint() {
