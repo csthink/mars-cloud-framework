@@ -27,6 +27,14 @@ public final class ManagementAccess {
     /** 部署时给出口令的短环境变量名。 */
     public static final String PASSWORD_VARIABLE = "MARS_MANAGEMENT_PASSWORD";
 
+    /**
+     * Servlet 栈管理链的 bean 名，与认证链配置类里的 bean 方法同名，核验器按它判断链是否装配了。
+     * 放在这里而不是认证链那一侧：核验器在没有 Spring Security 的部署物里也要装配，不能引用那一侧的类。
+     */
+    public static final String SERVLET_CHAIN_BEAN = "marsManagementSecurityFilterChain";
+    /** 响应式栈管理链的 bean 名，其余同 {@link #SERVLET_CHAIN_BEAN}。 */
+    public static final String REACTIVE_CHAIN_BEAN = "marsManagementSecurityWebFilterChain";
+
     /** 不能认证时唯一允许的暴露清单：health 只给聚合状态，info 不含运行细节。 */
     public static final String UNAUTHENTICATED_EXPOSURE = "health,info";
 

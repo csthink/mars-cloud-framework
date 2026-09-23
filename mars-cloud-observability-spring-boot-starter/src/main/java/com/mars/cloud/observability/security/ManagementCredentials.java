@@ -14,10 +14,6 @@ public final class ManagementCredentials {
 
     /** 认证提示里的领域名，浏览器据此区分弹窗来源。 */
     public static final String REALM = "mars-management";
-    /** Servlet 栈管理链的 bean 名，核验器按它判断链是否真的装配了。 */
-    public static final String SERVLET_CHAIN_BEAN = "marsManagementSecurityFilterChain";
-    /** 响应式栈管理链的 bean 名。 */
-    public static final String REACTIVE_CHAIN_BEAN = "marsManagementSecurityWebFilterChain";
 
     private final UserDetails user;
     private final PasswordEncoder encoder;

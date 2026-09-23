@@ -1,7 +1,6 @@
 package com.mars.cloud.observability.autoconfigure;
 
 import com.mars.cloud.observability.internal.ManagementAccess;
-import com.mars.cloud.observability.security.ManagementCredentials;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.BeanClassLoaderAware;
@@ -45,8 +44,8 @@ public final class ManagementChainVerifier implements InitializingBean, BeanClas
 
     @Override
     public void afterPropertiesSet() {
-        boolean built = beanFactory.containsBeanDefinition(ManagementCredentials.SERVLET_CHAIN_BEAN)
-                || beanFactory.containsBeanDefinition(ManagementCredentials.REACTIVE_CHAIN_BEAN);
+        boolean built = beanFactory.containsBeanDefinition(ManagementAccess.SERVLET_CHAIN_BEAN)
+                || beanFactory.containsBeanDefinition(ManagementAccess.REACTIVE_CHAIN_BEAN);
         if (built) {
             return;
         }

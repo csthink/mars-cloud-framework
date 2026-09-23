@@ -1,10 +1,18 @@
 package com.mars.cloud.observability;
 
 import com.mars.cloud.observability.autoconfigure.ManagementRegistrationAutoConfiguration;
+import com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration;
+import com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvironmentPostProcessor;
 import com.mars.cloud.observability.autoconfigure.ReactiveManagementSecurityAutoConfiguration;
 import com.mars.cloud.observability.autoconfigure.ServletManagementSecurityAutoConfiguration;
+import com.mars.cloud.observability.internal.ManagementAccess;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.test.context.FilteredClassLoader;
+import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.core.io.DefaultResourceLoader;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,8 +24,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 装配边界：本组件不依赖公共库、安全组件与服务发现组件的类，
- * 也不要求部署物一定有它们。四个自动配置类都要登记，漏登记的那条不会生效。
+ * 装配边界：四个自动配置类都要登记，漏登记的那条不会生效；部署物没有 Spring Security 或服务发现组件时
+ * 照常装配，只是不建认证链、不写实例元数据。本组件与公共库、安全组件没有依赖关系，见模块的 POM。
  */
 class AutoConfigurationBoundaryTest {
 
@@ -78,6 +86,36 @@ class AutoConfigurationBoundaryTest {
             }
             assertThat(ordering.beforeName()).as(type.getSimpleName()).isEmpty();
         }
+    }
+
+    /**
+     * classpath 上没有 Spring Security 与服务发现组件时，四个自动配置照常处理：核验器装配，
+     * 认证链与实例元数据按各自的类条件退出，上下文正常启动。
+     */
+    @Test void assemblesWithoutSpringSecurityOrServiceDiscovery() {
+        new WebApplicationContextRunner()
+                .withClassLoader(new FilteredClassLoader("org.springframework.security", "com.alibaba.cloud"))
+                .withInitializer(context -> {
+                    SpringApplication application = new SpringApplication();
+                    application.setResourceLoader(new DefaultResourceLoader(context.getClassLoader()));
+                    new MarsObservabilityDefaultsEnvironmentPostProcessor()
+                            .postProcessEnvironment(context.getEnvironment(), application);
+                })
+                .withConfiguration(AutoConfigurations.of(MarsObservabilityAutoConfiguration.class,
+                        ManagementRegistrationAutoConfiguration.class,
+                        ServletManagementSecurityAutoConfiguration.class,
+                        ReactiveManagementSecurityAutoConfiguration.class))
+                .withPropertyValues("mars.observability.management.username=ops",
+                        "mars.observability.management.password=secret")
+                .run(context -> {
+                    assertThat(context).hasNotFailed()
+                            .hasBean("marsObservabilityConventionVerifier")
+                            .hasBean("marsManagementChainVerifier")
+                            .doesNotHaveBean(ManagementAccess.SERVLET_CHAIN_BEAN)
+                            .doesNotHaveBean("marsManagementPortRegistrationCustomizer");
+                    assertThat(context.getEnvironment().getProperty("management.endpoints.web.exposure.include"))
+                            .isEqualTo("health,info");
+                });
     }
 
     private static List<String> readImports() throws IOException {
