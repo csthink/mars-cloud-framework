@@ -301,7 +301,7 @@
       "reason": "Management chain and auto-configuration boundary tests: the class loader hides Spring Security or the web security module, so the observability starter cannot build the management security chain and logs its fixed warning."
     },
     {
-      "pattern": "WARN\\ (?:Anno)?tationConfigServletWebApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配或排除了认证链的自动配置，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
+      "pattern": "WARN\\ (?:Anno)?tationConfigServletWebApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配、排除了认证链的自动配置，或\\ classpath\\ 上的安全类属于另一种\\ Web\\ 栈，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
       "reason": "Negative management chain test: a non-development web application whose management security chain is not built while the starter's default exposure is in effect must fail to start."
     },
     {
@@ -321,11 +321,11 @@
       "reason": "Negative management chain test: a non-development web application without Spring Security whose exposure list minus the exclude list still contains metrics must fail to start."
     },
     {
-      "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/observability/autoconfigure/MarsObservabilityAutoConfiguration\\.class\\]:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配或排除了认证链的自动配置，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
+      "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/observability/autoconfigure/MarsObservabilityAutoConfiguration\\.class\\]:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配、排除了认证链的自动配置，或\\ classpath\\ 上的安全类属于另一种\\ Web\\ 栈，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
       "reason": "Negative management chain test on a real port: a non-development application whose management security chain is excluded must fail to start. Spring Boot shortens the context class name to 40 characters."
     },
     {
-      "pattern": "WARN\\ ManagementChainVerifier:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配或排除了认证链的自动配置，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]",
+      "pattern": "WARN\\ ManagementChainVerifier:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配、排除了认证链的自动配置，或\\ classpath\\ 上的安全类属于另一种\\ Web\\ 栈，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]",
       "reason": "Management chain test: a development profile whose management security chain is not built logs the warning of the observability starter instead of failing."
     },
     {
@@ -432,7 +432,7 @@
     },
     {
       "pattern": "WARN\\ ObservabilityConventionVerifier:\\ classpath\\ 上没有\\ Spring\\ Security\\ 或\\ Spring\\ Boot\\ 的\\ Web\\ 安全模块（spring\\-boot\\-starter\\-security），管理端点无法建立认证链，只能暴露\\ health\\ 与\\ info",
-      "reason": "Gateway tests: the gateway does not include Spring Security, so the observability starter exposes only health and info on the management port and logs its fixed warning."
+      "reason": "Gateway tests: a reactive application without Spring Security, so the observability starter exposes only health and info on the management port and logs its fixed warning."
     },
     {
       "pattern": "WARN\\ ObservabilityConventionVerifier:\\ 管理端点缺少认证凭据，只能暴露\\ health\\ 与\\ info；生产环境必须提供\\ mars\\.observability\\.management\\.username\\ 与\\ password",

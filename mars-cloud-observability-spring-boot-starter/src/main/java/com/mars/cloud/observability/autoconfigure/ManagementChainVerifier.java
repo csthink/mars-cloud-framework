@@ -68,6 +68,7 @@ public final class ManagementChainVerifier implements InitializingBean, BeanClas
         if (!ManagementAccess.authenticationChainSupported(classLoader)) {
             return "classpath 上没有 Spring Security 或 Spring Boot 的 Web 安全模块";
         }
-        return "认证链没有装配，部署物关掉了 Web 安全装配或排除了认证链的自动配置";
+        // 能否建链按任一种 Web 栈的类判断，只有另一种栈的安全类时也会走到这里。
+        return "认证链没有装配，部署物关掉了 Web 安全装配、排除了认证链的自动配置，或 classpath 上的安全类属于另一种 Web 栈";
     }
 }
