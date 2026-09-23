@@ -78,7 +78,8 @@ starter 在环境末尾追加一个最低优先级的属性源，任何显式配
 - 偏移量为 `0` 只允许开发 profile。
 
 接入 Nacos 服务发现的应用注册时，starter 把管理端口写进实例元数据 `management.port`。Spring Boot Admin
-按这个键找 Actuator 端点；缺少它时会退回业务端口，而业务端口上没有 Actuator 端点。
+按这个键找 Actuator 端点；缺少它时会退回业务端口，而业务端口上没有 Actuator 端点。管理端点与业务端点共用端口、
+或管理端口为随机端口时，starter 去掉这一项，不留下服务发现组件写入的 `0`。
 
 ## 管理端点
 
