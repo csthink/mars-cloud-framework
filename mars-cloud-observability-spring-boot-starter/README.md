@@ -60,7 +60,7 @@ starter 在环境末尾追加一个最低优先级的属性源，任何显式配
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
 | `mars.observability.management.port-offset` | `1000` | 管理端口相对业务端口的偏移量；`0` 表示与业务端口共用，只允许开发 profile |
-| `mars.observability.management.exposure` | 见上表 | 能认证时的暴露清单；不能认证时固定为 `health,info`，没有配置项 |
+| `mars.observability.management.exposure` | 见上表 | 能认证时的暴露清单，逗号分隔或列表写法均可；不能认证时固定为 `health,info`，没有配置项 |
 | `mars.observability.logging.console-format` | `ecs` | `ecs` 为结构化 JSON；`plain` 为 Spring Boot 的文本格式，用于本机调试与测试 |
 
 开发 profile 由 `mars.env.dev-profiles` 列出，与 mvc starter 使用同一个属性。本 starter 只读应用配置里的值，

@@ -3,6 +3,7 @@ package com.mars.cloud.observability.autoconfigure;
 import com.mars.cloud.observability.internal.ManagementAccess;
 import com.mars.cloud.observability.internal.ManagementPort;
 import org.springframework.boot.EnvironmentPostProcessor;
+import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.SpringApplication;
 import org.springframework.core.Ordered;
@@ -93,14 +94,16 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
      * 能认证就用可配置的完整清单，否则只暴露 health 与 info。不能认证时的清单不提供配置项：
      * 放宽它只会让需要认证的端点在没有认证链时暴露。
      *
-     * <p>用 {@code Binder} 而不是 {@code getProperty}：后者只按字面键查找，
-     * 部署时用环境变量覆盖清单会读不到，暴露面就悄悄退回内置默认值。
+     * <p>用 {@code Binder} 按列表绑定，而不是 {@code getProperty}：后者只按字面键查找，
+     * 部署时用环境变量覆盖、或在配置文件里写成列表时都读不到，暴露面就悄悄退回内置默认值。
      */
     private String effectiveExposure(ConfigurableEnvironment environment, boolean authenticated) {
         if (!authenticated) {
             return ManagementAccess.UNAUTHENTICATED_EXPOSURE;
         }
-        return Binder.get(environment).bind("mars.observability.management.exposure", String.class)
+        return Binder.get(environment)
+                .bind("mars.observability.management.exposure", Bindable.listOf(String.class))
+                .map(values -> String.join(",", values))
                 .orElse(ObservabilityProperties.Management.DEFAULT_EXPOSURE);
     }
 

@@ -2,6 +2,9 @@ package com.mars.cloud.observability.autoconfigure;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 可观测性组件自己的配置项。链路追踪、指标与结构化日志沿用 Spring Boot 的属性名，
  * 只有下面这些推导与核验所需的取值放在 {@code mars.observability} 前缀下。
@@ -44,7 +47,7 @@ public class ObservabilityProperties {
          * 能认证时的暴露清单，写入 management.endpoints.web.exposure.include。
          * 不能认证时固定为 health 与 info，不提供配置项。
          */
-        private String exposure = DEFAULT_EXPOSURE;
+        private List<String> exposure = new ArrayList<>(List.of(DEFAULT_EXPOSURE.split(",")));
 
         public int getPortOffset() {
             return portOffset;
@@ -70,11 +73,11 @@ public class ObservabilityProperties {
             this.password = password;
         }
 
-        public String getExposure() {
+        public List<String> getExposure() {
             return exposure;
         }
 
-        public void setExposure(String exposure) {
+        public void setExposure(List<String> exposure) {
             this.exposure = exposure;
         }
     }

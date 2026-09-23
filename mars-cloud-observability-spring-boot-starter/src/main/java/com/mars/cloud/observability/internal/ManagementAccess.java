@@ -6,6 +6,8 @@ import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.core.env.Environment;
 import org.springframework.util.ClassUtils;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -41,7 +43,7 @@ public final class ManagementAccess {
     private static final String EXPOSURE_INCLUDE = "management.endpoints.web.exposure.include";
     private static final String EXPOSURE_EXCLUDE = "management.endpoints.web.exposure.exclude";
     private static final String WILDCARD = "*";
-    private static final Set<String> UNAUTHENTICATED_ENDPOINTS = Set.of("health", "info");
+    private static final Set<EndpointId> UNAUTHENTICATED_ENDPOINTS = Set.of(EndpointId.of("health"), EndpointId.of("info"));
 
     private static final String SERVLET_SECURITY_MARKER =
             "org.springframework.security.config.annotation.web.builders.HttpSecurity";
@@ -94,17 +96,27 @@ public final class ManagementAccess {
      * 生效的暴露清单里除 health 与 info 之外的端点，按名称排序；通配符原样记为 {@code *}。
      *
      * <p>读 Actuator 实际使用的 {@code management.endpoints.web.exposure.include} 与 {@code exclude}，
-     * 不读本组件写入的默认值：显式配置会覆盖默认值。端点名按 Actuator 的规则归一化后比较。
+     * 不读本组件写入的默认值：显式配置会覆盖默认值。端点名与 Actuator 一样转成 {@link EndpointId} 比较，
+     * {@code thread-dump}、{@code threadDump} 与 {@code threaddump} 是同一个端点。
      */
     public static Set<String> exposedEndpointsRequiringAuthentication(Environment environment) {
-        Set<String> excluded = endpointIds(environment, EXPOSURE_EXCLUDE);
+        List<String> exclude = values(environment, EXPOSURE_EXCLUDE);
         Set<String> exposed = new TreeSet<>();
-        if (excluded.contains(WILDCARD)) {
+        if (exclude.contains(WILDCARD)) {
             return exposed;
         }
-        for (String id : endpointIds(environment, EXPOSURE_INCLUDE)) {
+        Set<EndpointId> excluded = new HashSet<>();
+        for (String value : exclude) {
+            excluded.add(EndpointId.fromPropertyValue(value));
+        }
+        for (String value : values(environment, EXPOSURE_INCLUDE)) {
+            if (WILDCARD.equals(value)) {
+                exposed.add(WILDCARD);
+                continue;
+            }
+            EndpointId id = EndpointId.fromPropertyValue(value);
             if (!UNAUTHENTICATED_ENDPOINTS.contains(id) && !excluded.contains(id)) {
-                exposed.add(id);
+                exposed.add(id.toLowerCaseString());
             }
         }
         return exposed;
@@ -150,16 +162,14 @@ public final class ManagementAccess {
         return value == null || value.isBlank() ? null : value;
     }
 
-    private static Set<String> endpointIds(Environment environment, String key) {
-        List<String> values = Binder.get(environment).bind(key, Bindable.listOf(String.class)).orElse(List.of());
-        Set<String> ids = new TreeSet<>();
-        for (String value : values) {
-            String trimmed = value.trim();
-            if (trimmed.isEmpty()) {
-                continue;
+    /** 按列表绑定，与 Actuator 相同：逗号分隔的字符串与配置文件里的列表写法都能读到；去掉空白项。 */
+    private static List<String> values(Environment environment, String key) {
+        List<String> values = new ArrayList<>();
+        for (String value : Binder.get(environment).bind(key, Bindable.listOf(String.class)).orElse(List.of())) {
+            if (!value.isBlank()) {
+                values.add(value.trim());
             }
-            ids.add(WILDCARD.equals(trimmed) ? WILDCARD : EndpointId.fromPropertyValue(trimmed).toLowerCaseString());
         }
-        return ids;
+        return values;
     }
 }

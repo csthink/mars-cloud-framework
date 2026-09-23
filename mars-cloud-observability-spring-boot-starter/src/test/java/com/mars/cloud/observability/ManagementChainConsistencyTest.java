@@ -79,15 +79,44 @@ class ManagementChainConsistencyTest {
         assertThat(environment.getProperty("management.endpoints.web.exposure.include")).isEqualTo("health,info");
     }
 
-    /** 缺模块时暴露面已收窄，没有无认证的端点，所以只告警，与没有 Spring Security 时一样。 */
+    /**
+     * 缺模块时暴露面已收窄，没有无认证的端点，所以只告警，与没有 Spring Security 时一样。
+     * 按 Web 应用装配并先跑环境后处理，链核验器才会参与，「没有越界」的断言才有意义。
+     */
     @Test void startsWithAWarningWhenTheWebSecurityModuleIsAbsent(CapturedOutput output) {
-        new ApplicationContextRunner()
+        webApplication()
                 .withClassLoader(withoutWebSecurityModule())
-                .withConfiguration(AutoConfigurations.of(MarsObservabilityAutoConfiguration.class))
-                .withPropertyValues("mars.observability.management.username=ops",
-                        "mars.observability.management.password=secret")
-                .run(context -> assertThat(context).hasNotFailed());
+                .run(context -> assertThat(context).hasNotFailed().hasBean("marsManagementChainVerifier"));
         assertThat(output).contains("管理端点无法建立认证链").doesNotContain(UNPROTECTED_EXPOSURE);
+    }
+
+    /** 排除清单从暴露清单里扣掉端点；排除通配符时什么都不暴露。 */
+    @Test void excludedEndpointsDoNotCount() {
+        webApplication()
+                .withClassLoader(new FilteredClassLoader(SPRING_SECURITY_PACKAGE))
+                .withPropertyValues("management.endpoints.web.exposure.include=*",
+                        "management.endpoints.web.exposure.exclude=*")
+                .run(context -> assertThat(context).hasNotFailed());
+        webApplication()
+                .withClassLoader(new FilteredClassLoader(SPRING_SECURITY_PACKAGE))
+                .withPropertyValues("management.endpoints.web.exposure.include=prometheus,metrics",
+                        "management.endpoints.web.exposure.exclude=prometheus")
+                .run(context -> assertThat(context.getStartupFailure()).rootCause()
+                        .hasMessageContaining("实际暴露了 [metrics]"));
+    }
+
+    /** 端点名按 Actuator 的规则比较：thread-dump、threadDump 与 threaddump 是同一个端点。 */
+    @Test void endpointNamesAreComparedTheWayActuatorDoes() {
+        webApplication()
+                .withClassLoader(new FilteredClassLoader(SPRING_SECURITY_PACKAGE))
+                .withPropertyValues("management.endpoints.web.exposure.include=health,thread-dump",
+                        "management.endpoints.web.exposure.exclude=threadDump")
+                .run(context -> assertThat(context).hasNotFailed());
+        webApplication()
+                .withClassLoader(new FilteredClassLoader(SPRING_SECURITY_PACKAGE))
+                .withPropertyValues("management.endpoints.web.exposure.include=health,thread-dump")
+                .run(context -> assertThat(context.getStartupFailure()).rootCause()
+                        .hasMessageContaining("实际暴露了 [threaddump]"));
     }
 
     /** 没有 Spring Security 时显式暴露指标端点：它会无认证可达，非开发 profile 拒绝启动。 */

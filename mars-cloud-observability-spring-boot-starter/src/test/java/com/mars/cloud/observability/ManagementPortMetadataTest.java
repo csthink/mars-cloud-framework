@@ -28,17 +28,19 @@ class ManagementPortMetadataTest {
                 .containsEntry(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY, "9103");
     }
 
-    /** 管理端点与业务端点共用端口时不写元数据，实例监控退回业务端口正好是对的。 */
+    /** 管理端点与业务端点共用端口时不留这一项，实例监控退回业务端口正好是对的。 */
     @Test void writesNothingWhenManagementSharesTheBusinessPort() {
         NacosRegistration registration = registration();
+        registration.getMetadata().put(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY, "9103");
         customizer("8103", null).customize(registration);
         assertThat(registration.getMetadata())
                 .doesNotContainKey(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY);
     }
 
-    /** 随机管理端口在注册时尚未确定，同样不写。 */
+    /** 随机管理端口在注册时尚未确定，同样不留这一项：已有的值（例如服务发现组件写入的 0）被去掉。 */
     @Test void writesNothingForRandomManagementPort() {
         NacosRegistration registration = registration();
+        registration.getMetadata().put(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY, "0");
         customizer("8103", "0").customize(registration);
         assertThat(registration.getMetadata())
                 .doesNotContainKey(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY);

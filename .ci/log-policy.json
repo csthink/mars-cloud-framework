@@ -313,6 +313,14 @@
       "reason": "Negative management chain test: a non-development web application without Spring Security that exposes every endpoint through the wildcard must fail to start."
     },
     {
+      "pattern": "WARN\\ (?:Anno)?tationConfigServletWebApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：classpath\\ 上没有\\ Spring\\ Security\\ 或\\ Spring\\ Boot\\ 的\\ Web\\ 安全模块，实际暴露了\\ \\[threaddump\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
+      "reason": "Negative management chain test: a non-development web application without Spring Security that exposes thread-dump must fail to start; endpoint names are compared the way Actuator does."
+    },
+    {
+      "pattern": "WARN\\ (?:Anno)?tationConfigServletWebApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：classpath\\ 上没有\\ Spring\\ Security\\ 或\\ Spring\\ Boot\\ 的\\ Web\\ 安全模块，实际暴露了\\ \\[metrics\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
+      "reason": "Negative management chain test: a non-development web application without Spring Security whose exposure list minus the exclude list still contains metrics must fail to start."
+    },
+    {
       "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/observability/autoconfigure/MarsObservabilityAutoConfiguration\\.class\\]:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配或排除了认证链的自动配置，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
       "reason": "Negative management chain test on a real port: a non-development application whose management security chain is excluded must fail to start. Spring Boot shortens the context class name to 40 characters."
     },

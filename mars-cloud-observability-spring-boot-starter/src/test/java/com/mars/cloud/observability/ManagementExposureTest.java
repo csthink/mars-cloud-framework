@@ -62,14 +62,23 @@ class ManagementExposureTest {
     }
 
     /**
-     * 不能认证时的清单固定为 health 与 info，组件自己的配置项放不宽它：
+     * 不能认证时的清单固定为 health 与 info，能认证时的清单配置项放不宽它：
      * 放宽后指标一类的端点会在没有认证链时暴露。
      */
     @Test void unauthenticatedExposureCannotBeWidenedByComponentProperties() {
         assertThat(exposureAfterPostProcessing(Map.of(
-                "mars.observability.management.exposure", "health,info,prometheus",
-                "mars.observability.management.restricted-exposure", "health,info,prometheus")))
+                "mars.observability.management.exposure", "health,info,prometheus")))
                 .isEqualTo("health,info");
+    }
+
+    /** 能认证时的清单按列表绑定：配置文件里写成列表与写成逗号分隔的字符串结果相同，不会静默退回默认清单。 */
+    @Test void configuredExposureListMayBeWrittenAsAList() {
+        assertThat(exposureAfterPostProcessing(Map.of(
+                "mars.observability.management.username", "ops",
+                "mars.observability.management.password", "secret",
+                "mars.observability.management.exposure[0]", "health",
+                "mars.observability.management.exposure[1]", "prometheus")))
+                .isEqualTo("health,prometheus");
     }
 
     /**
