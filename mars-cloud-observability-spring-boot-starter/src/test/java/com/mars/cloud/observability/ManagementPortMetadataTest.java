@@ -7,8 +7,10 @@ import com.mars.cloud.observability.internal.ManagementAddress;
 import com.mars.cloud.observability.registry.ManagementPortRegistrationCustomizer;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
 import org.springframework.boot.actuate.autoconfigure.web.server.ManagementServerProperties;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.mock.env.MockEnvironment;
@@ -77,7 +79,10 @@ class ManagementPortMetadataTest {
         environment.setProperty("server.address", "10.1.2.3");
         new MarsObservabilityDefaultsEnvironmentPostProcessor()
                 .postProcessEnvironment(environment, new SpringApplication());
+        // 真实应用的环境最前面有 Spring Boot 附加的汇总属性源，它包含全部来源；判定必须跳过它。
+        ConfigurationPropertySources.attach(environment);
         assertThat(environment.getProperty(ManagementAddress.PROPERTY)).isEqualTo("10.1.2.3");
+        assertThat(ManagementAddress.derived(environment)).isTrue();
 
         assertThat(initializedRegistration(environment).getMetadata())
                 .containsEntry(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY, "9103")
@@ -93,6 +98,24 @@ class ManagementPortMetadataTest {
         new MarsObservabilityDefaultsEnvironmentPostProcessor()
                 .postProcessEnvironment(environment, new SpringApplication());
 
+        assertThat(initializedRegistration(environment).getMetadata())
+                .containsEntry(ManagementPortRegistrationCustomizer.MANAGEMENT_ADDRESS_METADATA_KEY, "10.9.9.9");
+    }
+
+    /** 推导之后才出现的显式配置（例如配置刷新带来的新值）排在推导值前面，判定为显式配置。 */
+    @Test void anExplicitAddressAddedAfterTheDerivationCountsAsExplicit() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setProperty("server.port", "8103");
+        environment.setProperty("server.address", "10.1.2.3");
+        new MarsObservabilityDefaultsEnvironmentPostProcessor()
+                .postProcessEnvironment(environment, new SpringApplication());
+        ConfigurationPropertySources.attach(environment);
+        assertThat(ManagementAddress.derived(environment)).isTrue();
+
+        environment.getPropertySources().addFirst(new MapPropertySource("refreshed",
+                Map.of(ManagementAddress.PROPERTY, "10.9.9.9")));
+
+        assertThat(ManagementAddress.derived(environment)).isFalse();
         assertThat(initializedRegistration(environment).getMetadata())
                 .containsEntry(ManagementPortRegistrationCustomizer.MANAGEMENT_ADDRESS_METADATA_KEY, "10.9.9.9");
     }

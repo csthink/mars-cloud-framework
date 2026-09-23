@@ -39,7 +39,7 @@
 
 ## 默认值
 
-starter 在环境末尾追加一个最低优先级的属性源，任何显式配置（环境变量、配置中心、`application.yml`）都覆盖它。
+starter 在环境末尾追加最低优先级的属性源（推导出的管理地址单独一个），任何显式配置（环境变量、配置中心、`application.yml`）都覆盖它们。
 唯一的例外是应用代码经 `SpringApplication#setDefaultProperties` 设置的默认属性：Spring Boot 在 starter 写入之后
 才把它们移到末尾，同名时 starter 的默认值生效。要覆盖这些默认值，用配置文件、环境变量或命令行参数。
 
