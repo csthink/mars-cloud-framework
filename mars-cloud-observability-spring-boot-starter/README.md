@@ -39,9 +39,15 @@
 
 ## 默认值
 
-starter 在环境末尾追加最低优先级的属性源（推导出的管理地址单独一个），任何显式配置（环境变量、配置中心、`application.yml`）都覆盖它们。
-唯一的例外是应用代码经 `SpringApplication#setDefaultProperties` 设置的默认属性：Spring Boot 在 starter 写入之后
-才把它们移到末尾，同名时 starter 的默认值生效。要覆盖这些默认值，用配置文件、环境变量或命令行参数。
+starter 在环境末尾追加最低优先级的属性源（推导出的管理地址单独一个），配置文件、环境变量、命令行参数与配置中心的显式配置
+都覆盖它们。例外有两处：
+
+- 应用代码经 `SpringApplication#setDefaultProperties` 设置的默认属性：Spring Boot 在 starter 写入之后才把它们移到末尾，
+  同名时 starter 写入的固定默认值生效。只在未配置时才推导的 `management.server.port` 与 `management.server.address`
+  在推导时已经能看到这些默认属性，于是不推导，应用代码的值生效。
+- 上下文刷新时才加入的 `@PropertySource`：它排在这些属性源之后，同名值不生效。
+
+要覆盖这些默认值，用配置文件、环境变量或命令行参数。
 
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |

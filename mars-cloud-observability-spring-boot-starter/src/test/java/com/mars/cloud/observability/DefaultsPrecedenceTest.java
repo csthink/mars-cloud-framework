@@ -9,7 +9,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 组件默认值的优先级：任何配置来源都覆盖它，唯一的例外是应用代码里设置的默认属性。
+ * 组件默认值的优先级：配置文件、环境变量、命令行参数与配置中心都覆盖它。本类覆盖其中一处例外，应用代码里设置的默认属性；
+ * 另一处例外是上下文刷新时才加入的 {@code @PropertySource}，它排在组件默认值之后。
  *
  * <p>Spring Boot 在环境后处理全部完成之后才把 {@code SpringApplication#setDefaultProperties} 设置的属性源
  * 移到末尾，所以它排在组件的默认值之后，同名的组件默认值生效。

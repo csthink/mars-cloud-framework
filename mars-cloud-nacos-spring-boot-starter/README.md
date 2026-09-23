@@ -103,8 +103,11 @@ Spring Cloud Alibaba 在没有配置注册地址时注册第一块非回环网�
 - `server.address` 是 IPv6 地址：Spring Cloud 把注册地址直接拼进 `http://<地址>:<端口>` 形式的实例地址，
   不给 IPv6 地址加方括号，拼出的地址无效。以 IPv6 地址注册不在本 starter 的支持范围内。
 - 显式配置了 `spring.cloud.nacos.discovery.ip`，包括空值。空值时 Spring Cloud Alibaba 视为未配置，自己选取网卡。
+  上下文刷新时才加入的 `@PropertySource` 在推导时还看不到，并且排在本 starter 的属性源之后，
+  其中的 `spring.cloud.nacos.discovery.ip` 既不阻止推导，也不生效；注册地址用配置文件、环境变量或命令行参数给出。
 
-`spring.cloud.nacos.discovery.network-interface`、`ip-type` 与 `spring.cloud.inetutils.*` 网卡偏好只能从本机网卡里挑地址。
+`spring.cloud.nacos.discovery.network-interface`、`ip-type` 与 `spring.cloud.inetutils` 的 `preferred-networks`、
+`ignored-interfaces`、`use-only-site-local-interfaces` 只能从本机网卡里挑地址。
 `server.address` 是具体的 IPv4 地址时业务端口只在这个地址上监听，挑出别的地址也没有进程在那里监听，
 所以本 starter 照常推导，这些配置项不再影响注册地址。
 

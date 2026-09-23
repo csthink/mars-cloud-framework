@@ -23,7 +23,8 @@ import java.util.Map;
  * 业务端口只绑定在另一个地址上时，调用方按注册地址连接会失败。
  *
  * <p>只有显式配置的 {@code spring.cloud.nacos.discovery.ip}（包括空值）阻止推导。网卡、IP 类型与
- * {@code spring.cloud.inetutils.*} 网卡偏好只能从本机网卡里挑地址：业务端口只在 {@code server.address} 上监听，
+ * {@code spring.cloud.inetutils} 的 {@code preferred-networks}、{@code ignored-interfaces}、
+ * {@code use-only-site-local-interfaces} 只能从本机网卡里挑地址：业务端口只在 {@code server.address} 上监听，
  * 挑出别的地址也没有进程在那里监听，所以推导出注册地址后它们不再影响注册地址。
  */
 public final class MarsNacosDefaultsEnvironmentPostProcessor implements EnvironmentPostProcessor {
