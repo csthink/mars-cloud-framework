@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+com.mars.cloud.nacos.autoconfigure.MarsNacosDefaultsEnvironmentPostProcessor

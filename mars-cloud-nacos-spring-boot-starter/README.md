@@ -77,6 +77,20 @@ spring:
 也可以用 `mars.nacos.convention.validation-enabled=false` 关闭本 starter 的约定校验，
 但这不会关闭 Spring Cloud Alibaba 自己的 Nacos 客户端或导入检查。
 
+## 默认值
+
+本 starter 在环境末尾追加一个最低优先级的属性源，任何显式配置（环境变量、配置中心、`application.yml`）都覆盖它。
+
+| 属性 | 默认值 | 说明 |
+| --- | --- | --- |
+| `spring.cloud.discovery.client.composite-indicator.enabled` | `false` | 根健康端点不含注册中心检查（`discoveryComposite`），见下文 |
+
+停机时，Spring Cloud Alibaba 的优雅停机先注销实例并关闭 Nacos 客户端，再按
+`spring.cloud.nacos.discovery.graceful-shutdown-wait-time`（默认 10 秒）等待，之后应用才真正停止。
+等待期间如果有人查询健康端点（例如实例监控的轮询），注册中心检查会查询 Nacos，Nacos 客户端就被重新创建，
+停机中途重新连接 Nacos。关闭这项检查后不再发生。它只在根健康端点里，存活与就绪探针（`liveness`、`readiness`）
+不受影响。需要这项检查的部署物可以显式设为 `true`。
+
 ## 运行时 JVM 参数
 
 引入本 starter 的应用在 JDK 24 及以上启动时需要带：
