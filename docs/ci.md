@@ -28,6 +28,8 @@ bash tools/verify.sh \
 
 `.ci/log-policy.json` 仅允许已知负向契约测试的精确诊断及已有 JVM 提示，每条附原因；未知 Maven、JVM、应用 WARN / ERROR 使验证失败。新增允许项需解释对应测试或运行条件，不允许忽略整类警告。已有 Mockito bootstrap instrumentation 的 CDS 提示不影响测试执行，单独列出。
 
+应用日志按级别所在行识别，诊断写成「级别 类名: 消息」。有的消息从下一行才开始，级别所在行在类名处结束；这时取下一条非空、且不是新日志记录的行作为消息，照常与允许项比对，不会因为级别所在行没有消息而漏检。
+
 ## CI 输入和必需检查
 
 framework CI 直接固定自身提交与 service main 的提交，**不调用 service 的依赖解析器**，因此不会把 framework 候选替换成 main。service CI 的依赖声明与选择规则见 [service CI](https://github.com/csthink/mars-cloud-service/blob/main/docs/ci.md)。

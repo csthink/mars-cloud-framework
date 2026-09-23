@@ -3,6 +3,7 @@ package com.mars.cloud.observability.app.reactive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.security.autoconfigure.ReactiveUserDetailsServiceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -12,8 +13,8 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 
-/** 响应式栈的被测应用，与 Servlet 栈那个对应。 */
-@SpringBootApplication
+/** 响应式栈的被测应用，与 Servlet 栈那个对应，同样排除 Spring Boot 的默认用户装配。 */
+@SpringBootApplication(exclude = ReactiveUserDetailsServiceAutoConfiguration.class)
 @RestController
 public class ReactiveProbeApplication {
 

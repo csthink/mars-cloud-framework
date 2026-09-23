@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import fcntl
 import hashlib
+import itertools
 import json
 import os
 from pathlib import Path
@@ -85,22 +86,41 @@ def seed(cache, destination):
         raise ValueError("Project artifacts survived cache isolation")
 
 
-def diagnostic(line):
+# Match severity fields, not words such as '.error.' in test class names. The message is optional:
+# Spring Boot writes some messages from the next line on, leaving the level line to end at the logger.
+LOG_RECORD = r"(?:^|\s)({levels})\s+(?:\d+\s+---\s+)?(?:\[[^\]]*\]\s*)*([\w.$]+)\s+(?:--|:)(?:\s+(.*))?$"
+SEVERE_RECORD = re.compile(LOG_RECORD.format(levels="WARN|ERROR"))
+ANY_RECORD = re.compile(LOG_RECORD.format(levels="TRACE|DEBUG|INFO|WARN|ERROR"))
+MAVEN_RECORD = re.compile(r"\[(?:DEBUG|INFO|WARNING|ERROR)\]")
+
+
+def diagnostic(line, following=()):
+    """following: the lines after this one, read only when the message starts on the next line."""
     line = ANSI.sub("", line).strip()
-    # Match severity fields, not words such as '.error.' in test class names.
-    match = re.search(r"(?:^|\s)(WARN|ERROR)\s+(?:\d+\s+---\s+)?(?:\[[^\]]*\]\s*)*([\w.$]+)\s+(?:--|:)\s+(.*)", line)
+    match = SEVERE_RECORD.search(line)
     if match:
-        return f"{match[1]} {match[2].split('.')[-1]}: {match[3]}"
+        return f"{match[1]} {match[2].split('.')[-1]}: {match[3] or continuation(following)}"
     if re.match(r"\[(WARNING|ERROR)\]", line) or re.match(r"(?:OpenJDK\b.*\bwarning:|WARNING:|warning:)", line):
         return line
     return None
 
 
+def continuation(following):
+    """First non-blank following line, unless it starts another log record."""
+    for line in following:
+        line = ANSI.sub("", line).strip()
+        if line:
+            is_record = ANY_RECORD.search(line) or MAVEN_RECORD.match(line) or diagnostic(line) is not None
+            return "" if is_record else line
+    return ""
+
+
 def inspect_log(path, policy):
     known, unknown = [], []
     rules = [(re.compile(rule["pattern"]), rule["reason"]) for rule in policy]
-    for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
-        message = diagnostic(line)
+    lines = path.read_text(errors="replace").splitlines()
+    for number, line in enumerate(lines, 1):
+        message = diagnostic(line, itertools.islice(lines, number, None))
         if message is None:
             continue
         reasons = [reason for pattern, reason in rules if pattern.fullmatch(message)]

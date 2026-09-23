@@ -41,6 +41,35 @@ class VerificationTest(unittest.TestCase):
             self.assertEqual(len(found['expected']), 1)
             self.assertEqual(len(found['unknown']), 3)
 
+    def test_message_that_starts_on_the_next_line_is_inspected(self):
+        # Spring Boot writes some warnings from the next line on; the level line then ends at the logger name.
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'build.log'
+            path.write_text('2026-09-22T18:18:46.484-07:00  WARN 42346 --- [probe] [           main] '
+                            '[                                                 ] .s.a.UserDetailsServiceAutoConfiguration : \n'
+                            '\n'
+                            'Using generated security password: 0f0e1d2c\n'
+                            '\n'
+                            'This generated password is for development use only.\n'
+                            '12:30:00 [main] ERROR example.Report -- \n'
+                            'first line of the report\n')
+            found = v.inspect_log(path, [{'pattern': r'ERROR Report: first line of the report', 'reason': 'negative test'}])
+            self.assertEqual(found['unknown'], [{'line': 1, 'message': 'WARN UserDetailsServiceAutoConfiguration: '
+                                                                         'Using generated security password: 0f0e1d2c'}])
+            self.assertEqual([entry['line'] for entry in found['expected']], [6])
+
+    def test_empty_message_does_not_borrow_the_next_record(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'build.log'
+            path.write_text('12:30:00 [main] WARN example.Empty -- \n'
+                            '12:30:01 [main] INFO example.Next -- next record\n'
+                            '12:30:02 [main] ERROR example.Maven -- \n'
+                            '[INFO] Tests run: 1, Failures: 0\n'
+                            '12:30:03 [main] WARN example.Last --\n')
+            found = v.inspect_log(path, [])
+            self.assertEqual([entry['message'] for entry in found['unknown']],
+                             ['WARN Empty: ', 'ERROR Maven: ', 'WARN Last: '])
+
     def test_missing_failed_and_skipped_test_reports_fail(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
