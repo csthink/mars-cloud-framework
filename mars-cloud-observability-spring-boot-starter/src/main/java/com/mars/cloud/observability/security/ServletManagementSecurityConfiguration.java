@@ -11,6 +11,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -35,8 +36,11 @@ public class ServletManagementSecurityConfiguration {
         AuthenticationManager manager = new ProviderManager(provider);
 
         return http.securityMatcher(EndpointRequest.toAnyEndpoint())
-                // 管理端点由运维工具与采集器访问，它们不带 CSRF 令牌。
+                // 管理端点由运维工具与采集器访问，它们不带 CSRF 令牌，也不保持会话：每次请求都带 Basic 凭据。
+                // 不建会话、不缓存被拒的请求，匿名探测就不会在服务端留下会话。
                 .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .requestCache(cache -> cache.disable())
                 .authenticationManager(manager)
                 .httpBasic(basic -> basic.realmName(ManagementCredentials.REALM))
                 .authorizeHttpRequests(requests -> requests

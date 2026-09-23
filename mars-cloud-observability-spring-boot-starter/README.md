@@ -81,8 +81,9 @@ starter 在环境末尾追加一个最低优先级的属性源，任何显式配
 ## 管理端点
 
 两种 Web 栈各有一条只匹配 Actuator 端点的认证链：`health` 匿名可读，其余端点要 Basic 认证，realm 为
-`mars-management`。链自带单用户的认证管理器，口令在启动时用 bcrypt 编码，不注册全局
-`UserDetailsService`，部署物自己的安全链与认证方式不受影响，两条链共存。
+`mars-management`，链不建立会话。链自带单用户的认证管理器，口令在启动时用 bcrypt 编码，不注册全局
+`UserDetailsService`，部署物自己的安全链与认证方式不受影响，两条链共存。部署物没有自己的安全链时，
+Spring Boot 的默认安全链照常保护业务请求。
 
 「能认证」指凭据齐备，并且同一种 Web 栈的 Spring Security 与 Spring Boot 的端点匹配器都在 classpath 上。
 starter 据此写入默认暴露清单，并在启动期核验：

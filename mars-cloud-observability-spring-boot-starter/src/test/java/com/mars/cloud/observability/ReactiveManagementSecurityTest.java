@@ -1,10 +1,12 @@
 package com.mars.cloud.observability;
 
 import com.mars.cloud.observability.app.reactive.ReactiveProbeApplication;
+import com.mars.cloud.observability.security.ManagementCredentials;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -54,6 +56,23 @@ class ReactiveManagementSecurityTest {
                 .withCredentials(managementPort, "/actuator/prometheus", "ops", "ops-secret");
         assertThat(allowed.getStatusCode().value()).isEqualTo(HttpStatus.OK.value());
         assertThat(allowed.getBody()).contains("application=\"reactive-probe\"");
+    }
+
+    /** 匿名请求得到带领域名的认证提示，且不因此建立会话：采集器与运维工具不带 Cookie，会话只会堆积。 */
+    @Test void anonymousRequestsGetTheManagementRealmWithoutASession() {
+        ResponseEntity<String> response = ManagementEndpointAccess.anonymous(managementPort, "/actuator/prometheus");
+        assertThat(response.getStatusCode().value()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        assertThat(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE))
+                .isEqualTo("Basic realm=\"" + ManagementCredentials.REALM + "\"");
+        assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE)).isNull();
+    }
+
+    /** 带凭据的请求同样不建立会话，每次请求都重新认证。 */
+    @Test void authenticatedRequestsDoNotCreateASession() {
+        ResponseEntity<String> response = ManagementEndpointAccess
+                .withCredentials(managementPort, "/actuator/prometheus", "ops", "ops-secret");
+        assertThat(response.getStatusCode().value()).isEqualTo(HttpStatus.OK.value());
+        assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE)).isNull();
     }
 
     @Test void actuatorIsNotReachableOnTheBusinessPort() {

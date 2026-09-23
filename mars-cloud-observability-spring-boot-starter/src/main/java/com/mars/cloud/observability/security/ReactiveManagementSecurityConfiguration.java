@@ -12,12 +12,13 @@ import org.springframework.security.authentication.UserDetailsRepositoryReactive
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
 
 /**
  * 响应式栈的管理端点认证链，语义与 Servlet 栈那条相同。
  *
- * <p>classpath 上没有 Spring Security 的响应式部署物（例如网关）不装配本配置，
- * 暴露面由核验器收窄为 health 与 info。
+ * <p>classpath 上没有 Spring Security 的响应式部署物不装配本配置，环境后处理把它的默认暴露清单
+ * 收窄为 health 与 info。
  */
 public class ReactiveManagementSecurityConfiguration {
 
@@ -30,11 +31,13 @@ public class ReactiveManagementSecurityConfiguration {
         MapReactiveUserDetailsService users = new MapReactiveUserDetailsService(credentials.user());
         ReactiveAuthenticationManager manager =
                 authenticationManager(users, credentials);
+        HttpBasicServerAuthenticationEntryPoint entryPoint = new HttpBasicServerAuthenticationEntryPoint();
+        entryPoint.setRealm(ManagementCredentials.REALM);
 
         return http.securityMatcher(EndpointRequest.toAnyEndpoint())
                 .csrf(csrf -> csrf.disable())
                 .authenticationManager(manager)
-                .httpBasic(basic -> { })
+                .httpBasic(basic -> basic.authenticationEntryPoint(entryPoint))
                 .authorizeExchange(exchanges -> exchanges
                         .matchers(EndpointRequest.to(HealthEndpoint.class)).permitAll()
                         .anyExchange().authenticated())
