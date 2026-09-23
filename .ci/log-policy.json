@@ -435,6 +435,10 @@
       "reason": "Negative monitor startup test: an empty monitor administrator password must fail to start."
     },
     {
+      "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsMonitorInstanceCredentialsGuard'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/service/monitor/MonitorSecurityConfiguration\\.class\\]:\\ 监控面板读取实例管理端点的凭据不能为空：MARS_MANAGEMENT_USERNAME\\ 与\\ MARS_MANAGEMENT_PASSWORD\\ 都要给出非空值",
+      "reason": "Negative monitor startup test: a blank credential for reading the instances' management endpoints must fail to start."
+    },
+    {
       "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsMonitorDingTalkNotifierGuard'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/service/monitor/MonitorNotificationConfiguration\\.class\\]:\\ 监控面板暂不支持钉钉通知，请删除\\ spring\\.boot\\.admin\\.notify\\.dingtalk\\.\\*\\ 配置：面板自带的钉钉通知器把签名参数编码了两次，与钉钉要求的单次编码不一致",
       "reason": "Negative monitor startup test: any DingTalk notifier setting, including an empty webhook URL, must fail to start because DingTalk notification is not supported."
     }
