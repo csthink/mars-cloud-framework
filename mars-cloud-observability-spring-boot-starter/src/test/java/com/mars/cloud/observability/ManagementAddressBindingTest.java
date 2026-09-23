@@ -5,6 +5,7 @@ import com.mars.cloud.observability.app.servlet.ServletProbeApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.StandardEnvironment;
 
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -23,7 +24,11 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * 真实启动两种 Web 栈：业务端口绑定回环地址时，独立的管理端口同样只在回环地址上可连。
  *
  * <p>从本机的非回环地址连接两个端口都应被拒绝。先用一个绑定全部网卡的对照端口确认这个地址本身可连，
- * 否则「连不上」说明不了绑定地址。本机没有非回环地址时跳过。
+ * 否则「连不上」说明不了绑定地址。本机没有可连的非回环地址时用例被跳过；正式构建把跳过判为失败，
+ * 所以构建环境要有可连的非回环地址。
+ *
+ * <p>应用使用不含进程环境变量的环境：运行构建的 shell 若导出了 {@code SERVER_ADDRESS} 或
+ * {@code MANAGEMENT_SERVER_ADDRESS}，它们会覆盖这里给出的配置，结果就取决于构建环境。
  */
 class ManagementAddressBindingTest {
 
@@ -58,7 +63,9 @@ class ManagementAddressBindingTest {
         assumeTrue(external.isPresent(), "本机没有非回环地址");
         InetAddress address = external.get();
         assumeTrue(reachableThroughAllInterfaces(address), "从非回环地址连不上本机全部网卡上的对照端口");
-        try (ConfigurableApplicationContext context = builder.run()) {
+        StandardEnvironment environment = new StandardEnvironment();
+        environment.getPropertySources().remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME);
+        try (ConfigurableApplicationContext context = builder.environment(environment).run()) {
             int businessPort = context.getEnvironment().getRequiredProperty("local.server.port", Integer.class);
             int managementPort = context.getEnvironment().getRequiredProperty("local.management.port", Integer.class);
             assertThat(managementPort).isNotEqualTo(businessPort);

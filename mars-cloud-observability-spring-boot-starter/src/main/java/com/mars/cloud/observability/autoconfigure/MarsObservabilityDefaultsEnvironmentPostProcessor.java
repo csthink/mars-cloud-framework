@@ -1,6 +1,7 @@
 package com.mars.cloud.observability.autoconfigure;
 
 import com.mars.cloud.observability.internal.ManagementAccess;
+import com.mars.cloud.observability.internal.ManagementAddress;
 import com.mars.cloud.observability.internal.ManagementPort;
 import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType;
@@ -11,7 +12,6 @@ import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
-import java.net.InetAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -32,7 +32,7 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
     /** 管理端点认证口令的属性名，对应环境变量 MARS_MANAGEMENT_PASSWORD。 */
     public static final String PASSWORD_PROPERTY = ManagementAccess.PASSWORD_PROPERTY;
     /** 管理端口的绑定地址。Spring Boot 不让它继承 server.address。 */
-    public static final String MANAGEMENT_ADDRESS_PROPERTY = "management.server.address";
+    public static final String MANAGEMENT_ADDRESS_PROPERTY = ManagementAddress.PROPERTY;
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -93,11 +93,12 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
 
         environment.getPropertySources().addLast(new MapPropertySource(PROPERTY_SOURCE_NAME, defaults));
 
-        // 管理端口是否独立要按推导后的端口判断，所以在属性源加入环境之后再算；
-        // 属性源直接持有这个 Map，此后放进去的键同样生效。
+        // 管理端口是否独立要按推导后的端口判断，所以在默认值加入环境之后再算。推导值单独放一个属性源，
+        // 注册到服务发现时据此分辨管理地址是推导出来的还是显式配置的（见 ManagementAddress#derived）。
         String managementAddress = deriveManagementAddress(environment);
         if (managementAddress != null) {
-            defaults.put(MANAGEMENT_ADDRESS_PROPERTY, managementAddress);
+            environment.getPropertySources().addLast(new MapPropertySource(
+                    ManagementAddress.DERIVED_PROPERTY_SOURCE_NAME, Map.of(MANAGEMENT_ADDRESS_PROPERTY, managementAddress)));
         }
     }
 
@@ -142,30 +143,11 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
         if (environment.containsProperty(MANAGEMENT_ADDRESS_PROPERTY)) {
             return null;
         }
-        String serverAddress = specificAddressLiteral(environment.getProperty("server.address"));
+        String serverAddress = ManagementAddress.specificLiteral(environment.getProperty("server.address"));
         if (serverAddress == null || ManagementPortType.get(environment) != ManagementPortType.DIFFERENT) {
             return null;
         }
         return serverAddress;
-    }
-
-    /**
-     * 取值是具体的 IP 地址字面量时原样返回，否则返回 {@code null}。
-     *
-     * <p>{@link InetAddress#ofLiteral} 只解析字面量，不做域名解析；主机名、空值与通配地址
-     * （{@code 0.0.0.0}、{@code ::}）都不算具体地址。
-     */
-    private static String specificAddressLiteral(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        String candidate = value.trim();
-        try {
-            return InetAddress.ofLiteral(candidate).isAnyLocalAddress() ? null : candidate;
-        }
-        catch (IllegalArgumentException notALiteral) {
-            return null;
-        }
     }
 
     @Override

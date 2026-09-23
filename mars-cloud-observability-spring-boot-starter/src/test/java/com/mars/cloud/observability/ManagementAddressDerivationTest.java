@@ -29,10 +29,19 @@ class ManagementAddressDerivationTest {
                 .isEqualTo("10.1.2.3");
     }
 
-    /** IPv6 的具体地址同样推导。 */
-    @Test void followsASpecificIpv6Address() {
-        assertThat(managementAddress(Map.of("server.port", "8103", "server.address", "fd00::1")))
-                .isEqualTo("fd00::1");
+    /** IPv6 的具体地址同样推导，写入规范形式；带方括号的写法去掉方括号。 */
+    @ParameterizedTest
+    @ValueSource(strings = {"fd00::1", "[fd00::1]"})
+    void followsASpecificIpv6Address(String serverAddress) {
+        assertThat(managementAddress(Map.of("server.port", "8103", "server.address", serverAddress)))
+                .isEqualTo("fd00:0:0:0:0:0:0:1");
+    }
+
+    /** 同一个 IPv4 地址的非常规写法统一成四段十进制，不同程序对同一写法的解读不会不同。 */
+    @Test void writesTheCanonicalFormOfAnIpv4Address() {
+        assertThat(managementAddress(Map.of("server.port", "8103", "server.address", "127.1"))).isEqualTo("127.0.0.1");
+        assertThat(managementAddress(Map.of("server.port", "8103", "server.address", "010.001.002.003")))
+                .isEqualTo("10.1.2.3");
     }
 
     /** 随机的独立管理端口（0）按 Spring Boot 的判定是独立端口，同样推导。 */
