@@ -47,7 +47,7 @@ class FeignLoadBalancerRetryContractTest {
 
         assertThat(response.status()).isEqualTo(200);
         assertThat(fixture.selectedInstances()).containsExactly("instance-1", "instance-2");
-        assertThat(fixture.requestedHosts()).containsExactly("first.internal", "second.internal");
+        assertThat(fixture.requestedHosts()).containsExactly("first.example", "second.example");
     }
 
     @Test
@@ -58,7 +58,7 @@ class FeignLoadBalancerRetryContractTest {
 
         assertThat(response.status()).isEqualTo(503);
         assertThat(fixture.selectedInstances()).containsExactly("instance-1");
-        assertThat(fixture.requestedHosts()).containsExactly("first.internal");
+        assertThat(fixture.requestedHosts()).containsExactly("first.example");
     }
 
     @Test
@@ -67,7 +67,7 @@ class FeignLoadBalancerRetryContractTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                 fixture.client().execute(request(Request.HttpMethod.GET), OPTIONS))
                 .isInstanceOf(IllegalStateException.class).hasMessage("UNAVAILABLE");
-        assertThat(fixture.requestedHosts()).containsExactly("first.internal");
+        assertThat(fixture.requestedHosts()).containsExactly("first.example");
     }
 
     private static RetryFixture retryFixture() {
@@ -76,9 +76,9 @@ class FeignLoadBalancerRetryContractTest {
 
     private static RetryFixture retryFixture(boolean sameInstance) {
         ServiceInstance first = new DefaultServiceInstance(
-                "instance-1", "orders", "first.internal", 8081, false);
+                "instance-1", "orders", "first.example", 8081, false);
         ServiceInstance second = new DefaultServiceInstance(
-                "instance-2", "orders", "second.internal", 8082, false);
+                "instance-2", "orders", "second.example", 8082, false);
         List<ServiceInstance> instances = List.of(first, second);
         AtomicInteger selection = new AtomicInteger();
         List<String> selectedInstances = new ArrayList<>();
@@ -120,7 +120,7 @@ class FeignLoadBalancerRetryContractTest {
         Client delegate = (request, options) -> {
             String host = URI.create(request.url()).getHost();
             requestedHosts.add(host);
-            int status = "first.internal".equals(host) ? 503 : 200;
+            int status = "first.example".equals(host) ? 503 : 200;
             return Response.builder()
                     .status(status)
                     .reason(status == 200 ? "OK" : "Service Unavailable")
