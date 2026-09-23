@@ -65,7 +65,7 @@ class NacosDefaultsTest {
 
     /** 业务地址不是具体的 IP 字面量时不推导：通配地址注册后调用方连不上，主机名不做域名解析。 */
     @ParameterizedTest
-    @ValueSource(strings = {"0.0.0.0", "::", "localhost", "service.internal", " "})
+    @ValueSource(strings = {"0.0.0.0", "::", "localhost", "service.example", " "})
     void noRegistrationAddressIsDerivedFromAnAddressThatIsNotASpecificLiteral(String serverAddress) {
         assertThat(registrationAddress(Map.of("server.address", serverAddress))).isNull();
     }

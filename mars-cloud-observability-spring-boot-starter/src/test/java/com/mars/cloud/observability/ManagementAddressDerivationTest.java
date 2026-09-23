@@ -68,7 +68,7 @@ class ManagementAddressDerivationTest {
 
     /** 业务地址不是具体的 IP 字面量时不推导：通配地址、主机名或空值。主机名不做域名解析。 */
     @ParameterizedTest
-    @ValueSource(strings = {"0.0.0.0", "::", "0:0:0:0:0:0:0:0", "localhost", "service.internal", " "})
+    @ValueSource(strings = {"0.0.0.0", "::", "0:0:0:0:0:0:0:0", "localhost", "service.example", " "})
     void doesNotDeriveFromAnAddressThatIsNotASpecificLiteral(String serverAddress) {
         assertThat(managementAddress(Map.of("server.port", "8103", "server.address", serverAddress))).isNull();
     }
