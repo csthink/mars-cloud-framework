@@ -28,6 +28,7 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ├── mars-cloud-security-feign/
 ├── mars-cloud-security-test-support/
 ├── mars-cloud-rocketmq-spring-boot-starter/
+├── mars-cloud-observability-spring-boot-starter/
 └── （后续：sentinel starter）
 ```
 
@@ -66,6 +67,9 @@ common ◄──────── core-starter ◄─── mvc-starter       m
   供 Servlet 宿主使用；`security-test-support` 只供测试使用，不进入部署包。
 - `rocketmq starter` 依赖 `common`、Spring Cloud Stream 与 Spring Cloud Alibaba 的 RocketMQ binder；
   消息信封、消息头名与命名规则在 `common`，供生产方与消费方共用；不依赖 MVC、Feign 或 security starter。
+- `observability starter` 依赖 Actuator、Micrometer Tracing 的 OpenTelemetry 桥与 Prometheus 注册表，不依赖 `common`
+  与其他 starter；Spring Boot 的 Web 安全模块与 Nacos 服务发现是可选依赖，存在时才装配管理端点认证链与实例元数据。
+  Feign、网关与 RocketMQ 的 trace 传播各自经 Micrometer 完成，它们不依赖本 starter。
 - 各模块的 `<parent>` 都是 `mars-cloud-dependencies`，根聚合 POM 只聚合、不做 parent。
 
 ## 横切能力设计
@@ -173,6 +177,19 @@ WebClient 驱动的 HTTP Service Client。两个客户端都按固定服务名�
 用 `event_id` 登记吞掉重复投递。调用方身份的三个内部头与 `traceparent` 随消息传递，消费侧在函数执行期间还原。
 broker 关闭自动创建时，starter 在启动期核验或创建主题与消费组，缺失即启动失败并给出 `mqadmin` 命令。
 接入方式见 [rocketmq starter 使用说明](../mars-cloud-rocketmq-spring-boot-starter/README.md)。
+
+### 可观测性：一条 trace 贯穿进程，日志按 traceId 关联
+
+`mars-cloud-observability-spring-boot-starter` 让每个可部署应用具备同一套可观测性：Micrometer Tracing 经
+OpenTelemetry 桥以 W3C `traceparent` 传播，结束的 span 以 OTLP over HTTP 导出；控制台日志是 Elastic Common Schema
+的 JSON，每行带 `traceId` 与 `spanId`，日志后端据此把日志关联到调用链；指标经 `/actuator/prometheus` 输出，带应用名标签。
+响应式栈的请求在 Reactor 线程之间切换，starter 打开 Reactor 的自动上下文传播，切换后的日志行仍带当前请求的 `traceId`。
+
+管理端点与业务端点分开：管理端口是业务端口加 1000，启动期核验显式配置不偏离这条约定，并写进 Nacos 实例元数据
+供 Spring Boot Admin 发现。`health` 匿名可读，其余端点经一条只匹配 Actuator 端点的认证链做 Basic 认证，与应用
+自己的安全链共存。暴露面与认证链使用同一组判断：建不起认证链时只暴露 `health` 与 `info`，认证链该有却没有装配时
+非开发环境拒绝启动，管理端点不会无认证地暴露指标、日志级别或堆转储。
+配置项与环境变量见 [observability starter 使用说明](../mars-cloud-observability-spring-boot-starter/README.md)。
 
 ## 已知行为与偏差
 
