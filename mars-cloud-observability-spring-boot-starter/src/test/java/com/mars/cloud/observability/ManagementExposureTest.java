@@ -1,7 +1,9 @@
 package com.mars.cloud.observability;
 
+import com.jayway.jsonpath.JsonPath;
 import com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvironmentPostProcessor;
 import com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration;
+import com.mars.cloud.observability.autoconfigure.ObservabilityProperties;
 import com.mars.cloud.observability.internal.ManagementAccess;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.LazyInitializationBeanFactoryPostProcessor;
@@ -12,6 +14,9 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.mock.env.MockEnvironment;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +35,18 @@ class ManagementExposureTest {
                 "mars.observability.management.username", "ops",
                 "mars.observability.management.password", "secret")))
                 .isEqualTo("health,info,prometheus,metrics,loggers,threaddump,heapdump");
+    }
+
+    /**
+     * 配置元数据写出完整清单的默认值。注解处理器识别不了集合字段的初始值，默认值写在附加元数据里，
+     * 这里核对它与代码里的常量一致。读本模块自己生成的文件，classpath 上别的 jar 也有同名文件。
+     */
+    @Test void configurationMetadataDocumentsTheDefaultExposure() throws Exception {
+        Path classes = Path.of(ObservabilityProperties.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        String metadata = Files.readString(classes.resolve("META-INF/spring-configuration-metadata.json"));
+        List<Object> defaults = JsonPath.read(metadata,
+                "$.properties[?(@.name == 'mars.observability.management.exposure')].defaultValue");
+        assertThat(defaults).containsExactly(List.of(ObservabilityProperties.Management.DEFAULT_EXPOSURE.split(",")));
     }
 
     /** 缺密码：收窄。只有用户名不构成凭据。 */
