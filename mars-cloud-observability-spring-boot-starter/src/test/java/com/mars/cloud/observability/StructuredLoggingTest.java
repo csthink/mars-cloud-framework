@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "mars.observability.management.password=ops-secret"
         })
 @TestPropertySource(properties = "mars.observability.logging.console-format=ecs")
-@ExtendWith(OutputCaptureExtension.class)
+@ExtendWith({OutputCaptureExtension.class, StructuredLoggingFormatCleanup.class})
 class StructuredLoggingTest {
 
     private static final Logger log = LoggerFactory.getLogger(StructuredLoggingTest.class);

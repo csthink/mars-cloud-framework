@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                         + "TomcatReactiveManagementContextAutoConfiguration"
         })
 @TestPropertySource(properties = "mars.observability.logging.console-format=ecs")
-@ExtendWith(OutputCaptureExtension.class)
+@ExtendWith({OutputCaptureExtension.class, StructuredLoggingFormatCleanup.class})
 class ReactiveLogCorrelationTest {
 
     private static final String TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736";
