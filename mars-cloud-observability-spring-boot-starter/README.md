@@ -31,7 +31,7 @@
 
 | 变量 | 作用 |
 | --- | --- |
-| `MARS_MANAGEMENT_USERNAME` / `MARS_MANAGEMENT_PASSWORD` | 管理端点 Basic 认证的唯一账号。对应属性 `mars.observability.management.username` / `password` |
+| `MARS_MANAGEMENT_USERNAME` / `MARS_MANAGEMENT_PASSWORD` | 管理端点 Basic 认证的唯一账号。对应属性 `mars.observability.management.username` / `password`。口令用 bcrypt 编码，不能超过 72 字节（按 UTF-8 计），超过时启动失败 |
 | `OTLP_TRACING_ENDPOINT` | 调用链导出端点，OTLP over HTTP 的完整地址，例如 `http://127.0.0.1:4318/v1/traces`。留空则不导出，应用照常启动 |
 
 显式配置的属性优先于这几个环境变量；属性配置为空白时视为没有配置，仍读环境变量。属性的宽松绑定形式
@@ -40,6 +40,8 @@
 ## 默认值
 
 starter 在环境末尾追加一个最低优先级的属性源，任何显式配置（环境变量、配置中心、`application.yml`）都覆盖它。
+唯一的例外是应用代码经 `SpringApplication#setDefaultProperties` 设置的默认属性：Spring Boot 在 starter 写入之后
+才把它们移到末尾，同名时 starter 的默认值生效。要覆盖这些默认值，用配置文件、环境变量或命令行参数。
 
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
