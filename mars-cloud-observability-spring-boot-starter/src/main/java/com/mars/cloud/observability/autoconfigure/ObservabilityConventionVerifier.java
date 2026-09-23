@@ -14,18 +14,18 @@ import java.util.Arrays;
  * 在启动期核验管理端口与管理端点的约定。不满足即启动失败，异常消息写出实际值与期望值。
  *
  * <p>管理端点不能无认证地暴露指标、日志级别与堆转储：没有认证的这些端点等于把运行细节放在内网任人读取。
- * 缺凭据时暴露面已收窄，开发 profile 告警、其他 profile 启动失败；建不起认证链（缺 Spring Security
- * 或 Spring Boot 的 Web 安全模块）时暴露面同样已收窄，只告警。凭据与类都具备而认证链没有装配的情况
- * 由 {@link ManagementChainVerifier} 核验，它只对 Web 应用装配。
+ * 缺凭据时开发 profile 告警、其他 profile 启动失败；建不起认证链（缺 Spring Security 或 Spring Boot 的
+ * Web 安全模块）时只告警。这两种情况下环境后处理把默认暴露清单收窄为 health 与 info，
+ * 而生效的清单可能被显式配置放宽，它是否越界由 {@link ManagementChainVerifier} 核验，它只对 Web 应用装配。
  */
 public final class ObservabilityConventionVerifier implements InitializingBean, BeanClassLoaderAware {
 
     /** 缺少凭据时的告警。这两条消息是固定的，日志策略按它们登记理由。 */
     static final String MISSING_CREDENTIALS_MESSAGE =
-            "管理端点缺少认证凭据，暴露面已收窄；生产环境必须提供 mars.observability.management.username 与 password";
+            "管理端点缺少认证凭据，只能暴露 health 与 info；生产环境必须提供 mars.observability.management.username 与 password";
     static final String MISSING_SECURITY_MESSAGE =
             "classpath 上没有 Spring Security 或 Spring Boot 的 Web 安全模块（spring-boot-starter-security），"
-                    + "管理端点无法建立认证链，暴露面已收窄";
+                    + "管理端点无法建立认证链，只能暴露 health 与 info";
 
     private static final Log logger = LogFactory.getLog(ObservabilityConventionVerifier.class);
 
@@ -84,7 +84,7 @@ public final class ObservabilityConventionVerifier implements InitializingBean, 
         }
         if (!ManagementAccess.authenticationChainSupported(classLoader)) {
             // 部署物没有接入 Spring Security 或 Web 安全模块。
-            // 暴露面已收窄，没有无认证的端点，告警即可；拒绝启动会让这类部署物在任何非开发环境都起不来。
+            // 只暴露 health 与 info 时没有需要认证的端点，告警即可；拒绝启动会让这类部署物在任何非开发环境都起不来。
             logger.warn(MISSING_SECURITY_MESSAGE);
             return;
         }

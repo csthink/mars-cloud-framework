@@ -10,19 +10,21 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.core.env.Environment;
 
 import java.util.Arrays;
+import java.util.Set;
 
 /**
- * 在启动期核验 Web 应用的管理端点确实受认证链保护。
+ * 在启动期核验 Web 应用的管理端点暴露面与认证链一致：认证链没有装配时，生效的暴露清单只能包含 health 与 info。
  *
- * <p>凭据与建链所需的类都具备时，暴露面已经按有认证放开；此时认证链没有装配，说明部署物关掉了
- * Web 安全装配，指标、日志级别与堆转储在管理端口上无认证可达。非开发 profile 因此拒绝启动，
- * 开发 profile 告警。只对 Web 应用装配：非 Web 应用不开 HTTP 端口，认证链本来就不会装配。
+ * <p>认证链没有装配有三种原因：缺凭据；classpath 上缺 Spring Security 或 Spring Boot 的 Web 安全模块；
+ * 部署物关掉了 Web 安全装配或排除了认证链的自动配置。前两种情况下环境后处理已把默认暴露清单收窄，
+ * 第三种情况下默认清单已按有认证放开；显式配置的 {@code management.endpoints.web.exposure.include}
+ * 在三种情况下都能覆盖默认值。所以这里按生效的清单判断，越界时非开发 profile 拒绝启动、开发 profile 告警。
+ * 只对 Web 应用装配：非 Web 应用不开 HTTP 端口，认证链本来就不会装配。
  */
 public final class ManagementChainVerifier implements InitializingBean, BeanClassLoaderAware {
 
-    /** 凭据与类都具备，但部署物关掉了 Web 安全装配，链因此没建起来，而暴露面已经放开。 */
-    static final String CHAIN_NOT_BUILT_MESSAGE =
-            "管理端点的认证链没有装配：部署物关掉了 Web 安全装配，而暴露面已按有认证放开，管理端点不受认证保护";
+    /** 越界消息的固定前缀，完整消息再写出没有认证链的原因与越界的端点。 */
+    static final String UNPROTECTED_EXPOSURE_MESSAGE = "管理端点没有认证链保护，暴露清单只能包含 health 与 info";
 
     private static final Log logger = LogFactory.getLog(ManagementChainVerifier.class);
 
@@ -43,18 +45,30 @@ public final class ManagementChainVerifier implements InitializingBean, BeanClas
 
     @Override
     public void afterPropertiesSet() {
-        if (!ManagementAccess.canAuthenticate(environment, classLoader)) {
-            return;
-        }
         boolean built = beanFactory.containsBeanDefinition(ManagementCredentials.SERVLET_CHAIN_BEAN)
                 || beanFactory.containsBeanDefinition(ManagementCredentials.REACTIVE_CHAIN_BEAN);
         if (built) {
             return;
         }
+        Set<String> exposed = ManagementAccess.exposedEndpointsRequiringAuthentication(environment);
+        if (exposed.isEmpty()) {
+            return;
+        }
+        String message = UNPROTECTED_EXPOSURE_MESSAGE + "：" + reason() + "，实际暴露了 " + exposed;
         if (!ManagementAccess.developmentProfile(environment)) {
-            throw new IllegalStateException(CHAIN_NOT_BUILT_MESSAGE + "；当前激活的 profile 是 "
+            throw new IllegalStateException(message + "；当前激活的 profile 是 "
                     + Arrays.toString(environment.getActiveProfiles()));
         }
-        logger.warn(CHAIN_NOT_BUILT_MESSAGE);
+        logger.warn(message);
+    }
+
+    private String reason() {
+        if (!ManagementAccess.hasCredentials(environment)) {
+            return "缺少 mars.observability.management.username 与 password";
+        }
+        if (!ManagementAccess.authenticationChainSupported(classLoader)) {
+            return "classpath 上没有 Spring Security 或 Spring Boot 的 Web 安全模块";
+        }
+        return "认证链没有装配，部署物关掉了 Web 安全装配或排除了认证链的自动配置";
     }
 }

@@ -1,11 +1,12 @@
 package com.mars.cloud.observability.security;
 
-import com.mars.cloud.observability.autoconfigure.ObservabilityProperties;
+import com.mars.cloud.observability.internal.ManagementAccess;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpoint;
 import org.springframework.boot.security.autoconfigure.actuate.web.reactive.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -23,8 +24,9 @@ public class ReactiveManagementSecurityConfiguration {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 100)
     SecurityWebFilterChain marsManagementSecurityWebFilterChain(ServerHttpSecurity http,
-                                                                ObservabilityProperties properties) {
-        ManagementCredentials credentials = new ManagementCredentials(properties.getManagement());
+                                                                Environment environment) {
+        ManagementCredentials credentials = new ManagementCredentials(
+                ManagementAccess.username(environment), ManagementAccess.password(environment));
         MapReactiveUserDetailsService users = new MapReactiveUserDetailsService(credentials.user());
         ReactiveAuthenticationManager manager =
                 authenticationManager(users, credentials);

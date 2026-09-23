@@ -25,9 +25,9 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
     public static final String TRACING_ENDPOINT_PROPERTY =
             "management.opentelemetry.tracing.export.otlp.endpoint";
     /** 管理端点认证账号的属性名，对应环境变量 MARS_MANAGEMENT_USERNAME。 */
-    public static final String USERNAME_PROPERTY = "mars.observability.management.username";
+    public static final String USERNAME_PROPERTY = ManagementAccess.USERNAME_PROPERTY;
     /** 管理端点认证口令的属性名，对应环境变量 MARS_MANAGEMENT_PASSWORD。 */
-    public static final String PASSWORD_PROPERTY = "mars.observability.management.password";
+    public static final String PASSWORD_PROPERTY = ManagementAccess.PASSWORD_PROPERTY;
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -38,8 +38,9 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
 
         // 几个部署时要填的取值用短环境变量名，它们与属性名不同段，Boot 的宽松绑定接不上，
         // 所以在这里显式映射。部署物因此只需要认这几个名字，不用记完整属性路径。
-        String username = resolve(environment, USERNAME_PROPERTY, "MARS_MANAGEMENT_USERNAME");
-        String password = resolve(environment, PASSWORD_PROPERTY, "MARS_MANAGEMENT_PASSWORD");
+        // 解析与认证链条件、核验器调用同一个方法，几处对「有没有凭据」的结论因此一致。
+        String username = ManagementAccess.username(environment);
+        String password = ManagementAccess.password(environment);
         if (username != null) {
             defaults.put(USERNAME_PROPERTY, username);
         }
@@ -47,9 +48,9 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
             defaults.put(PASSWORD_PROPERTY, password);
         }
 
-        // 管理端点的暴露面必须在 Actuator 读取它之前定好，所以收窄在这里完成而不是留给核验器：
+        // 管理端点的暴露面必须在 Actuator 读取它之前定好，所以默认清单在这里收窄：
         // 没有凭据或建不起认证链时，除 health 与 info 外的端点在管理端口上是无认证可读的。
-        // 暴露面要用映射后的凭据判断：映射结果此刻还在本方法的局部集合里，没进环境。
+        // 这只是最低优先级的默认值，显式配置的暴露清单由 ManagementChainVerifier 按生效值核验。
         // 类是否存在按应用自己的类加载器判断，与认证链自动配置的类条件求值用同一个加载器。
         boolean authenticated = username != null && password != null
                 && ManagementAccess.authenticationChainSupported(application.getClassLoader());
@@ -89,30 +90,18 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
     }
 
     /**
-     * 取属性，没有就退回环境变量。属性一侧用 {@code Binder}，这样环境变量的宽松形式
-     * （{@code MARS_OBSERVABILITY_MANAGEMENT_USERNAME}）与短名两条路都能进来。
-     * 空白按缺失处理，这样「没配」与「配成空字符串」在后续判断里是同一件事。
-     */
-    private String resolve(ConfigurableEnvironment environment, String property, String variable) {
-        String value = Binder.get(environment).bind(property, String.class).orElse(null);
-        if (value == null || value.isBlank()) {
-            value = environment.getProperty(variable);
-        }
-        return value == null || value.isBlank() ? null : value;
-    }
-
-    /**
-     * 能认证就用完整清单，否则退回受限清单。
+     * 能认证就用可配置的完整清单，否则只暴露 health 与 info。不能认证时的清单不提供配置项：
+     * 放宽它只会让需要认证的端点在没有认证链时暴露。
      *
      * <p>用 {@code Binder} 而不是 {@code getProperty}：后者只按字面键查找，
      * 部署时用环境变量覆盖清单会读不到，暴露面就悄悄退回内置默认值。
      */
     private String effectiveExposure(ConfigurableEnvironment environment, boolean authenticated) {
-        String key = authenticated
-                ? "mars.observability.management.exposure"
-                : "mars.observability.management.restricted-exposure";
-        String fallback = authenticated ? "health,info,prometheus,metrics,loggers,threaddump,heapdump" : "health,info";
-        return Binder.get(environment).bind(key, String.class).orElse(fallback);
+        if (!authenticated) {
+            return ManagementAccess.UNAUTHENTICATED_EXPOSURE;
+        }
+        return Binder.get(environment).bind("mars.observability.management.exposure", String.class)
+                .orElse(ObservabilityProperties.Management.DEFAULT_EXPOSURE);
     }
 
     /**

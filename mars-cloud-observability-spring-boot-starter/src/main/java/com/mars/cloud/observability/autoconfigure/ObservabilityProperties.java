@@ -22,23 +22,29 @@ public class ObservabilityProperties {
 
     public static class Management {
 
+        /** 能认证时的默认暴露清单。 */
+        public static final String DEFAULT_EXPOSURE = "health,info,prometheus,metrics,loggers,threaddump,heapdump";
+
         /**
          * 管理端口相对业务端口的偏移量。默认 1000，即业务端口 8103 对应管理端口 9103。
          * 取 0 表示管理端点与业务端点共用一个端口，只允许开发 profile 使用。
          */
         private int portOffset = 1000;
 
-        /** 管理端点 Basic 认证的用户名。与密码一起缺失时按开发 profile 收窄暴露面、其他 profile 启动失败。 */
+        /**
+         * 管理端点 Basic 认证的用户名。为空白时读环境变量 MARS_MANAGEMENT_USERNAME。
+         * 用户名与密码任一缺失时只能暴露 health 与 info；能建认证链时，开发 profile 告警、其他 profile 启动失败。
+         */
         private String username;
 
-        /** 管理端点 Basic 认证的密码。 */
+        /** 管理端点 Basic 认证的密码。为空白时读环境变量 MARS_MANAGEMENT_PASSWORD。 */
         private String password;
 
-        /** 管理端点的暴露清单，写入 management.endpoints.web.exposure.include。 */
-        private String exposure = "health,info,prometheus,metrics,loggers,threaddump,heapdump";
-
-        /** 缺少认证凭据或缺少 Spring Security 时退回的暴露清单。 */
-        private String restrictedExposure = "health,info";
+        /**
+         * 能认证时的暴露清单，写入 management.endpoints.web.exposure.include。
+         * 不能认证时固定为 health 与 info，不提供配置项。
+         */
+        private String exposure = DEFAULT_EXPOSURE;
 
         public int getPortOffset() {
             return portOffset;
@@ -70,19 +76,6 @@ public class ObservabilityProperties {
 
         public void setExposure(String exposure) {
             this.exposure = exposure;
-        }
-
-        public String getRestrictedExposure() {
-            return restrictedExposure;
-        }
-
-        public void setRestrictedExposure(String restrictedExposure) {
-            this.restrictedExposure = restrictedExposure;
-        }
-
-        /** 两项都有值才能建立 Basic 认证链。 */
-        public boolean hasCredentials() {
-            return username != null && !username.isBlank() && password != null && !password.isBlank();
         }
     }
 

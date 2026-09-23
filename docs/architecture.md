@@ -187,8 +187,9 @@ OpenTelemetry 桥以 W3C `traceparent` 传播，结束的 span 以 OTLP over HTT
 
 管理端点与业务端点分开：管理端口是业务端口加 1000，启动期核验显式配置不偏离这条约定，并写进 Nacos 实例元数据
 供 Spring Boot Admin 发现。`health` 匿名可读，其余端点经一条只匹配 Actuator 端点的认证链做 Basic 认证，与应用
-自己的安全链共存。暴露面与认证链使用同一组判断：建不起认证链时只暴露 `health` 与 `info`，认证链该有却没有装配时
-非开发环境拒绝启动，管理端点不会无认证地暴露指标、日志级别或堆转储。
+自己的安全链共存。暴露面、认证链与启动期核验使用同一组判断：建不起认证链时默认只暴露 `health` 与 `info`；
+Web 应用的认证链没有装配时，按生效的暴露清单核验，清单超出 `health` 与 `info` 就在非开发环境拒绝启动，
+管理端点不会无认证地暴露指标、日志级别或堆转储。
 配置项与环境变量见 [observability starter 使用说明](../mars-cloud-observability-spring-boot-starter/README.md)。
 
 ## 已知行为与偏差

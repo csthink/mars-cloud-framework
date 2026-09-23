@@ -1,11 +1,12 @@
 package com.mars.cloud.observability.security;
 
-import com.mars.cloud.observability.autoconfigure.ObservabilityProperties;
+import com.mars.cloud.observability.internal.ManagementAccess;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpoint;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -25,8 +26,9 @@ public class ServletManagementSecurityConfiguration {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 100)
     SecurityFilterChain marsManagementSecurityFilterChain(HttpSecurity http,
-                                                          ObservabilityProperties properties) throws Exception {
-        ManagementCredentials credentials = new ManagementCredentials(properties.getManagement());
+                                                          Environment environment) throws Exception {
+        ManagementCredentials credentials = new ManagementCredentials(
+                ManagementAccess.username(environment), ManagementAccess.password(environment));
         DaoAuthenticationProvider provider =
                 new DaoAuthenticationProvider(new InMemoryUserDetailsManager(credentials.user()));
         provider.setPasswordEncoder(credentials.encoder());

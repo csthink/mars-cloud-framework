@@ -1,6 +1,5 @@
 package com.mars.cloud.observability.security;
 
-import com.mars.cloud.observability.autoconfigure.ObservabilityProperties;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,10 +22,11 @@ public final class ManagementCredentials {
     private final UserDetails user;
     private final PasswordEncoder encoder;
 
-    public ManagementCredentials(ObservabilityProperties.Management management) {
+    /** 账号与口令取自环境里解析后的值，与认证链的装配条件读同一个来源。 */
+    public ManagementCredentials(String username, String password) {
         this.encoder = new BCryptPasswordEncoder();
-        this.user = User.withUsername(management.getUsername())
-                .password(encoder.encode(management.getPassword()))
+        this.user = User.withUsername(username)
+                .password(encoder.encode(password))
                 .authorities("MANAGEMENT")
                 .build();
     }

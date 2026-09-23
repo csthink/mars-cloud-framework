@@ -2,6 +2,7 @@ package com.mars.cloud.observability;
 
 import com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvironmentPostProcessor;
 import com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration;
+import com.mars.cloud.observability.internal.ManagementAccess;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -49,16 +50,40 @@ class ManagementExposureTest {
                 .isEqualTo("health,info");
     }
 
-    /** 两个清单都可以覆盖。 */
-    @Test void honoursConfiguredExposureLists() {
+    /** 能认证时的清单可以覆盖。 */
+    @Test void honoursConfiguredExposureList() {
         assertThat(exposureAfterPostProcessing(Map.of(
                 "mars.observability.management.username", "ops",
                 "mars.observability.management.password", "secret",
                 "mars.observability.management.exposure", "health,prometheus")))
                 .isEqualTo("health,prometheus");
+    }
+
+    /**
+     * 不能认证时的清单固定为 health 与 info，组件自己的配置项放不宽它：
+     * 放宽后指标一类的端点会在没有认证链时暴露。
+     */
+    @Test void unauthenticatedExposureCannotBeWidenedByComponentProperties() {
         assertThat(exposureAfterPostProcessing(Map.of(
-                "mars.observability.management.restricted-exposure", "health")))
-                .isEqualTo("health");
+                "mars.observability.management.exposure", "health,info,prometheus",
+                "mars.observability.management.restricted-exposure", "health,info,prometheus")))
+                .isEqualTo("health,info");
+    }
+
+    /**
+     * 属性为空白时退回短环境变量，环境后处理与认证链条件必须得出同一个结论。
+     * 两处结论不一致时，暴露面按有认证放开而认证链不装配，指标端点无认证可达。
+     */
+    @Test void blankPropertyFallsBackToTheShortVariableForEveryDecision() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setProperty("mars.observability.management.username", "");
+        environment.setProperty("MARS_MANAGEMENT_USERNAME", "ops");
+        environment.setProperty("mars.observability.management.password", "secret");
+        new MarsObservabilityDefaultsEnvironmentPostProcessor()
+                .postProcessEnvironment(environment, new SpringApplication());
+        assertThat(environment.getProperty("management.endpoints.web.exposure.include"))
+                .isEqualTo("health,info,prometheus,metrics,loggers,threaddump,heapdump");
+        assertThat(ManagementAccess.hasCredentials(environment)).isTrue();
     }
 
     /**

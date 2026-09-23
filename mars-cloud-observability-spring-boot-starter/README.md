@@ -34,7 +34,8 @@
 | `MARS_MANAGEMENT_USERNAME` / `MARS_MANAGEMENT_PASSWORD` | 管理端点 Basic 认证的唯一账号。对应属性 `mars.observability.management.username` / `password` |
 | `OTLP_TRACING_ENDPOINT` | 调用链导出端点，OTLP over HTTP 的完整地址，例如 `http://127.0.0.1:4318/v1/traces`。留空则不导出，应用照常启动 |
 
-显式配置的属性优先于这几个环境变量；属性的宽松绑定形式（如 `MARS_OBSERVABILITY_MANAGEMENT_USERNAME`）同样有效。
+显式配置的属性优先于这几个环境变量；属性配置为空白时视为没有配置，仍读环境变量。属性的宽松绑定形式
+（如 `MARS_OBSERVABILITY_MANAGEMENT_USERNAME`）同样有效。
 
 ## 默认值
 
@@ -57,8 +58,7 @@ starter 在环境末尾追加一个最低优先级的属性源，任何显式配
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
 | `mars.observability.management.port-offset` | `1000` | 管理端口相对业务端口的偏移量；`0` 表示与业务端口共用，只允许开发 profile |
-| `mars.observability.management.exposure` | 见上表 | 能认证时的暴露清单 |
-| `mars.observability.management.restricted-exposure` | `health,info` | 不能认证时的暴露清单 |
+| `mars.observability.management.exposure` | 见上表 | 能认证时的暴露清单；不能认证时固定为 `health,info`，没有配置项 |
 | `mars.observability.logging.console-format` | `ecs` | `ecs` 为结构化 JSON；`plain` 为 Spring Boot 的文本格式，用于本机调试与测试 |
 
 开发 profile 由 `mars.env.dev-profiles` 列出，与 mvc starter 使用同一个属性。本 starter 只读应用配置里的值，
@@ -85,14 +85,18 @@ starter 在环境末尾追加一个最低优先级的属性源，任何显式配
 `UserDetailsService`，部署物自己的安全链与认证方式不受影响，两条链共存。
 
 「能认证」指凭据齐备，并且同一种 Web 栈的 Spring Security 与 Spring Boot 的端点匹配器都在 classpath 上。
-starter 据此决定暴露面，并在启动期核验：
+starter 据此写入默认暴露清单，并在启动期核验：
 
-| 情况 | 暴露面 | 启动期 |
+| 情况 | 默认暴露清单 | 启动期 |
 | --- | --- | --- |
 | 能认证，认证链已装配 | 完整清单，`health` 之外要认证 | 正常 |
 | 缺凭据，能建认证链 | `health,info` | 开发 profile 告警，其他 profile 启动失败 |
 | 建不起认证链（没有 Spring Security 或 Web 安全模块） | `health,info` | 告警 |
-| 能认证，但 Web 应用的认证链没有装配（部署物关掉了 Web 安全装配） | 完整清单 | 开发 profile 告警，其他 profile 启动失败 |
+| 能认证，但 Web 应用的认证链没有装配（部署物关掉了 Web 安全装配或排除了认证链的自动配置） | 完整清单 | 见下一段 |
+
+显式配置的 `management.endpoints.web.exposure.include` 会覆盖默认清单，所以启动期按生效的清单核验：
+Web 应用的认证链没有装配时，生效的清单只能包含 `health` 与 `info`，通配符 `*` 也算越界；越界时开发 profile
+告警，其他 profile 启动失败，消息写出没有认证链的原因与越界的端点。
 
 采集指标与实例监控（Spring Boot Admin）访问管理端点时使用同一组凭据。
 
