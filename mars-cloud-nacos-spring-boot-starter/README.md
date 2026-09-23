@@ -79,7 +79,12 @@ spring:
 
 ## 默认值
 
-本 starter 在环境末尾追加一个最低优先级的属性源，任何显式配置（环境变量、配置中心、`application.yml`）都覆盖它。
+本 starter 在环境末尾追加一个最低优先级的属性源，配置文件、环境变量、命令行参数与配置中心的显式配置都覆盖它。例外有两处：
+
+- 应用代码经 `SpringApplication#setDefaultProperties` 设置的默认属性：Spring Boot 在 starter 写入之后才把它们移到末尾，
+  同名时 starter 无条件写入的值生效，例如下表的 `spring.cloud.discovery.client.composite-indicator.enabled`。
+  只在未配置时才推导的 `spring.cloud.nacos.discovery.ip` 在推导时已经能看到这些默认属性，于是不推导，应用代码的值生效。
+- 上下文刷新时才加入的 `@PropertySource`：它排在本 starter 的属性源之后，同名值不生效。
 
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -103,7 +108,7 @@ Spring Cloud Alibaba 在没有配置注册地址时注册第一块非回环网�
 - `server.address` 是 IPv6 地址：Spring Cloud 把注册地址直接拼进 `http://<地址>:<端口>` 形式的实例地址，
   不给 IPv6 地址加方括号，拼出的地址无效。以 IPv6 地址注册不在本 starter 的支持范围内。
 - 显式配置了 `spring.cloud.nacos.discovery.ip`，包括空值。空值时 Spring Cloud Alibaba 视为未配置，自己选取网卡。
-  上下文刷新时才加入的 `@PropertySource` 在推导时还看不到，并且排在本 starter 的属性源之后，
+  `server.address` 是具体 IPv4 地址时，上下文刷新时才加入的 `@PropertySource` 在推导时还看不到，并且排在本 starter 的属性源之后，
   其中的 `spring.cloud.nacos.discovery.ip` 既不阻止推导，也不生效；注册地址用配置文件、环境变量或命令行参数给出。
 
 `spring.cloud.nacos.discovery.network-interface`、`ip-type` 与 `spring.cloud.inetutils` 的 `preferred-networks`、

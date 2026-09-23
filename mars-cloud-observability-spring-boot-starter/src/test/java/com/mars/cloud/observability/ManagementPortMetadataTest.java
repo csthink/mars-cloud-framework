@@ -103,8 +103,9 @@ class ManagementPortMetadataTest {
     }
 
     /**
-     * 环境后处理之后、注册初始化之前才加入的显式配置排在推导值前面，判定为显式配置。例如以 bootstrap 方式接入配置中心时，
-     * 配置中心的属性源由上下文初始化器用 {@code addFirst} 加入，那时推导已经完成。
+     * 环境后处理之后、注册初始化之前加入且排在推导值前面的显式配置判定为显式配置，例如应用自己的
+     * {@code ApplicationContextInitializer} 用 {@code addFirst} 加入的属性源。上下文刷新时才加入的
+     * {@code @PropertySource} 排在推导值之后，不在此列。
      */
     @Test void anExplicitAddressAddedAfterTheDerivationCountsAsExplicit() {
         MockEnvironment environment = new MockEnvironment();
@@ -115,7 +116,7 @@ class ManagementPortMetadataTest {
         ConfigurationPropertySources.attach(environment);
         assertThat(ManagementAddress.derived(environment)).isTrue();
 
-        environment.getPropertySources().addFirst(new MapPropertySource("refreshed",
+        environment.getPropertySources().addFirst(new MapPropertySource("initializer",
                 Map.of(ManagementAddress.PROPERTY, "10.9.9.9")));
 
         assertThat(ManagementAddress.derived(environment)).isFalse();

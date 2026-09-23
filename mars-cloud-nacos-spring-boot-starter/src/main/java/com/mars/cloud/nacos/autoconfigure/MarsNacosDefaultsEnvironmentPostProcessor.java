@@ -11,7 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 以最低优先级提供 Nacos 相关的默认值；任何显式配置（环境变量、配置中心、application.yml）都覆盖它。
+ * 以最低优先级提供 Nacos 相关的默认值；配置文件、环境变量、命令行参数与配置中心的显式配置都覆盖它。
+ * 例外有两处，见 README「默认值」：应用代码经 {@code SpringApplication#setDefaultProperties} 设置的默认属性
+ * 不覆盖这里无条件写入的值；上下文刷新时才加入的 {@code @PropertySource} 排在它之后，同名值不生效。
  *
  * <p>关闭 Spring Cloud 的注册中心健康检查（{@code discoveryComposite}）。停机时 Nacos 的优雅停机先注销并关闭
  * Nacos 客户端，再按 {@code spring.cloud.nacos.discovery.graceful-shutdown-wait-time}（默认 10 秒）等待；

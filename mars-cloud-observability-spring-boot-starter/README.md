@@ -43,7 +43,7 @@ starter 在环境末尾追加最低优先级的属性源（推导出的管理地
 都覆盖它们。例外有两处：
 
 - 应用代码经 `SpringApplication#setDefaultProperties` 设置的默认属性：Spring Boot 在 starter 写入之后才把它们移到末尾，
-  同名时 starter 写入的固定默认值生效。只在未配置时才推导的 `management.server.port` 与 `management.server.address`
+  同名时 starter 无条件写入的值生效。只在未配置时才推导的 `management.server.port` 与 `management.server.address`
   在推导时已经能看到这些默认属性，于是不推导，应用代码的值生效。
 - 上下文刷新时才加入的 `@PropertySource`：它排在这些属性源之后，同名值不生效。
 
