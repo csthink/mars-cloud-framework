@@ -326,15 +326,15 @@
     },
     {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsObservabilityConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ mars\\.observability\\.management\\.port\\-offset\\ 为\\ 0\\ 表示管理端点与业务端点共用端口，只允许开发\\ profile；当前激活的\\ profile\\ 是\\ \\[\\]",
-      "reason": "Negative management port test: a zero port offset outside development profiles, a management port that breaks the offset rule and a disabled management port must each fail to start."
+      "reason": "Negative management port test: a zero port offset outside development profiles must fail to start."
     },
     {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsObservabilityConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ management\\.server\\.port\\ 与约定不符：期望\\ 9103（业务端口\\ 8103\\ 加偏移量\\ 1000），实际\\ 9999",
-      "reason": "Negative management port test: a zero port offset outside development profiles, a management port that breaks the offset rule and a disabled management port must each fail to start."
+      "reason": "Negative management port test: an explicit management port that breaks the offset rule must fail to start."
     },
     {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsObservabilityConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ management\\.server\\.port\\ 不能为\\ \\-1：禁用管理端口会让实例监控看不到本实例",
-      "reason": "Negative management port test: a zero port offset outside development profiles, a management port that breaks the offset rule and a disabled management port must each fail to start."
+      "reason": "Negative management port test: a disabled management port must fail to start."
     },
     {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsObservabilityConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.observability\\.autoconfigure\\.MarsObservabilityAutoConfiguration:\\ 管理端点缺少认证凭据，只能暴露\\ health\\ 与\\ info；生产环境必须提供\\ mars\\.observability\\.management\\.username\\ 与\\ password；当前激活的\\ profile\\ 是\\ \\[\\]",
