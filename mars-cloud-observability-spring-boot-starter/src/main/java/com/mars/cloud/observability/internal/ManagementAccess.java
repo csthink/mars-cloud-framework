@@ -164,7 +164,8 @@ public final class ManagementAccess {
 
     /**
      * 按列表绑定，与 Actuator 读这两个键的方式相同：逗号分隔的字符串与配置文件里的列表写法都能读到。
-     * 这里跳过空白项并去掉两端空白；Actuator 遇到这两种写法会在启动时报错，所以结论不受影响。
+     * 这里跳过空白项并去掉各项两端的空白；Actuator 遇到空白项或两端带空白的项会在启动时报错（逗号分隔的字符串
+     * 在绑定时已去掉两端空白），所以两边的结论不会不同。
      */
     private static List<String> values(Environment environment, String key) {
         List<String> values = new ArrayList<>();

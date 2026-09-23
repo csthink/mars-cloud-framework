@@ -1,8 +1,8 @@
 package com.mars.cloud.observability;
 
 import com.jayway.jsonpath.JsonPath;
-import com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvironmentPostProcessor;
 import com.mars.cloud.observability.autoconfigure.MarsObservabilityAutoConfiguration;
+import com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvironmentPostProcessor;
 import com.mars.cloud.observability.autoconfigure.ObservabilityProperties;
 import com.mars.cloud.observability.internal.ManagementAccess;
 import org.junit.jupiter.api.Test;
