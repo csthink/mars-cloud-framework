@@ -8,6 +8,7 @@ import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
+import org.springframework.mock.env.MockEnvironment;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,21 +53,47 @@ class NacosDefaultsTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"127.0.0.1", "10.1.2.3", "fd00::1"})
-    void theRegistrationAddressFollowsASpecificServerAddress(String serverAddress) {
+    @ValueSource(strings = {"127.0.0.1", "10.1.2.3"})
+    void theRegistrationAddressFollowsASpecificIpv4ServerAddress(String serverAddress) {
         assertThat(registrationAddress(Map.of("server.address", serverAddress))).isEqualTo(serverAddress);
     }
 
-    /** 显式配置的注册地址保留原值：注册地址与绑定地址不同的部署（例如容器端口映射）由它表达。 */
+    /** 同一个 IPv4 地址的非常规写法统一成四段十进制后注册，调用方不会按另一种写法解读成别的地址。 */
+    @Test void theRegistrationAddressIsTheCanonicalIpv4Form() {
+        assertThat(registrationAddress(Map.of("server.address", "127.1"))).isEqualTo("127.0.0.1");
+        assertThat(registrationAddress(Map.of("server.address", "010.001.002.003"))).isEqualTo("10.1.2.3");
+        assertThat(registrationAddress(Map.of("server.address", "::ffff:10.1.2.3"))).isEqualTo("10.1.2.3");
+    }
+
+    /** 显式配置的注册地址保留原值：注册地址需要与绑定地址不同时由它表达。 */
     @Test void anExplicitRegistrationAddressWins() {
         assertThat(registrationAddress(Map.of("server.address", "10.1.2.3", DISCOVERY_IP, "192.0.2.10")))
                 .isEqualTo("192.0.2.10");
     }
 
-    /** 业务地址不是具体的 IP 字面量时不推导：通配地址注册后调用方连不上，主机名不做域名解析。 */
+    /**
+     * 部署者用网卡、IP 类型或 Spring Cloud 的网卡偏好决定了注册地址怎么选取时不推导：
+     * 注册地址一旦给出，Spring Cloud Alibaba 就不再看这些配置项。
+     */
     @ParameterizedTest
-    @ValueSource(strings = {"0.0.0.0", "::", "localhost", "service.example", " "})
-    void noRegistrationAddressIsDerivedFromAnAddressThatIsNotASpecificLiteral(String serverAddress) {
+    @ValueSource(strings = {
+            "spring.cloud.nacos.discovery.network-interface=en0",
+            "spring.cloud.nacos.discovery.ip-type=IPv6",
+            "spring.cloud.inetutils.use-only-site-local-interfaces=true",
+            "spring.cloud.inetutils.preferred-networks[0]=10.1",
+            "spring.cloud.inetutils.ignored-interfaces=docker0"})
+    void noRegistrationAddressIsDerivedWhenTheDeployerChoseHowToPickIt(String choice) {
+        String[] pair = choice.split("=", 2);
+        assertThat(registrationAddress(Map.of("server.address", "10.1.2.3", pair[0], pair[1]))).isNull();
+    }
+
+    /**
+     * 业务地址不是具体的 IPv4 字面量时不推导：通配地址注册后调用方连不上，主机名不做域名解析，
+     * IPv6 地址不带方括号拼进实例地址时无效。
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"0.0.0.0", "::", "fd00::1", "[fd00::1]", "localhost", "service.example", " "})
+    void noRegistrationAddressIsDerivedFromAnAddressThatIsNotASpecificIpv4Literal(String serverAddress) {
         assertThat(registrationAddress(Map.of("server.address", serverAddress))).isNull();
     }
 
@@ -75,9 +102,10 @@ class NacosDefaultsTest {
         assertThat(registrationAddress(Map.of())).isNull();
     }
 
-    private static String registrationAddress(Map<String, Object> explicit) {
-        StandardEnvironment environment = new StandardEnvironment();
-        environment.getPropertySources().addFirst(new MapPropertySource("explicit", explicit));
+    /** 环境里只有给出的配置，不含进程环境变量：构建环境导出的同名变量不影响结果。 */
+    private static String registrationAddress(Map<String, String> explicit) {
+        MockEnvironment environment = new MockEnvironment();
+        explicit.forEach(environment::setProperty);
 
         new MarsNacosDefaultsEnvironmentPostProcessor().postProcessEnvironment(environment, new SpringApplication());
 

@@ -84,7 +84,7 @@ spring:
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
 | `spring.cloud.discovery.client.composite-indicator.enabled` | `false` | 根健康端点不含注册中心检查（`discoveryComposite`），见下文 |
-| `spring.cloud.nacos.discovery.ip` | 取 `server.address` | 只在 `server.address` 是具体 IP 地址时写入，见下文「注册地址」 |
+| `spring.cloud.nacos.discovery.ip` | 取 `server.address` 的规范形式 | 只在 `server.address` 是具体的 IPv4 地址时写入，见下文「注册地址」 |
 
 停机时，Spring Cloud Alibaba 的优雅停机先注销实例并关闭 Nacos 客户端，再按
 `spring.cloud.nacos.discovery.graceful-shutdown-wait-time`（默认 10 秒）等待，之后应用才真正停止。
@@ -95,12 +95,19 @@ spring:
 ### 注册地址
 
 Spring Cloud Alibaba 在没有配置注册地址时注册第一块非回环网卡的地址，不参考 `server.address`。
-业务端口只绑定在某个地址上时，调用方按另一块网卡的地址连接会失败。所以 `spring.cloud.nacos.discovery.ip`
-未显式配置、且 `server.address` 是具体的 IP 地址字面量时，本 starter 让注册地址取 `server.address` 的值。
-`server.address` 为通配地址（`0.0.0.0`、`::`）、主机名或未配置时不写入，注册地址保持 Spring Cloud Alibaba 的默认。
+业务端口只绑定在某个地址上时，调用方按另一块网卡的地址连接会失败。所以 `server.address` 是具体的 IPv4 地址字面量时，
+本 starter 让注册地址取它的规范形式（四段十进制，例如 `127.1` 写成 `127.0.0.1`）。下面几种情况不写入，
+注册地址保持 Spring Cloud Alibaba 的默认：
 
-注册地址与绑定地址需要不同时（例如容器端口映射：进程绑定容器内地址，调用方经宿主机地址访问），
-显式配置 `spring.cloud.nacos.discovery.ip` 与 `spring.cloud.nacos.discovery.port`。
+- `server.address` 为通配地址（`0.0.0.0`、`::`）、主机名或未配置。
+- `server.address` 是 IPv6 地址：注册地址会被拼进 `http://<地址>:<端口>` 形式的实例地址，不带方括号时无效，
+  IPv6 部署显式配置 `spring.cloud.nacos.discovery.ip`。
+- 已经显式决定了注册地址怎么选取：配置了 `spring.cloud.nacos.discovery.ip`、`network-interface`、`ip-type`，
+  或 `spring.cloud.inetutils.preferred-networks`、`ignored-interfaces`、`use-only-site-local-interfaces` 中的任何一项。
+  注册地址一旦给出，Spring Cloud Alibaba 就不再看这些配置项，所以推导会让位于它们。
+
+注册地址由本 starter 给出后，Spring Cloud Alibaba 不再把本机 IPv6 地址写进实例元数据 `IPv6`，这一项只在它自己选取注册地址时写入。
+注册地址需要与绑定地址不同时，显式配置 `spring.cloud.nacos.discovery.ip` 与 `spring.cloud.nacos.discovery.port`。
 
 ## 运行时 JVM 参数
 
