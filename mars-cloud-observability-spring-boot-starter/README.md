@@ -46,6 +46,7 @@ starter 在环境末尾追加一个最低优先级的属性源，任何显式配
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
 | `management.server.port` | 业务端口 + 1000 | 见「管理端口」 |
+| `management.server.address` | 取 `server.address` | 只在管理端口独立且 `server.address` 是具体 IP 地址时写入，见「管理端口」 |
 | `management.endpoints.web.exposure.include` | `health,info,prometheus,metrics,loggers,threaddump,heapdump` | 不能认证时为 `health,info`，见「管理端点」 |
 | `management.endpoint.health.show-details` / `show-components` | `when-authorized` | 匿名只看到聚合状态，带凭据可看到组件明细 |
 | `management.endpoint.health.probes.enabled` | `true` | 提供 `liveness` 与 `readiness` 探针组 |
@@ -77,9 +78,18 @@ starter 在环境末尾追加一个最低优先级的属性源，任何显式配
 - `management.server.port` 不能为 `-1`：禁用管理端口会让实例监控看不到该实例。
 - 偏移量为 `0` 只允许开发 profile。
 
+管理端口的绑定地址跟随业务端口。Spring Boot 的管理端口按 `management.server.address` 绑定，没有配置时绑定全部网卡，
+不继承 `server.address`。所以 `management.server.address` 未显式配置时，starter 在下面三个条件都满足时写入 `server.address` 的值：
+
+- `server.address` 是具体的 IP 地址字面量，不是通配地址（`0.0.0.0`、`::`），也不是主机名；主机名不做域名解析。
+- 管理端口独立：按 Spring Boot 自己的判定，管理端口与业务端口不同，或管理端口为 `0`（随机端口）。
+  共用端口时 Spring Boot 不允许单独配置管理端口的地址，写入它会让应用启动失败。
+- 应用没有显式配置 `management.server.address`；需要管理端口绑定别的地址时显式配置即可。
+
 接入 Nacos 服务发现的应用注册时，starter 把管理端口写进实例元数据 `management.port`。Spring Boot Admin
 按这个键找 Actuator 端点；缺少它时会退回业务端口，而业务端口上没有 Actuator 端点。管理端点与业务端点共用端口、
-或管理端口为随机端口时，starter 去掉这一项，不留下服务发现组件写入的 `0`。
+或管理端口为随机端口时，starter 去掉这一项，不留下服务发现组件写入的 `0`。管理地址已配置（包括上面推导出的值）时，
+服务发现组件还会写入 `management.address`，Spring Boot Admin 按它连接管理端点。
 
 ## 管理端点
 

@@ -3,6 +3,7 @@ package com.mars.cloud.observability.autoconfigure;
 import com.mars.cloud.observability.internal.ManagementAccess;
 import com.mars.cloud.observability.internal.ManagementPort;
 import org.springframework.boot.EnvironmentPostProcessor;
+import org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.SpringApplication;
@@ -10,11 +11,12 @@ import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 
+import java.net.InetAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 以最低优先级提供可观测性的默认值，并把管理端口从业务端口推导出来。
+ * 以最低优先级提供可观测性的默认值，并把管理端口与管理端口的绑定地址从业务端口推导出来。
  *
  * <p>这里写入的每一项都会被显式配置（环境变量、配置中心、application.yml）覆盖，
  * 覆盖后的取值由 {@link ObservabilityConventionVerifier} 在启动期核验。
@@ -29,6 +31,8 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
     public static final String USERNAME_PROPERTY = ManagementAccess.USERNAME_PROPERTY;
     /** 管理端点认证口令的属性名，对应环境变量 MARS_MANAGEMENT_PASSWORD。 */
     public static final String PASSWORD_PROPERTY = ManagementAccess.PASSWORD_PROPERTY;
+    /** 管理端口的绑定地址。Spring Boot 不让它继承 server.address。 */
+    public static final String MANAGEMENT_ADDRESS_PROPERTY = "management.server.address";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
@@ -88,6 +92,13 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
         }
 
         environment.getPropertySources().addLast(new MapPropertySource(PROPERTY_SOURCE_NAME, defaults));
+
+        // 管理端口是否独立要按推导后的端口判断，所以在属性源加入环境之后再算；
+        // 属性源直接持有这个 Map，此后放进去的键同样生效。
+        String managementAddress = deriveManagementAddress(environment);
+        if (managementAddress != null) {
+            defaults.put(MANAGEMENT_ADDRESS_PROPERTY, managementAddress);
+        }
     }
 
     /**
@@ -117,6 +128,44 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
         }
         int offset = environment.getProperty("mars.observability.management.port-offset", Integer.class, 1000);
         return ManagementPort.derive(ManagementPort.serverPort(environment), offset);
+    }
+
+    /**
+     * 管理端口独立时，让它与业务端口绑定同一个地址。
+     *
+     * <p>Spring Boot 的管理端口按 {@code management.server.address} 绑定，没有配置时绑定全部网卡，
+     * 不继承 {@code server.address}。管理端点与业务端点共用端口时配置这一项会启动失败，
+     * 所以只在 Spring Boot 判定管理端口独立时推导，判定直接用它自己的 {@link ManagementPortType}。
+     * 业务端口的地址不是具体的 IP 字面量（未配置、通配地址或主机名）时不推导，管理端口保持 Spring Boot 的默认。
+     */
+    private String deriveManagementAddress(ConfigurableEnvironment environment) {
+        if (environment.containsProperty(MANAGEMENT_ADDRESS_PROPERTY)) {
+            return null;
+        }
+        String serverAddress = specificAddressLiteral(environment.getProperty("server.address"));
+        if (serverAddress == null || ManagementPortType.get(environment) != ManagementPortType.DIFFERENT) {
+            return null;
+        }
+        return serverAddress;
+    }
+
+    /**
+     * 取值是具体的 IP 地址字面量时原样返回，否则返回 {@code null}。
+     *
+     * <p>{@link InetAddress#ofLiteral} 只解析字面量，不做域名解析；主机名、空值与通配地址
+     * （{@code 0.0.0.0}、{@code ::}）都不算具体地址。
+     */
+    private static String specificAddressLiteral(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String candidate = value.trim();
+        try {
+            return InetAddress.ofLiteral(candidate).isAnyLocalAddress() ? null : candidate;
+        }
+        catch (IllegalArgumentException notALiteral) {
+            return null;
+        }
     }
 
     @Override

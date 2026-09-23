@@ -84,12 +84,23 @@ spring:
 | 属性 | 默认值 | 说明 |
 | --- | --- | --- |
 | `spring.cloud.discovery.client.composite-indicator.enabled` | `false` | 根健康端点不含注册中心检查（`discoveryComposite`），见下文 |
+| `spring.cloud.nacos.discovery.ip` | 取 `server.address` | 只在 `server.address` 是具体 IP 地址时写入，见下文「注册地址」 |
 
 停机时，Spring Cloud Alibaba 的优雅停机先注销实例并关闭 Nacos 客户端，再按
 `spring.cloud.nacos.discovery.graceful-shutdown-wait-time`（默认 10 秒）等待，之后应用才真正停止。
 等待期间如果有人查询健康端点（例如实例监控的轮询），注册中心检查会查询 Nacos，Nacos 客户端就被重新创建，
 停机中途重新连接 Nacos。关闭这项检查后不再发生。它只在根健康端点里，存活与就绪探针（`liveness`、`readiness`）
 不受影响。需要这项检查的部署物可以显式设为 `true`。
+
+### 注册地址
+
+Spring Cloud Alibaba 在没有配置注册地址时注册第一块非回环网卡的地址，不参考 `server.address`。
+业务端口只绑定在某个地址上时，调用方按另一块网卡的地址连接会失败。所以 `spring.cloud.nacos.discovery.ip`
+未显式配置、且 `server.address` 是具体的 IP 地址字面量时，本 starter 让注册地址取 `server.address` 的值。
+`server.address` 为通配地址（`0.0.0.0`、`::`）、主机名或未配置时不写入，注册地址保持 Spring Cloud Alibaba 的默认。
+
+注册地址与绑定地址需要不同时（例如容器端口映射：进程绑定容器内地址，调用方经宿主机地址访问），
+显式配置 `spring.cloud.nacos.discovery.ip` 与 `spring.cloud.nacos.discovery.port`。
 
 ## 运行时 JVM 参数
 
@@ -124,4 +135,4 @@ mvn -pl mars-cloud-nacos-spring-boot-starter -am test
 ```
 
 契约测试覆盖自动装配注册、命名生成、离线模式、Namespace 一致性、Group、Data ID、
-导入顺序与禁止 `optional:`。
+导入顺序与禁止 `optional:`。默认值用例覆盖注册中心健康检查与注册地址的推导条件。

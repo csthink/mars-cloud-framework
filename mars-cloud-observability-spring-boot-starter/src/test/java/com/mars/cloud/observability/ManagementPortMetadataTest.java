@@ -2,8 +2,10 @@ package com.mars.cloud.observability;
 
 import com.alibaba.cloud.nacos.NacosDiscoveryProperties;
 import com.alibaba.cloud.nacos.registry.NacosRegistration;
+import com.mars.cloud.observability.autoconfigure.MarsObservabilityDefaultsEnvironmentPostProcessor;
 import com.mars.cloud.observability.registry.ManagementPortRegistrationCustomizer;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.web.server.ManagementServerProperties;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.mock.env.MockEnvironment;
@@ -17,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 缺它就会打到业务端口上，结果是一直取不到。
  *
  * <p>服务发现组件注册前自己也按 {@code management.server.port} 写这个键，随机管理端口时写的是 0。
- * 本组件的定制器在它之后执行，结果以定制器为准；后两条用例走服务发现组件真实的注册初始化。
+ * 本组件的定制器在它之后执行，结果以定制器为准；后三条用例走服务发现组件真实的注册初始化。
  */
 class ManagementPortMetadataTest {
 
@@ -58,12 +60,32 @@ class ManagementPortMetadataTest {
                 .doesNotContainKey(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY);
     }
 
+    /**
+     * 经服务发现组件的注册初始化：业务端口绑定具体地址时，本组件推导出的管理地址被它写进元数据
+     * {@code management.address}，实例监控按这个地址与管理端口读取管理端点，与管理端口的绑定地址一致。
+     */
+    @Test void theRegistrationCarriesTheDerivedManagementAddress() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setProperty("server.port", "8103");
+        environment.setProperty("server.address", "10.1.2.3");
+        new MarsObservabilityDefaultsEnvironmentPostProcessor()
+                .postProcessEnvironment(environment, new SpringApplication());
+
+        assertThat(initializedRegistration(environment).getMetadata())
+                .containsEntry(ManagementPortRegistrationCustomizer.MANAGEMENT_PORT_METADATA_KEY, "9103")
+                .containsEntry("management.address", "10.1.2.3");
+    }
+
     private static NacosRegistration initializedRegistration(String managementPort) {
         MockEnvironment environment = new MockEnvironment();
         environment.setProperty("server.port", "8103");
         environment.setProperty("management.server.port", managementPort);
+        return initializedRegistration(environment);
+    }
+
+    private static NacosRegistration initializedRegistration(MockEnvironment environment) {
         ManagementServerProperties management = new ManagementServerProperties();
-        management.setPort(Integer.valueOf(managementPort));
+        management.setPort(environment.getRequiredProperty("management.server.port", Integer.class));
         GenericApplicationContext context = new GenericApplicationContext();
         context.setEnvironment(environment);
         context.registerBean(ManagementServerProperties.class, () -> management);
