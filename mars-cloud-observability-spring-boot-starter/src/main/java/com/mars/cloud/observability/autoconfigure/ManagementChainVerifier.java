@@ -15,7 +15,8 @@ import java.util.Set;
  * 在启动期核验 Web 应用的管理端点暴露面与认证链一致：认证链没有装配时，生效的暴露清单只能包含 health 与 info。
  *
  * <p>认证链没有装配有三种原因：缺凭据；classpath 上缺 Spring Security 或 Spring Boot 的 Web 安全模块；
- * 部署物关掉了 Web 安全装配或排除了认证链的自动配置。前两种情况下环境后处理已把默认暴露清单收窄，
+ * 凭据与这些类都在，链却没有装配，即部署物关掉了 Web 安全装配、排除了认证链的自动配置，
+ * 或 classpath 上的安全类属于另一种 Web 栈。前两种情况下环境后处理已把默认暴露清单收窄，
  * 第三种情况下默认清单已按有认证放开；显式配置的 {@code management.endpoints.web.exposure.include}
  * 在三种情况下都能覆盖默认值。所以这里按生效的清单判断，越界时非开发 profile 拒绝启动、开发 profile 告警。
  * 只对 Web 应用装配：非 Web 应用不开 HTTP 端口，认证链本来就不会装配。

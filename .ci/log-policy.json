@@ -321,6 +321,10 @@
       "reason": "Negative management chain test: a non-development web application without Spring Security whose exposure list minus the exclude list still contains metrics must fail to start."
     },
     {
+      "pattern": "WARN\\ EndpointId:\\ Endpoint\\ ID\\ 'thread\\.dump'\\ contains\\ invalid\\ characters,\\ please\\ migrate\\ to\\ a\\ valid\\ format\\.",
+      "reason": "Management chain test: the exclude list names thread.dump, a dotted endpoint ID that Actuator still accepts with its fixed migration warning; the test proves the check treats it as threaddump the way Actuator does."
+    },
+    {
       "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsManagementChainVerifier'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/observability/autoconfigure/MarsObservabilityAutoConfiguration\\.class\\]:\\ 管理端点没有认证链保护，暴露清单只能包含\\ health\\ 与\\ info：认证链没有装配，部署物关掉了\\ Web\\ 安全装配、排除了认证链的自动配置，或\\ classpath\\ 上的安全类属于另一种\\ Web\\ 栈，实际暴露了\\ \\[heapdump,\\ loggers,\\ metrics,\\ prometheus,\\ threaddump\\]；当前激活的\\ profile\\ 是\\ \\[\\]",
       "reason": "Negative management chain test on a real port: a non-development application whose management security chain is excluded must fail to start. Spring Boot shortens the context class name to 40 characters."
     },

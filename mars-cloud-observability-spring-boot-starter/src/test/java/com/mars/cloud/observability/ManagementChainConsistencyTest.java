@@ -27,7 +27,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 暴露面必须与认证链一致：认证链没有装配时，生效的暴露清单只能包含 health 与 info。
  *
  * <p>认证链没有装配有三种原因：缺凭据；classpath 上缺 Spring Security 或 Spring Boot 的 Web 安全模块
- * （{@code EndpointRequest} 所在的模块）；部署物关掉了 Web 安全装配或排除了认证链的自动配置。
+ * （{@code EndpointRequest} 所在的模块）；凭据与这些类都在，链却没有装配，即部署物关掉了 Web 安全装配、
+ * 排除了认证链的自动配置，或 classpath 上的安全类属于另一种 Web 栈。
  * 显式配置的 {@code management.endpoints.web.exposure.include} 会覆盖组件写入的默认值，
  * 所以核验读生效的清单。越界时非开发 profile 拒绝启动、开发 profile 告警，
  * 不能让指标、日志级别与堆转储在管理端口上无认证可达。
@@ -117,6 +118,18 @@ class ManagementChainConsistencyTest {
                 .withPropertyValues("management.endpoints.web.exposure.include=health,thread-dump")
                 .run(context -> assertThat(context.getStartupFailure()).rootCause()
                         .hasMessageContaining("实际暴露了 [threaddump]"));
+    }
+
+    /**
+     * 带点的写法同样按 Actuator 的规则比较：Actuator 认为 thread.dump 与 threaddump 是同一个端点，
+     * 排除前者就不再暴露后者，核验不能把它当成越界。
+     */
+    @Test void dottedEndpointNamesAreComparedTheWayActuatorDoes() {
+        webApplication()
+                .withClassLoader(new FilteredClassLoader(SPRING_SECURITY_PACKAGE))
+                .withPropertyValues("management.endpoints.web.exposure.include=health,threaddump",
+                        "management.endpoints.web.exposure.exclude=thread.dump")
+                .run(context -> assertThat(context).hasNotFailed());
     }
 
     /** 没有 Spring Security 时显式暴露指标端点：它会无认证可达，非开发 profile 拒绝启动。 */

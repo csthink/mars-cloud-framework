@@ -96,7 +96,7 @@ starter 据此写入默认暴露清单，并在启动期核验：
 | 能认证，认证链已装配 | 完整清单，`health` 之外要认证 | 正常 |
 | 缺凭据，能建认证链 | `health,info` | 开发 profile 告警，其他 profile 启动失败 |
 | 建不起认证链（没有 Spring Security 或 Web 安全模块） | `health,info` | 告警 |
-| 能认证，但 Web 应用的认证链没有装配（部署物关掉了 Web 安全装配或排除了认证链的自动配置） | 完整清单 | 见下一段 |
+| 能认证，但 Web 应用的认证链没有装配（部署物关掉了 Web 安全装配、排除了认证链的自动配置，或 classpath 上的安全类属于另一种 Web 栈） | 完整清单 | 见下一段 |
 
 显式配置的 `management.endpoints.web.exposure.include` 会覆盖默认清单，所以启动期按生效的清单核验：
 Web 应用的认证链没有装配时，生效的清单只能包含 `health` 与 `info`，通配符 `*` 也算越界；越界时开发 profile

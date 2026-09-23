@@ -162,7 +162,10 @@ public final class ManagementAccess {
         return value == null || value.isBlank() ? null : value;
     }
 
-    /** 按列表绑定，与 Actuator 相同：逗号分隔的字符串与配置文件里的列表写法都能读到；去掉空白项。 */
+    /**
+     * 按列表绑定，与 Actuator 读这两个键的方式相同：逗号分隔的字符串与配置文件里的列表写法都能读到。
+     * 这里跳过空白项并去掉两端空白；Actuator 遇到这两种写法会在启动时报错，所以结论不受影响。
+     */
     private static List<String> values(Environment environment, String key) {
         List<String> values = new ArrayList<>();
         for (String value : Binder.get(environment).bind(key, Bindable.listOf(String.class)).orElse(List.of())) {
