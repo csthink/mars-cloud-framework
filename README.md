@@ -127,6 +127,19 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 管理端点暴露面与 Basic 认证约定。配置项与环境变量见
 [`mars-cloud-observability-spring-boot-starter/README.md`](mars-cloud-observability-spring-boot-starter/README.md)。
 
+需要限流降级时，再引入：
+
+```xml
+<dependency>
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-sentinel-spring-boot-starter</artifactId>
+</dependency>
+```
+
+该 starter 让规则只从 Nacos 读取并整批校验，网关按核对后的客户端地址限流，每个 Feign 客户端一个资源，
+拦截异常交给应用自己的统一错误处理，不开放命令端口。接入方式见
+[`mars-cloud-sentinel-spring-boot-starter/README.md`](mars-cloud-sentinel-spring-boot-starter/README.md)。
+
 ### 参与本仓开发
 
 构建、测试与依赖约束见下文「[构建](#构建)」一节。
@@ -147,6 +160,7 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 | [`mars-cloud-security-test-support`](mars-cloud-security-test-support/README.md) | 仅测试使用的临时 RSA 签发器与 JWKS 服务 |
 | [`mars-cloud-rocketmq-spring-boot-starter`](mars-cloud-rocketmq-spring-boot-starter/README.md) | RocketMQ 事件消息：事务发送、消费约定、上下文透传、主题核验与运行环境前缀 |
 | [`mars-cloud-observability-spring-boot-starter`](mars-cloud-observability-spring-boot-starter/README.md) | 链路追踪与 OTLP 导出、Prometheus 指标、结构化日志与 trace 关联、管理端口与管理端点认证 |
+| [`mars-cloud-sentinel-spring-boot-starter`](mars-cloud-sentinel-spring-boot-starter/README.md) | Sentinel 限流降级：规则只从 Nacos 读取并整批校验、网关按客户端地址限流、Feign 客户端资源 |
 
 依赖方向是单向的：starter → `common` / `dependencies` / 更底层的 starter
 （mvc starter 依赖 core starter 以获得分布式 ID），不允许反向依赖或成环。

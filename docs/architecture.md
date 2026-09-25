@@ -29,7 +29,7 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ├── mars-cloud-security-test-support/
 ├── mars-cloud-rocketmq-spring-boot-starter/
 ├── mars-cloud-observability-spring-boot-starter/
-└── （后续：sentinel starter）
+└── mars-cloud-sentinel-spring-boot-starter/
 ```
 
 ## 划分三规则
@@ -70,6 +70,9 @@ common ◄──────── core-starter ◄─── mvc-starter       m
 - `observability starter` 依赖 Actuator、Micrometer Tracing 的 OpenTelemetry 桥与 Prometheus 注册表，不依赖 `common`
   与其他 starter；Spring Boot 的 Web 安全模块与 Nacos 服务发现是可选依赖，存在时才装配管理端点认证链与实例元数据。
   Feign、网关与 RocketMQ 的 trace 传播各自经 Micrometer 完成，它们不依赖本 starter。
+- `sentinel starter` 依赖 Spring Cloud Alibaba 的 Sentinel starter 与 `nacos starter`（复用应用配置的 Nacos 客户端读取规则）；
+  网关适配、`feign starter` 与 Micrometer 是可选依赖，存在时才装配网关过滤器、Feign 客户端资源与指标。
+  它不依赖 MVC starter：拦截异常交回应用自己的统一错误处理。
 - 各模块的 `<parent>` 都是 `mars-cloud-dependencies`，根聚合 POM 只聚合、不做 parent。
 
 ## 横切能力设计
@@ -191,6 +194,20 @@ OpenTelemetry 桥以 W3C `traceparent` 传播，结束的 span 以 OTLP over HTT
 Web 应用的认证链没有装配时，按生效的暴露清单核验，清单超出 `health` 与 `info` 就在非开发环境拒绝启动，
 非开发环境的管理端点因此不会无认证地暴露指标、日志级别或堆转储。
 配置项与环境变量见 [observability starter 使用说明](../mars-cloud-observability-spring-boot-starter/README.md)。
+
+### 限流降级：规则只从 Nacos 进入，失败响亮
+
+`mars-cloud-sentinel-spring-boot-starter` 为每个部署物订阅固定的一组规则配置：Data ID 为
+`<应用名>-sentinel-<类型>-rules.json`，Group 为 `SENTINEL_GROUP`，与应用配置同一个命名空间。网关订阅 API 分组与网关限流
+两种，其余部署物订阅流量、熔断降级、热点参数与系统保护四种。规则整批校验：未知字段、类型不符、Sentinel 判为不合法、
+网关规则指向不存在的路由或分组，都会让整批被拒绝。启动时缺少或写错任何一份配置，应用不启动；运行中写错，
+保留上一批规则并写 ERROR 与指标，不会静默变成不限流。
+
+Sentinel 的 HTTP 命令端口能在运行期改规则，与「规则只从 Nacos 进入」冲突，starter 把它排除，也不支持 Dashboard；
+日志经 slf4j 输出，统计文件关闭，处理链去掉写拦截统计文件的 `LogSlot`，拦截次数改由指标记录。
+被拦截时 starter 不写响应：网关与 Servlet 应用把拦截异常交回各自的统一错误处理，Feign 调用映射为「下游不可用」。
+网关按客户端地址限流时，地址取自网关入站过滤器核对后写入的交换属性，不取 TCP 对端地址。
+接入方式见 [sentinel starter 使用说明](../mars-cloud-sentinel-spring-boot-starter/README.md)。
 
 ## 已知行为与偏差
 
