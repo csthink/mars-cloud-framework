@@ -1,0 +1,2 @@
+com.mars.cloud.sentinel.autoconfigure.MarsSentinelGatewayAutoConfiguration
+com.mars.cloud.sentinel.autoconfigure.MarsSentinelAutoConfiguration

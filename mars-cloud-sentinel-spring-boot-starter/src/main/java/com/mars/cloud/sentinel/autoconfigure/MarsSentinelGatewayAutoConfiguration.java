@@ -1,0 +1,70 @@
+package com.mars.cloud.sentinel.autoconfigure;
+
+import com.alibaba.csp.sentinel.adapter.gateway.sc.SentinelGatewayFilter;
+import com.alibaba.csp.sentinel.adapter.gateway.sc.callback.BlockRequestHandler;
+import com.mars.cloud.sentinel.gateway.ClientIpAttributeItemParser;
+import com.mars.cloud.sentinel.gateway.ForwardingBlockRequestHandler;
+import com.mars.cloud.sentinel.gateway.GatewayRuleKinds;
+import com.mars.cloud.sentinel.rule.SentinelRuleCatalog;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.cloud.gateway.route.RouteDefinition;
+import org.springframework.cloud.gateway.route.RouteDefinitionLocator;
+import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
+
+import java.time.Duration;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * 网关部署物：Sentinel 网关过滤器按交换属性里的客户端地址计数，拦截异常交回应用的错误处理，
+ * 订阅 {@code gw-api-group} 与 {@code gw-flow} 两种规则。
+ *
+ * <p>排在 Spring Cloud Alibaba 的网关装配之前，它的过滤器与拦截回调都以本类的 bean 为准。
+ *
+ * @since 2026-09-25
+ */
+@AutoConfiguration(before = MarsSentinelAutoConfiguration.class,
+        beforeName = "com.alibaba.cloud.sentinel.gateway.scg.SentinelSCGAutoConfiguration")
+@ConditionalOnClass({SentinelGatewayFilter.class, GlobalFilter.class})
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
+@ConditionalOnProperty(name = "spring.cloud.sentinel.enabled", matchIfMissing = true)
+@EnableConfigurationProperties(MarsSentinelProperties.class)
+public class MarsSentinelGatewayAutoConfiguration {
+
+    private static final Duration ROUTE_READ_TIMEOUT = Duration.ofSeconds(5);
+
+    @Bean
+    SentinelGatewayFilter sentinelGatewayFilter(MarsSentinelProperties properties) {
+        String attribute = properties.getGateway().getClientIpAttribute();
+        if (attribute == null || attribute.isBlank()) {
+            throw new IllegalStateException("网关部署物必须配置 mars.sentinel.gateway.client-ip-attribute："
+                    + "它指定入站过滤器写入客户端地址的交换属性，按来源地址限流用它计数，不回退到 TCP 对端地址");
+        }
+        return new SentinelGatewayFilter(Ordered.HIGHEST_PRECEDENCE, new ClientIpAttributeItemParser(attribute));
+    }
+
+    @Bean
+    BlockRequestHandler marsSentinelBlockRequestHandler() {
+        return new ForwardingBlockRequestHandler();
+    }
+
+    @Bean
+    SentinelRuleCatalog marsSentinelGatewayRuleCatalog(RouteDefinitionLocator routeDefinitionLocator) {
+        GatewayRuleKinds kinds = new GatewayRuleKinds(() -> routeIds(routeDefinitionLocator));
+        return new SentinelRuleCatalog(kinds.all());
+    }
+
+    private static Set<String> routeIds(RouteDefinitionLocator locator) {
+        Set<String> ids = locator.getRouteDefinitions()
+                .map(RouteDefinition::getId)
+                .collect(Collectors.toSet())
+                .block(ROUTE_READ_TIMEOUT);
+        return ids == null ? Set.of() : ids;
+    }
+}
