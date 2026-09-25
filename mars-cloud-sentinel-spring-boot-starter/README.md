@@ -1,7 +1,8 @@
 # mars-cloud-sentinel-spring-boot-starter
 
 Sentinel 限流降级 starter：规则只从 Nacos 读取，整批校验、整批生效；网关按核对后的客户端地址限流；
-每个 Feign 客户端一个资源；不开放命令端口，不在本机写日志或统计文件。
+每个 Feign 客户端一个资源；不开放命令端口，不在本机写日志或统计文件（Sentinel 初始化时仍会建日志目录，
+默认是用户目录下的 `logs/csp/`，可用系统属性 `csp.sentinel.log.dir` 指定，目录里不会出现文件）。
 
 ## 坐标
 
