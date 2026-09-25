@@ -31,7 +31,9 @@ import java.util.TreeSet;
  * <p>默认值（最低优先级）：资源名带 HTTP 方法（{@code spring.cloud.sentinel.http-method-specify=true}）；
  * 非响应式应用关闭 Spring Cloud Alibaba 的网关过滤器（{@code spring.cloud.sentinel.scg.enabled=false}），
  * 它的装配只看 classpath 上有没有 Gateway，在 Servlet 应用里会因缺少 WebFlux 的编解码配置而启动失败。
- * 系统属性 {@code csp.sentinel.metric.flush.interval} 未设置时写 0，关闭每秒写一次的指标文件。
+ * 系统属性 {@code csp.sentinel.metric.flush.interval} 未设置时写 0，关闭每秒写一次的指标文件。本组件自带的
+ * {@code sentinel.properties} 已写了同一个值，不依赖 Spring 启动先后；系统属性再覆盖应用自己的
+ * {@code sentinel.properties} 里可能给出的其他值。
  * 显式关闭 Sentinel（{@code spring.cloud.sentinel.enabled=false}）时同时关闭网关过滤器，不做其他处理。
  *
  * @since 2026-09-25

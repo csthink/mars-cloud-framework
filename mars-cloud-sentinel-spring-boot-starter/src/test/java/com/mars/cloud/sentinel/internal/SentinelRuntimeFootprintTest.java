@@ -3,6 +3,7 @@ package com.mars.cloud.sentinel.internal;
 import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.SphU;
 import com.alibaba.csp.sentinel.command.CommandCenterProvider;
+import com.alibaba.csp.sentinel.config.SentinelConfig;
 import com.alibaba.csp.sentinel.slotchain.AbstractLinkedProcessorSlot;
 import com.alibaba.csp.sentinel.slotchain.ProcessorSlotChain;
 import com.alibaba.csp.sentinel.slotchain.SlotChainProvider;
@@ -19,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -26,6 +28,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 /**
  * 运行期足迹：处理链只比默认链少 {@code LogSlot}；拦截后日志目录与 EagleEye 目录没有任何文件，拦截计入指标；
@@ -67,8 +70,18 @@ class SentinelRuntimeFootprintTest {
         } finally {
             BlockedRequestMetricExtension.unbind(recorder);
         }
-        assertThat(regularFiles(System.getProperty("csp.sentinel.log.dir"))).isEmpty();
-        assertThat(regularFiles(System.getProperty("EAGLEEYE.LOG.PATH"))).isEmpty();
+        // 指标文件每秒写一次：在两个多写入周期里持续确认两个目录都是空的，不依赖本用例在进程里的执行先后
+        await().during(Duration.ofMillis(2500)).atMost(Duration.ofSeconds(4)).until(() ->
+                regularFiles(System.getProperty("csp.sentinel.log.dir")).isEmpty()
+                        && regularFiles(System.getProperty("EAGLEEYE.LOG.PATH")).isEmpty());
+    }
+
+    /**
+     * 关闭指标文件不依赖 Spring：不经 Spring 启动、先于应用触发 Sentinel 初始化的代码，读到的也是 0。
+     */
+    @Test
+    void theMetricFileWriterIsOffWhateverInitializesSentinelFirst() {
+        assertThat(SentinelConfig.metricLogFlushIntervalSec()).isZero();
     }
 
     @Test

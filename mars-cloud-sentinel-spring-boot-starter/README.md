@@ -110,7 +110,7 @@ mars:
 | 网关兜底响应 `spring.cloud.sentinel.scg.fallback.*`、Servlet 拦截页 `spring.cloud.sentinel.block-page` | 配置即启动失败 |
 | Spring Cloud Alibaba 的 Feign 集成 `feign.sentinel.enabled=true` | 配置即启动失败，资源由 starter 按客户端登记 |
 | 日志文件 | Sentinel 的记录日志与命令中心日志经 slf4j 输出 |
-| 统计文件 | 关闭每秒写一次的指标文件（系统属性 `csp.sentinel.metric.flush.interval=0`，已显式设置时不覆盖）；处理链去掉 `LogSlot`，不写 `sentinel-block.log`，首次拦截也不会在用户目录建 EagleEye 日志 |
+| 统计文件 | 关闭每秒写一次的指标文件：starter 自带的 `sentinel.properties` 写了 `csp.sentinel.metric.flush.interval=0`，不论谁先触发 Sentinel 初始化都生效，启动时再把同名系统属性设为 0（已显式设置时不覆盖）；处理链去掉 `LogSlot`，不写 `sentinel-block.log`，首次拦截也不会在用户目录建 EagleEye 日志 |
 
 显式设置 `spring.cloud.sentinel.enabled=false` 时，starter 不装配规则来源，也关闭网关过滤器。
 
