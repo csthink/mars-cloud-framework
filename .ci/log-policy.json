@@ -355,6 +355,26 @@
     {
       "pattern": "WARN\\ ObservabilityConventionVerifier:\\ 管理端点缺少认证凭据，只能暴露\\ health\\ 与\\ info；生产环境必须提供\\ mars\\.observability\\.management\\.username\\ 与\\ password",
       "reason": "Management exposure test: a development profile without management credentials logs the fixed warning of the observability starter."
+    },
+    {
+      "pattern": "ERROR\\ NacosRuleSource:\\ Sentinel\\ 规则被拒绝，保留上一批：dataId=rule\\-source\\-probe\\-sentinel\\-flow\\-rules\\.json,\\ group=SENTINEL_GROUP,\\ type=flow,\\ 原因：第\\ 1\\ 条规则不是合法的流量规则（Sentinel\\ 的合法性判断未通过：检查\\ grade、count、strategy、controlBehavior\\ 与其依赖字段）",
+      "reason": "Negative rule source test: an invalid runtime update is rejected, logged at ERROR by design, and the previous rules stay in force."
+    },
+    {
+      "pattern": "ERROR\\ NacosRuleSource:\\ Sentinel\\ 规则被拒绝，保留上一批：dataId=rule\\-source\\-probe\\-sentinel\\-flow\\-rules\\.json,\\ group=SENTINEL_GROUP,\\ type=flow,\\ 原因：配置已被删除或内容为空白；要清空规则请写\\ \\[\\]",
+      "reason": "Negative rule source test: a deleted or blank runtime update is rejected, logged at ERROR by design, and the previous rules stay in force."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsSentinelRuleConfigSource'\\ defined\\ in\\ com\\.mars\\.cloud\\.sentinel\\.autoconfigure\\.MarsSentinelAutoConfiguration:\\ Failed\\ to\\ instantiate\\ \\[com\\.mars\\.cloud\\.sentinel\\.rule\\.RuleConfigSource\\]:\\ Factory\\ method\\ 'marsSentinelRuleConfigSource'\\ threw\\ exception\\ with\\ message:\\ Sentinel\\ 规则只从\\ Nacos\\ 读取，但应用没有启用\\ Nacos\\ 配置（spring\\.cloud\\.nacos\\.config\\.enabled）；确实不需要\\ Sentinel\\ 时显式设置\\ spring\\.cloud\\.sentinel\\.enabled=false",
+      "reason": "Negative Sentinel configuration test: without a Nacos configuration client and without disabling Sentinel, the application must refuse to start."
+    },
+    {
+      "pattern": "WARN\\ ationConfigReactiveWebApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'sentinelGatewayFilter'\\ defined\\ in\\ com\\.mars\\.cloud\\.sentinel\\.autoconfigure\\.MarsSentinelGatewayAutoConfiguration:\\ Failed\\ to\\ instantiate\\ \\[com\\.alibaba\\.csp\\.sentinel\\.adapter\\.gateway\\.sc\\.SentinelGatewayFilter\\]:\\ Factory\\ method\\ 'sentinelGatewayFilter'\\ threw\\ exception\\ with\\ message:\\ 网关部署物必须配置\\ mars\\.sentinel\\.gateway\\.client\\-ip\\-attribute：它指定入站过滤器写入客户端地址的交换属性，按来源地址限流用它计数，不回退到\\ TCP\\ 对端地址",
+      "reason": "Negative Sentinel gateway configuration test: a gateway without the client address attribute must refuse to start instead of counting the peer address."
+    },
+    {
+      "pattern": "ERROR\\ NacosRuleSource:\\ Sentinel\\ 规则被拒绝，保留上一批：dataId=gateway\\-probe\\-sentinel\\-gw\\-flow\\-rules\\.json,\\ group=SENTINEL_GROUP,\\ type=gw\\-flow,\\ 原因：第\\ 1\\ 条规则的\\ resource\\ 不是网关已声明的路由\\ ID：prob（已声明\\ \\[callbacks,\\ code\\-defined,\\ probe\\]）",
+      "reason": "Negative gateway rule test: an update that names an undeclared route is rejected, logged at ERROR by design, and the previous rules stay in force."
     }
   ],
   "service": [
