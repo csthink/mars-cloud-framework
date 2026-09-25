@@ -38,6 +38,7 @@
         <mars-cloud-security-test-support.version>1.0.0-SNAPSHOT</mars-cloud-security-test-support.version>
         <mars-cloud-rocketmq-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-rocketmq-spring-boot-starter.version>
         <mars-cloud-observability-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-observability-spring-boot-starter.version>
+        <mars-cloud-sentinel-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-sentinel-spring-boot-starter.version>
 
         <!-- 常用依赖版本 -->
         <lombok.version>1.18.40</lombok.version>
@@ -67,6 +68,11 @@
           在这里单独钉版本会与 Boot 基线脱钩。
         -->
         <spring-boot-admin.version>4.0.4</spring-boot-admin.version>
+        <!--
+          Sentinel 日志的 slf4j 实现。SCA BOM 托管 Sentinel 的其余模块，唯独不托管这一个；
+          这里的版本必须与 SCA BOM 的 sentinel.version 一致（2025.1.0.0 对应 1.8.9），升级 SCA 时一并核对。
+        -->
+        <sentinel-logging-slf4j.version>1.8.9</sentinel-logging-slf4j.version>
         <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <!-- 3.5.9 起分页等依赖 JSqlParser 的拦截器被拆到独立 artifact -->
@@ -200,14 +206,16 @@
                 <version>${mars-cloud-rocketmq-spring-boot-starter.version}</version>
             </dependency>
 
-            <!--
-              预登记的版本出口：模块目录尚未创建，因此它不在根聚合 POM 的 modules 里，
-              这不是遗漏。模块建好后这一条不需要再改。
-            -->
             <dependency>
                 <groupId>com.mars.cloud</groupId>
                 <artifactId>mars-cloud-observability-spring-boot-starter</artifactId>
                 <version>${mars-cloud-observability-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-sentinel-spring-boot-starter</artifactId>
+                <version>${mars-cloud-sentinel-spring-boot-starter.version}</version>
             </dependency>
 
             <!-- 常用依赖版本声明 -->
@@ -236,11 +244,18 @@
                 <version>${rocketmq-tools.version}</version>
             </dependency>
 
-            <!-- 实例监控服务端：只登记版本，计划中的消费方是服务仓的 mars-cloud-monitor，该部署物尚未创建 -->
+            <!-- 实例监控服务端：只登记版本，由服务仓的 mars-cloud-monitor 引用 -->
             <dependency>
                 <groupId>de.codecentric</groupId>
                 <artifactId>spring-boot-admin-starter-server</artifactId>
                 <version>${spring-boot-admin.version}</version>
+            </dependency>
+
+            <!-- Sentinel 日志经 slf4j 输出：只登记版本，供 sentinel starter 引用 -->
+            <dependency>
+                <groupId>com.alibaba.csp</groupId>
+                <artifactId>sentinel-logging-slf4j</artifactId>
+                <version>${sentinel-logging-slf4j.version}</version>
             </dependency>
 
             <dependency>
