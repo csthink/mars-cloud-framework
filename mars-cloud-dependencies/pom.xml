@@ -69,7 +69,7 @@
         -->
         <spring-boot-admin.version>4.0.4</spring-boot-admin.version>
         <!--
-          Sentinel 日志的 slf4j 实现。SCA BOM 托管 Sentinel 的其余模块，唯独不托管这一个；
+          Sentinel 记录日志与命令中心日志的 slf4j 实现。SCA BOM 只托管 Sentinel 的部分模块，不包含这一个；
           这里的版本必须与 SCA BOM 的 sentinel.version 一致（2025.1.0.0 对应 1.8.9），升级 SCA 时一并核对。
         -->
         <sentinel-logging-slf4j.version>1.8.9</sentinel-logging-slf4j.version>
@@ -251,7 +251,7 @@
                 <version>${spring-boot-admin.version}</version>
             </dependency>
 
-            <!-- Sentinel 日志经 slf4j 输出：只登记版本，供 sentinel starter 引用 -->
+            <!-- Sentinel 的记录日志与命令中心日志经 slf4j 输出：只登记版本，供 mars-cloud-sentinel-spring-boot-starter 引用 -->
             <dependency>
                 <groupId>com.alibaba.csp</groupId>
                 <artifactId>sentinel-logging-slf4j</artifactId>
