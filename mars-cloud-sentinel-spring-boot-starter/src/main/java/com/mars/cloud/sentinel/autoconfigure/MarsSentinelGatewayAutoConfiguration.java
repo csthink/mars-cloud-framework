@@ -6,14 +6,15 @@ import com.mars.cloud.sentinel.gateway.ClientIpAttributeItemParser;
 import com.mars.cloud.sentinel.gateway.ForwardingBlockRequestHandler;
 import com.mars.cloud.sentinel.gateway.GatewayRuleKinds;
 import com.mars.cloud.sentinel.rule.SentinelRuleCatalog;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.cloud.gateway.route.RouteDefinition;
-import org.springframework.cloud.gateway.route.RouteDefinitionLocator;
+import org.springframework.cloud.gateway.route.Route;
+import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 
@@ -54,15 +55,19 @@ public class MarsSentinelGatewayAutoConfiguration {
         return new ForwardingBlockRequestHandler();
     }
 
+    /**
+     * 路由 ID 取自 {@link RouteLocator} 的全部路由：配置文件声明的与代码定义的都在内，
+     * 与 Sentinel 网关过滤器计数时用的路由 ID 同源。每次校验时读取，路由刷新后按新值核对。
+     */
     @Bean
-    SentinelRuleCatalog marsSentinelGatewayRuleCatalog(RouteDefinitionLocator routeDefinitionLocator) {
-        GatewayRuleKinds kinds = new GatewayRuleKinds(() -> routeIds(routeDefinitionLocator));
+    SentinelRuleCatalog marsSentinelGatewayRuleCatalog(ObjectProvider<RouteLocator> routeLocator) {
+        GatewayRuleKinds kinds = new GatewayRuleKinds(() -> routeIds(routeLocator.getObject()));
         return new SentinelRuleCatalog(kinds.all());
     }
 
-    private static Set<String> routeIds(RouteDefinitionLocator locator) {
-        Set<String> ids = locator.getRouteDefinitions()
-                .map(RouteDefinition::getId)
+    private static Set<String> routeIds(RouteLocator locator) {
+        Set<String> ids = locator.getRoutes()
+                .map(Route::getId)
                 .collect(Collectors.toSet())
                 .block(ROUTE_READ_TIMEOUT);
         return ids == null ? Set.of() : ids;

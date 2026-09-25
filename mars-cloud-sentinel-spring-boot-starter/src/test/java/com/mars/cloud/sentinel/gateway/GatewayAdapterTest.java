@@ -61,7 +61,8 @@ class GatewayAdapterTest {
                         """)
                 .put(FLOW, """
                         [{"resource":"probe","count":1,"intervalSec":60,"paramItem":{"parseStrategy":0}},
-                         {"resource":"callback-group","resourceMode":1,"count":1,"intervalSec":60}]
+                         {"resource":"callback-group","resourceMode":1,"count":1,"intervalSec":60},
+                         {"resource":"code-defined","count":1000}]
                         """);
     }
 

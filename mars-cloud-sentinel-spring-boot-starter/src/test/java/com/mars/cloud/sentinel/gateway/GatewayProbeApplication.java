@@ -7,6 +7,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -51,6 +53,12 @@ class GatewayProbeApplication {
         return RouterFunctions.route()
                 .GET("/stub/**", request -> ServerResponse.ok().bodyValue("ok"))
                 .build();
+    }
+
+    /** 代码定义的路由：规则按路由 ID 引用它时也要通过校验。 */
+    @Bean
+    RouteLocator codeDefinedRoutes(RouteLocatorBuilder builder) {
+        return builder.routes().route("code-defined", route -> route.path("/code/**").uri("forward:/stub")).build();
     }
 
     @Bean
