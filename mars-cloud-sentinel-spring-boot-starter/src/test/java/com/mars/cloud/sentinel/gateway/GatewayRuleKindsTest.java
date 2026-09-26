@@ -43,9 +43,16 @@ class GatewayRuleKindsTest {
     void acceptsRouteAndGroupRules() {
         Set<GatewayFlowRule> rules = kinds.flowRules().parse("""
                 [{"resource":"order","count":20,"intervalSec":1,"paramItem":{"parseStrategy":0}},
-                 {"resource":"order-callbacks","resourceMode":1,"count":100}]
+                 {"resource":"order-callbacks","resourceMode":1,"count":100},
+                 {"resource":"auth-issuer","count":5,"paramItem":{"parseStrategy":2,"fieldName":"X-Channel","pattern":"^app-.*$","matchStrategy":2}},
+                 {"resource":"auth-issuer","count":6,"paramItem":{"parseStrategy":3,"fieldName":"client","pattern":"console","matchStrategy":3}},
+                 {"resource":"auth-issuer","count":7,"paramItem":{"parseStrategy":4,"fieldName":"session","pattern":"probe"}}]
                 """);
-        assertThat(rules).extracting(GatewayFlowRule::getResource).containsExactlyInAnyOrder("order", "order-callbacks");
+        assertThat(rules).extracting(GatewayFlowRule::getResource)
+                .containsExactlyInAnyOrder("order", "order-callbacks", "auth-issuer", "auth-issuer", "auth-issuer");
+        assertThat(rules).filteredOn(rule -> rule.getCount() == 7)
+                .singleElement().satisfies(rule -> assertThat(rule.getParamItem().getMatchStrategy())
+                        .isEqualTo(SentinelGatewayConstants.PARAM_MATCH_STRATEGY_EXACT));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -57,6 +64,12 @@ class GatewayRuleKindsTest {
             参数项缺解析方式    | [{"resource":"order","count":1,"paramItem":{"fieldName":"x"}}]    | paramItem.parseStrategy 必须给出
             请求头参数缺字段名  | [{"resource":"order","count":1,"paramItem":{"parseStrategy":2}}]  | 不是合法的网关限流规则
             参数项的内部字段    | [{"resource":"order","count":1,"paramItem":{"parseStrategy":0,"index":0}}] | index
+            解析方式越界        | [{"resource":"order","count":1,"paramItem":{"parseStrategy":5}}]  | paramItem.parseStrategy 只能是 0（客户端地址）
+            解析方式为负        | [{"resource":"order","count":1,"paramItem":{"parseStrategy":-1}}] | paramItem.parseStrategy 只能是 0（客户端地址）
+            前缀匹配没有实现    | [{"resource":"order","count":1,"paramItem":{"parseStrategy":2,"fieldName":"h","pattern":"a","matchStrategy":1}}] | paramItem.matchStrategy 只能是 0（精确）、2（正则）或 3（包含）
+            匹配方式越界        | [{"resource":"order","count":1,"paramItem":{"parseStrategy":2,"fieldName":"h","pattern":"a","matchStrategy":4}}] | paramItem.matchStrategy 只能是 0（精确）
+            参数正则写错        | [{"resource":"order","count":1,"paramItem":{"parseStrategy":2,"fieldName":"h","pattern":"(","matchStrategy":2}}] | paramItem.pattern 不是合法的正则表达式
+            没有 pattern 的匹配方式 | [{"resource":"order","count":1,"paramItem":{"parseStrategy":0,"matchStrategy":0}}] | paramItem.matchStrategy 只在给出 pattern 时有意义
             """)
     void rejectsInvalidGatewayFlowRules(String scenario, String content, String reason) {
         assertThatThrownBy(() -> kinds.flowRules().parse(content))

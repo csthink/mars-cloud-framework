@@ -31,7 +31,13 @@ import java.util.stream.Collectors;
  *
  * <p>除字段表与 Sentinel 自身的合法性判断外，还核对名字引用：路由模式的限流规则必须指向已声明的路由 ID，
  * 分组模式的必须指向当前已生效的分组；删掉仍被限流规则引用的分组时，分组的这次更新整批拒绝。
- * 写错名字的规则在 Sentinel 里永远不会命中，这里把它变成拒绝。
+ * 写错名字的规则在 Sentinel 里永远不会命中，这里把它变成拒绝。两种规则的校验都要读另一种规则的现状，
+ * 所以同一个规则目录下的数据源在同一把锁里校验与装入（见 {@code SentinelRuleSources}），「删除分组」与
+ * 「新增对它的引用」并发到达时不会两边都通过。
+ *
+ * <p>参数项里 Sentinel 会静默接受却不生效的取值同样拒绝：{@code parseStrategy} 不在 0 到 4 时解析不出参数、规则永远放行；
+ * 带 {@code pattern} 时 {@code matchStrategy} 只有 0（精确）、2（正则）与 3（包含）有实现，1（前缀）与越界值对所有取值生效，
+ * 写错的正则也对所有取值生效。
  *
  * @since 2026-09-25
  */
@@ -206,18 +212,38 @@ public final class GatewayRuleKinds {
     }
 
     private static GatewayParamFlowItem paramItem(int index, ParamItemDocument item) {
-        GatewayParamFlowItem paramItem = new GatewayParamFlowItem()
-                .setParseStrategy(RuleFields.require(index, "paramItem.parseStrategy", item.parseStrategy()));
+        int parseStrategy = RuleFields.require(index, "paramItem.parseStrategy", item.parseStrategy());
+        if (parseStrategy < SentinelGatewayConstants.PARAM_PARSE_STRATEGY_CLIENT_IP
+                || parseStrategy > SentinelGatewayConstants.PARAM_PARSE_STRATEGY_COOKIE) {
+            throw RuleFields.rejected(index, "paramItem.parseStrategy",
+                    "只能是 0（客户端地址）、1（Host）、2（请求头）、3（URL 参数）或 4（Cookie）：其他取值解析不出参数，规则永远放行");
+        }
+        GatewayParamFlowItem paramItem = new GatewayParamFlowItem().setParseStrategy(parseStrategy);
         if (item.fieldName() != null) {
             paramItem.setFieldName(item.fieldName());
         }
-        if (item.pattern() != null) {
-            paramItem.setPattern(item.pattern());
+        if (item.pattern() == null) {
+            if (item.matchStrategy() != null) {
+                throw RuleFields.rejected(index, "paramItem.matchStrategy", "只在给出 pattern 时有意义");
+            }
+            return paramItem;
         }
-        if (item.matchStrategy() != null) {
-            paramItem.setMatchStrategy(item.matchStrategy());
+        int matchStrategy = item.matchStrategy() == null
+                ? SentinelGatewayConstants.PARAM_MATCH_STRATEGY_EXACT : item.matchStrategy();
+        switch (matchStrategy) {
+            case SentinelGatewayConstants.PARAM_MATCH_STRATEGY_EXACT, SentinelGatewayConstants.PARAM_MATCH_STRATEGY_CONTAINS -> {
+            }
+            case SentinelGatewayConstants.PARAM_MATCH_STRATEGY_REGEX -> {
+                try {
+                    Pattern.compile(item.pattern());
+                } catch (PatternSyntaxException ex) {
+                    throw RuleFields.rejected(index, "paramItem.pattern", "不是合法的正则表达式：" + ex.getDescription());
+                }
+            }
+            default -> throw RuleFields.rejected(index, "paramItem.matchStrategy",
+                    "只能是 0（精确）、2（正则）或 3（包含）：Sentinel 1.8.9 没有实现 1（前缀），其他取值会对所有参数值生效");
         }
-        return paramItem;
+        return paramItem.setPattern(item.pattern()).setMatchStrategy(matchStrategy);
     }
 
     private abstract static class SetKind<R> implements RuleKind<Set<R>> {

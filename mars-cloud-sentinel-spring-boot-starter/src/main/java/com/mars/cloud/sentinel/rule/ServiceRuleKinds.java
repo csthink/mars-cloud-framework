@@ -16,7 +16,9 @@ import com.alibaba.csp.sentinel.slots.system.SystemRuleManager;
 import tools.jackson.core.type.TypeReference;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -134,14 +136,7 @@ public final class ServiceRuleKinds {
                 RuleFields.ifPresent(d.burstCount(), rule::setBurstCount);
                 RuleFields.ifPresent(d.durationInSec(), rule::setDurationInSec);
                 if (d.paramFlowItemList() != null) {
-                    List<ParamFlowItem> items = new ArrayList<>(d.paramFlowItemList().size());
-                    for (ParamFlowItemDocument item : d.paramFlowItemList()) {
-                        if (item == null || item.object() == null || item.count() == null || item.classType() == null) {
-                            throw RuleFields.rejected(i, "paramFlowItemList", "的每一项都必须给出 object、count 与 classType");
-                        }
-                        items.add(new ParamFlowItem(item.object(), item.count(), item.classType()));
-                    }
-                    rule.setParamFlowItemList(items);
+                    rule.setParamFlowItemList(Constraints.exceptionItems(i, d.paramFlowItemList()));
                 }
                 if (!ParamFlowRuleUtil.isValidRule(rule)) {
                     throw RuleFields.rejected(i, "不是合法的热点参数规则（Sentinel 的合法性判断未通过：检查 paramIdx、count、grade、durationInSec 与 controlBehavior）");
@@ -210,7 +205,74 @@ public final class ServiceRuleKinds {
     /** 本项目对服务规则的附加约束。 */
     static final class Constraints {
 
+        /**
+         * Sentinel 1.8.9 的 {@code ParamFlowRuleUtil#parseItemValue} 按名字识别的类型：基本类型用 {@code int} 这样的
+         * 短名，包装类与 {@code String} 用全名。其他名字不会报错，而是退回按字符串匹配。
+         */
+        static final List<String> ITEM_CLASS_TYPES = List.of(
+                "int", "java.lang.Integer", "long", "java.lang.Long", "double", "java.lang.Double",
+                "float", "java.lang.Float", "boolean", "java.lang.Boolean", "byte", "java.lang.Byte",
+                "short", "java.lang.Short", "char", "java.lang.Character", "java.lang.String");
+
         private Constraints() {
+        }
+
+        /**
+         * 热点参数规则的例外项。Sentinel 装入规则时把 {@code object} 解析不出、{@code count} 为负的项静默丢弃，
+         * 这里提前为整批拒绝：{@code classType} 必须是 {@link #ITEM_CLASS_TYPES} 里的名字，{@code object} 必须能按它
+         * 解析（{@code boolean} 只接受 {@code true} 与 {@code false}，{@code char} 只接受一个字符），同一批里解析后的值不能重复。
+         */
+        static List<ParamFlowItem> exceptionItems(int index, List<ParamFlowItemDocument> documents) {
+            List<ParamFlowItem> items = new ArrayList<>(documents.size());
+            Set<Object> values = new HashSet<>();
+            for (int j = 0; j < documents.size(); j++) {
+                String field = "paramFlowItemList[" + (j + 1) + "]";
+                ParamFlowItemDocument item = documents.get(j);
+                if (item == null || item.object() == null || item.count() == null || item.classType() == null) {
+                    throw RuleFields.rejected(index, field, "必须给出 object、count 与 classType");
+                }
+                if (item.count() < 0) {
+                    throw RuleFields.rejected(index, field + ".count", "不能为负数");
+                }
+                if (!ITEM_CLASS_TYPES.contains(item.classType())) {
+                    throw RuleFields.rejected(index, field + ".classType",
+                            "不是 Sentinel 支持的类型名：" + item.classType() + "（可用 " + ITEM_CLASS_TYPES + "）");
+                }
+                Object value = parseItemValue(index, field, item.object(), item.classType());
+                if (!values.add(value)) {
+                    throw RuleFields.rejected(index, field + ".object", "与前面的例外项解析为同一个值：" + item.object());
+                }
+                items.add(new ParamFlowItem(item.object(), item.count(), item.classType()));
+            }
+            return items;
+        }
+
+        private static Object parseItemValue(int index, String field, String object, String classType) {
+            try {
+                return switch (classType) {
+                    case "int", "java.lang.Integer" -> Integer.parseInt(object);
+                    case "long", "java.lang.Long" -> Long.parseLong(object);
+                    case "double", "java.lang.Double" -> Double.parseDouble(object);
+                    case "float", "java.lang.Float" -> Float.parseFloat(object);
+                    case "byte", "java.lang.Byte" -> Byte.parseByte(object);
+                    case "short", "java.lang.Short" -> Short.parseShort(object);
+                    case "boolean", "java.lang.Boolean" -> {
+                        if (!"true".equals(object) && !"false".equals(object)) {
+                            throw new IllegalArgumentException(object);
+                        }
+                        yield Boolean.parseBoolean(object);
+                    }
+                    case "char", "java.lang.Character" -> {
+                        if (object.length() != 1) {
+                            throw new IllegalArgumentException(object);
+                        }
+                        yield object.charAt(0);
+                    }
+                    default -> object;
+                };
+            } catch (IllegalArgumentException ex) {
+                throw RuleFields.rejected(index, field + ".object", "不能按 " + classType + " 解析：" + object);
+            }
         }
 
 

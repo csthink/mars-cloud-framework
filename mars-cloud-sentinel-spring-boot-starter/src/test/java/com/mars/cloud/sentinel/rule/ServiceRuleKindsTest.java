@@ -83,15 +83,37 @@ class ServiceRuleKindsTest {
     void validatesParamFlowRules() {
         List<ParamFlowRule> rules = ServiceRuleKinds.PARAM_FLOW.parse("""
                 [{"resource":"GET:/product/v1/entitlements","paramIdx":0,"count":10,"durationInSec":1,
-                  "paramFlowItemList":[{"object":"vip","count":100,"classType":"java.lang.String"}]}]
+                  "paramFlowItemList":[{"object":"vip","count":100,"classType":"java.lang.String"},
+                                       {"object":"7","count":0,"classType":"int"},
+                                       {"object":"true","count":1,"classType":"java.lang.Boolean"},
+                                       {"object":"x","count":1,"classType":"char"}]}]
                 """);
-        assertThat(rules).singleElement().satisfies(rule -> assertThat(rule.getParamFlowItemList()).hasSize(1));
+        assertThat(rules).singleElement().satisfies(rule -> assertThat(rule.getParamFlowItemList()).hasSize(4));
 
         assertThatThrownBy(() -> ServiceRuleKinds.PARAM_FLOW.parse("[{\"resource\":\"a\",\"count\":1}]"))
                 .hasMessageContaining("paramIdx 必须给出");
-        assertThatThrownBy(() -> ServiceRuleKinds.PARAM_FLOW.parse(
-                "[{\"resource\":\"a\",\"paramIdx\":0,\"count\":1,\"paramFlowItemList\":[{\"object\":\"x\"}]}]"))
-                .hasMessageContaining("paramFlowItemList");
+    }
+
+    /** Sentinel 装入时会静默丢弃的例外项，这里整批拒绝并定位到第几项。 */
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', textBlock = """
+            缺字段            | [{"object":"x"}]                                                        | paramFlowItemList[1] 必须给出 object、count 与 classType
+            次数为负          | [{"object":"x","count":-1,"classType":"java.lang.String"}]              | paramFlowItemList[1].count 不能为负数
+            类型名拼错        | [{"object":"1","count":1,"classType":"java.lang.Integr"}]               | paramFlowItemList[1].classType 不是 Sentinel 支持的类型名：java.lang.Integr
+            类型不受支持      | [{"object":"1","count":1,"classType":"java.math.BigDecimal"}]           | classType 不是 Sentinel 支持的类型名
+            整数解析失败      | [{"object":"1.5","count":1,"classType":"int"}]                          | paramFlowItemList[1].object 不能按 int 解析：1.5
+            布尔值不是 true   | [{"object":"yes","count":1,"classType":"boolean"}]                      | 不能按 boolean 解析：yes
+            字符多于一个      | [{"object":"ab","count":1,"classType":"java.lang.Character"}]           | 不能按 java.lang.Character 解析：ab
+            第二项解析失败    | [{"object":"1","count":1,"classType":"long"},{"object":"x","count":1,"classType":"long"}] | paramFlowItemList[2].object
+            解析后重复        | [{"object":"1","count":1,"classType":"int"},{"object":"01","count":2,"classType":"int"}]  | paramFlowItemList[2].object 与前面的例外项解析为同一个值：01
+            """)
+    void rejectsExceptionItemsThatSentinelWouldSilentlyDrop(String scenario, String items, String reason) {
+        String content = "[{\"resource\":\"a\",\"paramIdx\":0,\"count\":1,\"paramFlowItemList\":" + items + "}]";
+        assertThatThrownBy(() -> ServiceRuleKinds.PARAM_FLOW.parse(content))
+                .as(scenario)
+                .isInstanceOf(RuleRejectedException.class)
+                .hasMessageContaining("第 1 条规则的 paramFlowItemList[")
+                .hasMessageContaining(reason);
     }
 
     @Test
