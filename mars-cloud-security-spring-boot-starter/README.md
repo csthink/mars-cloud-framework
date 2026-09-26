@@ -56,5 +56,6 @@ Servlet 方法异常由独立 advice 写信封，Reactive 在安全过滤链内�
 | 503 | 62004 | 权限服务不可用或超时 |
 | 502 | 62005 | 权限响应无效或下游拒绝调用凭据 |
 | 403 | 62006 | 请求主体与认证主体不一致 |
+| 401 | 62007 | 令牌对应的会话已被撤销（设备被踢出或账号被禁用），令牌本身仍在有效期内 |
 
 Servlet 宿主的 ErrorCodeRegistrar 汇集 `SecurityErrorCode.values()`，并声明 `framework-layers: [common, mvc, security]`。组件不依赖 MVC starter；WebFlux 宿主自行验证错误码没有重复。

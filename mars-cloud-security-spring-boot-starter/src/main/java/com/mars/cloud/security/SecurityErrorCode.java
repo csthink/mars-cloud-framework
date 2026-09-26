@@ -9,7 +9,8 @@ public enum SecurityErrorCode implements ErrorCode {
     ACCESS_DENIED(62003, 403, "Access denied"),
     PDP_UNAVAILABLE(62004, 503, "Permission service unavailable"),
     PDP_PROTOCOL_ERROR(62005, 502, "Invalid permission service response"),
-    CALLER_MISMATCH(62006, 403, "Caller does not match authenticated subject");
+    CALLER_MISMATCH(62006, 403, "Caller does not match authenticated subject"),
+    SESSION_REVOKED(62007, 401, "Session revoked");
 
     private final int code;
     private final int status;
