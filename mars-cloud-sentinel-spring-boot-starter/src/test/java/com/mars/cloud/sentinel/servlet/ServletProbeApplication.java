@@ -1,5 +1,6 @@
 package com.mars.cloud.sentinel.servlet;
 
+import com.alibaba.csp.sentinel.adapter.web.common.UrlCleaner;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.mars.cloud.sentinel.InMemoryRuleConfigSource;
 import com.mars.cloud.sentinel.rule.RuleConfigSource;
@@ -16,7 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * Servlet 用例的应用：两个接口与一个模拟统一异常处理（把拦截异常写成 429）。规则来自内存。
+ * Servlet 用例的应用：三个接口、一个把 {@code /excluded} 排除在限流之外的 {@link UrlCleaner}
+ * 与一个模拟统一异常处理（把拦截异常写成 429）。规则来自内存。
  *
  * <p>两个内部类带 {@code @RestController} 与 {@code @RestControllerAdvice}，作为配置类的成员类自动登记。
  */
@@ -30,6 +32,12 @@ class ServletProbeApplication {
     @Bean
     RuleConfigSource ruleConfigSource() {
         return RULES;
+    }
+
+    /** Sentinel 的约定：返回空字符串表示这个 URL 不进入限流。 */
+    @Bean
+    UrlCleaner excludeProbeUrl() {
+        return url -> "/excluded".equals(url) ? "" : url;
     }
 
     @RestController
@@ -48,6 +56,11 @@ class ServletProbeApplication {
         @GetMapping("/open")
         String open() {
             return "open";
+        }
+
+        @GetMapping("/excluded")
+        String excluded() {
+            return "excluded";
         }
     }
 

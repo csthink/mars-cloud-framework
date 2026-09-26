@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 真端口的 Servlet 服务：资源名是「HTTP 方法:路径模板」，拦截异常到达应用的 {@code @ExceptionHandler}，
- * 不出现 Sentinel 自带的文本。
+ * 不出现 Sentinel 自带的文本；被 {@code UrlCleaner} 排除的 URL 不进入任何资源。
  */
 @SpringBootTest(classes = ServletProbeApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
@@ -37,7 +37,9 @@ class ServletAdapterTest {
     static void rules() {
         ServletProbeApplication.RULES
                 .put(RuleType.FLOW.dataId(ServletProbeApplication.APPLICATION), """
-                        [{"resource":"GET:/probe/{id}","count":0}]
+                        [{"resource":"GET:/probe/{id}","count":0},
+                         {"resource":"GET:","count":0},
+                         {"resource":"GET:/excluded","count":0}]
                         """)
                 .put(RuleType.DEGRADE.dataId(ServletProbeApplication.APPLICATION), "[]")
                 .put(RuleType.PARAM_FLOW.dataId(ServletProbeApplication.APPLICATION), "[]")
@@ -52,6 +54,12 @@ class ServletAdapterTest {
     @Test
     void requestsWithoutRulesPass() throws Exception {
         assertThat(get("/open")).isEqualTo("200 open");
+    }
+
+    /** UrlCleaner 返回空字符串的 URL 不能被改成资源 {@code GET:}，两条阈值为 0 的规则都拦不到它。 */
+    @Test
+    void urlsExcludedByTheUrlCleanerEnterNoResource() throws Exception {
+        assertThat(get("/excluded")).isEqualTo("200 excluded");
     }
 
     /** Sentinel 1.8.9 的 Spring MVC 6 适配不区分方法，本组件的拦截器补上方法前缀。 */
