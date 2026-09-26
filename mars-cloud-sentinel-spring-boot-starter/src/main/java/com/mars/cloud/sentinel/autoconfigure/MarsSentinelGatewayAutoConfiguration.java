@@ -39,10 +39,9 @@ import java.util.stream.Collectors;
 public class MarsSentinelGatewayAutoConfiguration {
 
     /**
-     * Sentinel 网关过滤器的顺序：在网关自己以 {@link Ordered#HIGHEST_PRECEDENCE} 登记的全局过滤器（例如路由暴露检查）
-     * 之后，在 Spring Cloud Gateway 的路由地址过滤器（{@code RouteToRequestUrlFilter}，10000）与负载均衡过滤器
-     * （{@code ReactiveLoadBalancerClientFilter}，10150）之前。与网关的检查同为最高优先级时先后只取决于登记顺序，
-     * 不该暴露的路由可能先被计数、先返回 429。
+     * Sentinel 网关过滤器的顺序：在网关自己以 {@link Ordered#HIGHEST_PRECEDENCE} 登记的全局过滤器之后，
+     * 在 Spring Cloud Gateway 的路由地址过滤器（{@code RouteToRequestUrlFilter}，10000）与负载均衡过滤器
+     * （{@code ReactiveLoadBalancerClientFilter}，10150）之前。固定值让先后不再取决于 bean 的登记顺序。
      */
     public static final int GATEWAY_FILTER_ORDER = -1000;
 

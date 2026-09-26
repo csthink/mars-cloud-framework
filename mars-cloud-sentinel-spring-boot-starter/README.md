@@ -38,8 +38,8 @@ Sentinel 限流降级 starter：规则只从 Nacos 读取，整批校验、整�
   某类规则不需要时写 `[]`。
 - **运行中**：修改后校验通过即整批替换，不重启；没有通过校验、配置被删除或变为空白时，保留上一批规则，
   写一行 ERROR 并更新指标。要清空规则写 `[]`。
-- **读取失败时 Nacos 客户端的回退**：读取出错或超时（无权限除外）时，Nacos 客户端退回本机的故障转移文件或快照。
-  有快照的主机会用快照内容启动，不报错；没有快照的主机得到「配置不存在或读取失败」。
+- **Nacos 客户端的本机文件**：本机有故障转移文件时 Nacos 客户端总是用它，不访问服务器；服务器读取出错或超时
+  （无权限除外）时退回本机快照。有快照的主机会用快照内容启动，不报错；没有快照的主机得到「配置不存在或读取失败」。
 - **同一把锁**：同一个部署物的各种规则在同一把锁里校验与装入。网关的两种规则互相引用，校验时读到的另一种规则
   不会在装入前被并发的更新改掉。
 
@@ -62,10 +62,10 @@ Sentinel 限流降级 starter：规则只从 Nacos 读取，整批校验、整�
 | --- | --- | --- |
 | `flow` | `resource`、`count` | `grade`、`strategy`、`refResource`、`controlBehavior`、`warmUpPeriodSec`、`maxQueueingTimeMs`、`limitApp`、`clusterMode`、`regex` |
 | `degrade` | `resource`、`count`、`timeWindow` | `grade`、`minRequestAmount`、`slowRatioThreshold`、`statIntervalMs`、`limitApp`、`regex` |
-| `param-flow` | `resource`、`paramIdx`、`count` | `grade`、`controlBehavior`、`maxQueueingTimeMs`、`burstCount`、`durationInSec`、`paramFlowItemList`（每项 `object`、`count`、`classType`：`count` 不为负；`classType` 是 `int`、`long`、`double`、`float`、`boolean`、`byte`、`short`、`char`、对应包装类的全名或 `java.lang.String`；`object` 能按它解析，`boolean` 只接受 `true` 与 `false`，`char` 只接受一个字符；同一批里解析后的值不重复）、`limitApp`、`clusterMode`、`regex` |
+| `param-flow` | `resource`、`paramIdx`、`count` | `grade`、`controlBehavior`、`maxQueueingTimeMs`、`burstCount`、`durationInSec`、`paramFlowItemList`（每项 `object`、`count`、`classType`：`count` 不为负；`classType` 是 `int`、`long`、`double`、`float`、`boolean`、`byte`、`short`、`char`、数值与布尔包装类的全名或 `java.lang.String`；`object` 能按它解析，`boolean` 只接受 `true` 与 `false`，`char` 只接受一个字符；同一批里解析后的值不重复）、`limitApp`、`clusterMode`、`regex` |
 | `system` | 至少一个阈值不为 -1 | `highestSystemLoad`、`highestCpuUsage`（0 到 1）、`qps`、`avgRt`、`maxThread` |
 | `gw-api-group` | `apiName`、`predicateItems`（每项 `pattern`，可选 `matchStrategy`） | 前缀匹配的 `pattern` 以 `/**` 结尾，正则必须能编译 |
-| `gw-flow` | `resource`、`count` | `resourceMode`、`grade`、`intervalSec`、`controlBehavior`、`burst`、`maxQueueingTimeoutMs`、`paramItem`（`parseStrategy` 必填，0 客户端地址、1 Host、2 请求头、3 URL 参数、4 Cookie，后三种 `fieldName` 必填；`pattern` 可选，给出时 `matchStrategy` 只接受 0 精确、2 正则、3 包含，正则必须能编译；没有 `pattern` 就不能写 `matchStrategy`） |
+| `gw-flow` | `resource`、`count` | `resourceMode`、`grade`、`intervalSec`、`controlBehavior`、`burst`、`maxQueueingTimeoutMs`、`paramItem`（`parseStrategy` 必填，0 客户端地址、1 Host、2 请求头、3 URL 参数、4 Cookie，后三种 `fieldName` 必填；`pattern` 可选，给出时不能为空白，`matchStrategy` 只接受 0 精确、2 正则、3 包含，正则必须能编译；没有 `pattern` 就不能写 `matchStrategy`） |
 
 ## 资源名
 
@@ -114,7 +114,7 @@ mars:
 | Spring Cloud Alibaba 的属性数据源 `spring.cloud.sentinel.datasource.*` | 配置即启动失败，规则只从上面的 Data ID 进入 |
 | 网关兜底响应 `spring.cloud.sentinel.scg.fallback.*`、Servlet 拦截页 `spring.cloud.sentinel.block-page` 与 `spring.cloud.sentinel.servlet.block-page` | 配置即启动失败 |
 | Spring Cloud Alibaba 的 Feign 集成 `feign.sentinel.enabled=true` | 配置即启动失败，资源由 starter 按客户端登记 |
-| 日志文件 | Sentinel 的记录日志与命令中心日志经 slf4j 输出。日志目录（默认用户目录下的 `logs/csp/`，可用系统属性 `csp.sentinel.log.dir` 指定）只在 Sentinel 的 `LogBase` 类初始化时创建：本组件的用例触发拦截后核对过它不存在，已知的触发点是读取 Spring Cloud Alibaba 的 `sentinel` 管理端点；即使创建了，目录里也不会出现文件 |
+| 日志文件 | Sentinel 的记录日志与命令中心日志经 slf4j 输出。日志目录（默认用户目录下的 `logs/csp/`，可用系统属性 `csp.sentinel.log.dir` 指定）只在 Sentinel 的 `LogBase` 类初始化时创建：本组件的运行路径不触发它，已知的触发点是读取 Spring Cloud Alibaba 的 `sentinel` 管理端点；即使创建了，目录里也不会出现文件，用例在触发拦截后核对过 |
 | 统计文件 | 关闭每秒写一次的指标文件：starter 自带的 `sentinel.properties` 写了 `csp.sentinel.metric.flush.interval=0`，不论谁先触发 Sentinel 初始化都生效，启动时再把同名系统属性设为 0（已显式设置时不覆盖）；处理链去掉 `LogSlot`，不写 `sentinel-block.log`，首次拦截也不会在用户目录建 EagleEye 日志 |
 
 显式设置 `spring.cloud.sentinel.enabled=false` 时，starter 不装配规则来源，也关闭网关过滤器。
