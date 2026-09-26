@@ -3,6 +3,7 @@ package com.mars.cloud.sentinel.gateway;
 import com.alibaba.csp.sentinel.adapter.gateway.common.rule.GatewayFlowRule;
 import com.alibaba.csp.sentinel.adapter.gateway.common.rule.GatewayRuleManager;
 import com.alibaba.csp.sentinel.adapter.gateway.sc.SentinelGatewayFilter;
+import com.mars.cloud.sentinel.autoconfigure.MarsSentinelGatewayAutoConfiguration;
 import com.mars.cloud.sentinel.internal.MicrometerBlockedRequestRecorder;
 import com.mars.cloud.sentinel.internal.MicrometerRuleUpdateRecorder;
 import com.mars.cloud.sentinel.rule.RuleType;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.cloud.gateway.filter.ReactiveLoadBalancerClientFilter;
+import org.springframework.cloud.gateway.filter.RouteToRequestUrlFilter;
 import org.springframework.core.Ordered;
 
 import java.net.URI;
@@ -91,9 +94,14 @@ class GatewayAdapterTest {
                 .contains(GatewayProbeApplication.CLIENT_IP_ATTRIBUTE);
     }
 
+    /** 在网关以最高优先级登记的检查之后、在路由地址与负载均衡过滤器之前，顺序值是确定的。 */
     @Test
-    void runsBeforeTheOtherGlobalFilters() {
-        assertThat(filter.getOrder()).isEqualTo(Ordered.HIGHEST_PRECEDENCE);
+    void runsAfterTheHighestPrecedenceFiltersAndBeforeRouting() {
+        assertThat(filter.getOrder())
+                .isEqualTo(MarsSentinelGatewayAutoConfiguration.GATEWAY_FILTER_ORDER)
+                .isGreaterThan(Ordered.HIGHEST_PRECEDENCE)
+                .isLessThan(RouteToRequestUrlFilter.ROUTE_TO_URL_FILTER_ORDER)
+                .isLessThan(ReactiveLoadBalancerClientFilter.LOAD_BALANCER_CLIENT_FILTER_ORDER);
     }
 
     @Test
