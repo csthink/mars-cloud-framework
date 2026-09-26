@@ -66,6 +66,8 @@ public final class NacosRuleSource<T> extends AbstractDataSource<String, T> {
      * @throws IllegalStateException Data ID 不存在或读取失败、内容为空白、规则没有通过校验、监听登记失败
      */
     public void start() {
+        RuleConfigSource.Registration registered;
+        IllegalStateException failure;
         synchronized (lock) {
             String content = readForStartup();
             T rules;
@@ -85,11 +87,16 @@ public final class NacosRuleSource<T> extends AbstractDataSource<String, T> {
             // 读取与登记监听之间的修改不保证触发监听（Nacos 客户端以本机快照为监听的初始值），登记后再读一次补上
             try {
                 onChange(readSource());
+                return;
             } catch (Exception ex) {
-                close();
-                throw startupFailure("登记监听后的复核读取失败", ex);
+                registered = registration;
+                registration = null;
+                failure = startupFailure("登记监听后的复核读取失败", ex);
             }
         }
+        // 注销监听放在锁外，见 close()
+        registered.close();
+        throw failure;
     }
 
     void onChange(String content) {
@@ -120,13 +127,19 @@ public final class NacosRuleSource<T> extends AbstractDataSource<String, T> {
         }
     }
 
+    /**
+     * 注销监听。注销本身在锁外进行：Nacos 客户端在它自己的缓存锁里同步调用监听器（进入 {@link #onChange} 等本组件的锁），
+     * 注销又要取同一把缓存锁，若在本组件的锁内注销，与恰好到达的通知会形成锁序倒置。
+     */
     @Override
     public void close() {
+        RuleConfigSource.Registration registered;
         synchronized (lock) {
-            if (registration != null) {
-                registration.close();
-                registration = null;
-            }
+            registered = registration;
+            registration = null;
+        }
+        if (registered != null) {
+            registered.close();
         }
     }
 

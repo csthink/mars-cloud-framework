@@ -103,7 +103,8 @@ class ServiceRuleKindsTest {
             类型不受支持      | [{"object":"1","count":1,"classType":"java.math.BigDecimal"}]           | classType 不是 Sentinel 支持的类型名
             整数解析失败      | [{"object":"1.5","count":1,"classType":"int"}]                          | paramFlowItemList[1].object 不能按 int 解析：1.5
             布尔值不是 true   | [{"object":"yes","count":1,"classType":"boolean"}]                      | 不能按 boolean 解析：yes
-            字符多于一个      | [{"object":"ab","count":1,"classType":"java.lang.Character"}]           | 不能按 java.lang.Character 解析：ab
+            字符多于一个      | [{"object":"ab","count":1,"classType":"char"}]                          | 不能按 char 解析：ab
+            字符的包装类      | [{"object":"a","count":1,"classType":"java.lang.Character"}]            | classType 不是 Sentinel 支持的类型名：java.lang.Character
             第二项解析失败    | [{"object":"1","count":1,"classType":"long"},{"object":"x","count":1,"classType":"long"}] | paramFlowItemList[2].object
             解析后重复        | [{"object":"1","count":1,"classType":"int"},{"object":"01","count":2,"classType":"int"}]  | paramFlowItemList[2].object 与前面的例外项解析为同一个值：01
             """)

@@ -39,6 +39,41 @@ class NacosRuleSourceTest {
         return source;
     }
 
+    /** 注销监听时不能持有本组件的锁：Nacos 客户端在自己的缓存锁里同步调用监听器，锁内注销会与到达的通知互相等待。 */
+    @Test
+    void unregistersTheListenerOutsideTheLock() {
+        Object lock = new Object();
+        List<Boolean> heldWhileClosing = new java.util.ArrayList<>();
+        RuleConfigSource observing = new RuleConfigSource() {
+            @Override
+            public String read(String dataId, String group, Duration timeout) throws Exception {
+                return config.read(dataId, group, timeout);
+            }
+
+            @Override
+            public Registration listen(String dataId, String group, java.util.function.Consumer<String> listener) throws Exception {
+                Registration inner = config.listen(dataId, group, listener);
+                return () -> {
+                    heldWhileClosing.add(Thread.holdsLock(lock));
+                    inner.close();
+                };
+            }
+        };
+        config.put(DATA_ID, "[]");
+        source = new NacosRuleSource<>(ServiceRuleKinds.FLOW, DATA_ID, observing, Duration.ofSeconds(1),
+                RuleUpdateRecorder.NONE, lock);
+        source.start();
+        source.close();
+
+        config.failReadsAfter(1, new IllegalStateException("复核时连接断开"));
+        NacosRuleSource<List<FlowRule>> failing = new NacosRuleSource<>(ServiceRuleKinds.FLOW, DATA_ID, observing,
+                Duration.ofSeconds(1), RuleUpdateRecorder.NONE, lock);
+        assertThatThrownBy(failing::start).hasMessageContaining("登记监听后的复核读取失败");
+
+        assertThat(heldWhileClosing).containsExactly(false, false);
+        assertThat(config.listenerCount(DATA_ID)).isZero();
+    }
+
     @Test
     void startupFailsWhenTheDataIdDoesNotExist() {
         assertThatThrownBy(() -> newSource().start())

@@ -207,12 +207,13 @@ public final class ServiceRuleKinds {
 
         /**
          * Sentinel 1.8.9 的 {@code ParamFlowRuleUtil#parseItemValue} 按名字识别的类型：基本类型用 {@code int} 这样的
-         * 短名，包装类与 {@code String} 用全名。其他名字不会报错，而是退回按字符串匹配。
+         * 短名，数值与布尔的包装类用全名，字符只认 {@code char}（没有 {@code java.lang.Character} 分支），
+         * {@code java.lang.String} 按字符串匹配。其他名字不会报错，而是退回按字符串匹配。
          */
         static final List<String> ITEM_CLASS_TYPES = List.of(
                 "int", "java.lang.Integer", "long", "java.lang.Long", "double", "java.lang.Double",
                 "float", "java.lang.Float", "boolean", "java.lang.Boolean", "byte", "java.lang.Byte",
-                "short", "java.lang.Short", "char", "java.lang.Character", "java.lang.String");
+                "short", "java.lang.Short", "char", "java.lang.String");
 
         private Constraints() {
         }
@@ -262,7 +263,7 @@ public final class ServiceRuleKinds {
                         }
                         yield Boolean.parseBoolean(object);
                     }
-                    case "char", "java.lang.Character" -> {
+                    case "char" -> {
                         if (object.length() != 1) {
                             throw new IllegalArgumentException(object);
                         }

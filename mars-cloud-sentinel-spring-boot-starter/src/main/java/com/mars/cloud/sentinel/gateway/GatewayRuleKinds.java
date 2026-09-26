@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
  *
  * <p>参数项里 Sentinel 会静默接受却不生效的取值同样拒绝：{@code parseStrategy} 不在 0 到 4 时解析不出参数、规则永远放行；
  * 带 {@code pattern} 时 {@code matchStrategy} 只有 0（精确）、2（正则）与 3（包含）有实现，1（前缀）与越界值对所有取值生效，
- * 写错的正则也对所有取值生效。
+ * 写错的正则与空白的 {@code pattern} 也对所有取值生效。
  *
  * @since 2026-09-25
  */
@@ -227,6 +227,10 @@ public final class GatewayRuleKinds {
                 throw RuleFields.rejected(index, "paramItem.matchStrategy", "只在给出 pattern 时有意义");
             }
             return paramItem;
+        }
+        if (item.pattern().isBlank()) {
+            // Sentinel 对空的 pattern 不做匹配，规则会对所有取值生效
+            throw RuleFields.rejected(index, "paramItem.pattern", "不能为空白；不按取值匹配时不要写 pattern");
         }
         int matchStrategy = item.matchStrategy() == null
                 ? SentinelGatewayConstants.PARAM_MATCH_STRATEGY_EXACT : item.matchStrategy();

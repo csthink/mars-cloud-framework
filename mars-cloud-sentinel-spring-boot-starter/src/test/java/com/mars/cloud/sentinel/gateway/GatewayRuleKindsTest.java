@@ -70,6 +70,7 @@ class GatewayRuleKindsTest {
             匹配方式越界        | [{"resource":"order","count":1,"paramItem":{"parseStrategy":2,"fieldName":"h","pattern":"a","matchStrategy":4}}] | paramItem.matchStrategy 只能是 0（精确）
             参数正则写错        | [{"resource":"order","count":1,"paramItem":{"parseStrategy":2,"fieldName":"h","pattern":"(","matchStrategy":2}}] | paramItem.pattern 不是合法的正则表达式
             没有 pattern 的匹配方式 | [{"resource":"order","count":1,"paramItem":{"parseStrategy":0,"matchStrategy":0}}] | paramItem.matchStrategy 只在给出 pattern 时有意义
+            空白的 pattern      | [{"resource":"order","count":1,"paramItem":{"parseStrategy":2,"fieldName":"h","pattern":" "}}] | paramItem.pattern 不能为空白
             """)
     void rejectsInvalidGatewayFlowRules(String scenario, String content, String reason) {
         assertThatThrownBy(() -> kinds.flowRules().parse(content))
