@@ -192,7 +192,7 @@
                 <configuration>
                     <!--
                       Sentinel 的日志目录与 EagleEye 目录指到构建目录下，不写用户目录；
-                      FilesystemFootprintTest 在触发拦截后断言两个目录里没有任何文件。
+                      SentinelRuntimeFootprintTest 在触发拦截后断言两个目录里没有任何文件。
                     -->
                     <systemPropertyVariables>
                         <csp.sentinel.log.dir>${project.build.directory}/sentinel-log-dir/</csp.sentinel.log.dir>
