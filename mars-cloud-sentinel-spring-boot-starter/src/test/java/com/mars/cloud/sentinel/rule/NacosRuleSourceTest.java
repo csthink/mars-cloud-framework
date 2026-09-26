@@ -62,6 +62,17 @@ class NacosRuleSourceTest {
                 .hasRootCauseMessage("连接超时");
     }
 
+    /** 登记监听后的复核读取失败：监听必须先注销，作废的数据源不能留在进程级的 Nacos 客户端上。 */
+    @Test
+    void startupFailureAfterTheListenerIsRegisteredRemovesTheListener() {
+        config.put(DATA_ID, "[]");
+        config.failReadsAfter(1, new IllegalStateException("复核时连接断开"));
+        assertThatThrownBy(() -> newSource().start())
+                .hasMessageContaining("登记监听后的复核读取失败")
+                .hasRootCauseMessage("复核时连接断开");
+        assertThat(config.listenerCount(DATA_ID)).isZero();
+    }
+
     @Test
     void startupFailsWhenTheRulesAreInvalid() {
         config.put(DATA_ID, "[{\"resource\":\"a\",\"cout\":1}]");

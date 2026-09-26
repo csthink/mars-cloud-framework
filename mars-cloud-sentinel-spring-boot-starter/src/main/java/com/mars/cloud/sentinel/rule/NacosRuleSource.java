@@ -13,6 +13,9 @@ import java.util.Objects;
  * <p>不使用 {@code sentinel-datasource-nacos} 的 {@code NacosDataSource}：它在监听登记失败、初始读取失败与
  * 内容为空时都只写一条警告后继续运行，限流就此静默失效；它还为每个 Data ID 各建一个 Nacos 客户端。
  *
+ * <p>校验与装入在构造时给出的锁里进行。同一个规则目录下的数据源共用一把锁：网关的两种规则在校验时要读
+ * 另一种规则的现状，串行化后「删除分组」与「新增对它的引用」不会并发地都通过。
+ *
  * @param <T> 规则管理器接受的集合类型
  * @since 2026-09-25
  */
@@ -25,6 +28,7 @@ public final class NacosRuleSource<T> extends AbstractDataSource<String, T> {
     private final RuleConfigSource configSource;
     private final Duration readTimeout;
     private final RuleUpdateRecorder recorder;
+    private final Object lock;
 
     private String acceptedContent;
     private volatile int activeRules;
@@ -33,12 +37,21 @@ public final class NacosRuleSource<T> extends AbstractDataSource<String, T> {
 
     public NacosRuleSource(RuleKind<T> kind, String dataId, RuleConfigSource configSource, Duration readTimeout,
                            RuleUpdateRecorder recorder) {
+        this(kind, dataId, configSource, readTimeout, recorder, new Object());
+    }
+
+    /**
+     * @param lock 校验与装入时持有的锁；同一个规则目录下的数据源传同一个对象
+     */
+    public NacosRuleSource(RuleKind<T> kind, String dataId, RuleConfigSource configSource, Duration readTimeout,
+                           RuleUpdateRecorder recorder, Object lock) {
         super(kind::parse);
         this.kind = kind;
         this.dataId = dataId;
         this.configSource = configSource;
         this.readTimeout = readTimeout;
         this.recorder = recorder;
+        this.lock = lock;
     }
 
     @Override
@@ -47,65 +60,73 @@ public final class NacosRuleSource<T> extends AbstractDataSource<String, T> {
     }
 
     /**
-     * 读取、校验并装入规则，再登记变更监听。
+     * 读取、校验并装入规则，再登记变更监听。失败时不留下已登记的监听：应用配置所用的 Nacos 客户端是进程级的，
+     * 留下的监听会一直引用这个作废的数据源。
      *
-     * @throws IllegalStateException Data ID 不存在、内容为空白、读取失败或规则没有通过校验
+     * @throws IllegalStateException Data ID 不存在或读取失败、内容为空白、规则没有通过校验、监听登记失败
      */
-    public synchronized void start() {
-        String content = readForStartup();
-        T rules;
-        try {
-            rules = parser.convert(content);
-        } catch (RuleRejectedException ex) {
-            throw startupFailure("规则没有通过校验：" + ex.getMessage(), ex);
-        }
-        kind.register(getProperty());
-        install(content, rules);
-        recorder.watch(kind.type(), () -> activeRules, () -> lastUpdateAccepted);
-        try {
-            registration = configSource.listen(dataId, RuleType.GROUP, this::onChange);
-        } catch (Exception ex) {
-            throw startupFailure("登记变更监听失败", ex);
-        }
-        // 读取与登记监听之间发生的修改不会触发监听，登记后再读一次补上
-        try {
-            onChange(readSource());
-        } catch (Exception ex) {
-            throw startupFailure("登记监听后的复核读取失败", ex);
+    public void start() {
+        synchronized (lock) {
+            String content = readForStartup();
+            T rules;
+            try {
+                rules = parser.convert(content);
+            } catch (RuleRejectedException ex) {
+                throw startupFailure("规则没有通过校验：" + ex.getMessage(), ex);
+            }
+            kind.register(getProperty());
+            install(content, rules);
+            recorder.watch(kind.type(), () -> activeRules, () -> lastUpdateAccepted);
+            try {
+                registration = configSource.listen(dataId, RuleType.GROUP, this::onChange);
+            } catch (Exception ex) {
+                throw startupFailure("登记变更监听失败", ex);
+            }
+            // 读取与登记监听之间的修改不保证触发监听（Nacos 客户端以本机快照为监听的初始值），登记后再读一次补上
+            try {
+                onChange(readSource());
+            } catch (Exception ex) {
+                close();
+                throw startupFailure("登记监听后的复核读取失败", ex);
+            }
         }
     }
 
-    synchronized void onChange(String content) {
-        if (content == null || content.isBlank()) {
-            reject("配置已被删除或内容为空白；要清空规则请写 []");
-            return;
+    void onChange(String content) {
+        synchronized (lock) {
+            if (content == null || content.isBlank()) {
+                reject("配置已被删除或内容为空白；要清空规则请写 []");
+                return;
+            }
+            if (Objects.equals(content, acceptedContent)) {
+                lastUpdateAccepted = true;
+                return;
+            }
+            T rules;
+            try {
+                rules = parser.convert(content);
+            } catch (RuleRejectedException ex) {
+                reject(ex.getMessage());
+                return;
+            } catch (RuntimeException ex) {
+                log.error("Sentinel 规则被拒绝，保留上一批：dataId={}, group={}, type={}, 校验时出现意外错误",
+                        dataId, RuleType.GROUP, kind.type().id(), ex);
+                markRejected();
+                return;
+            }
+            install(content, rules);
+            recorder.accepted(kind.type());
+            log.info("Sentinel 规则已更新：dataId={}, type={}, 生效 {} 条", dataId, kind.type().id(), activeRules);
         }
-        if (Objects.equals(content, acceptedContent)) {
-            lastUpdateAccepted = true;
-            return;
-        }
-        T rules;
-        try {
-            rules = parser.convert(content);
-        } catch (RuleRejectedException ex) {
-            reject(ex.getMessage());
-            return;
-        } catch (RuntimeException ex) {
-            log.error("Sentinel 规则被拒绝，保留上一批：dataId={}, group={}, type={}, 校验时出现意外错误",
-                    dataId, RuleType.GROUP, kind.type().id(), ex);
-            markRejected();
-            return;
-        }
-        install(content, rules);
-        recorder.accepted(kind.type());
-        log.info("Sentinel 规则已更新：dataId={}, type={}, 生效 {} 条", dataId, kind.type().id(), activeRules);
     }
 
     @Override
-    public synchronized void close() {
-        if (registration != null) {
-            registration.close();
-            registration = null;
+    public void close() {
+        synchronized (lock) {
+            if (registration != null) {
+                registration.close();
+                registration = null;
+            }
         }
     }
 
@@ -151,7 +172,8 @@ public final class NacosRuleSource<T> extends AbstractDataSource<String, T> {
             throw startupFailure("读取失败", ex);
         }
         if (content == null) {
-            throw startupFailure("配置不存在；不需要这类规则时写 []", null);
+            // Nacos 客户端在读取出错或超时时会退回本机快照，没有快照的主机上得到的也是 null
+            throw startupFailure("配置不存在或读取失败；不需要这类规则时写 []", null);
         }
         if (content.isBlank()) {
             throw startupFailure("内容为空白；不需要这类规则时写 []", null);

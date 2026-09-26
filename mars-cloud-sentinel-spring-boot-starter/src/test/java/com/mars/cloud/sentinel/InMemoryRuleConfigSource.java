@@ -18,6 +18,7 @@ public final class InMemoryRuleConfigSource implements RuleConfigSource {
     private final Map<String, String> contents = new ConcurrentHashMap<>();
     private final Map<String, List<Consumer<String>>> listeners = new ConcurrentHashMap<>();
     private volatile RuntimeException readFailure;
+    private volatile int readsBeforeFailure;
 
     public InMemoryRuleConfigSource put(String dataId, String content) {
         contents.put(dataId, content);
@@ -35,6 +36,12 @@ public final class InMemoryRuleConfigSource implements RuleConfigSource {
     }
 
     public void failReads(RuntimeException failure) {
+        failReadsAfter(0, failure);
+    }
+
+    /** 前 {@code successfulReads} 次读取照常，之后的读取都抛出 {@code failure}。 */
+    public void failReadsAfter(int successfulReads, RuntimeException failure) {
+        this.readsBeforeFailure = successfulReads;
         this.readFailure = failure;
     }
 
@@ -43,9 +50,12 @@ public final class InMemoryRuleConfigSource implements RuleConfigSource {
     }
 
     @Override
-    public String read(String dataId, String group, Duration timeout) {
+    public synchronized String read(String dataId, String group, Duration timeout) {
         if (readFailure != null) {
-            throw readFailure;
+            if (readsBeforeFailure == 0) {
+                throw readFailure;
+            }
+            readsBeforeFailure--;
         }
         if (!RuleType.GROUP.equals(group)) {
             return null;
