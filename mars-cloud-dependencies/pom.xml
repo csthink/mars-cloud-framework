@@ -74,6 +74,8 @@
           这里的版本必须与 SCA BOM 的 sentinel.version 一致（2025.1.0.0 对应 1.8.9），升级 SCA 时一并核对。
         -->
         <sentinel-logging-slf4j.version>1.8.9</sentinel-logging-slf4j.version>
+        <datasource-proxy.version>1.11.0</datasource-proxy.version>
+
         <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <!-- 3.5.9 起分页等依赖 JSqlParser 的拦截器被拆到独立 artifact -->
@@ -287,6 +289,13 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>transmittable-thread-local</artifactId>
                 <version>${transmittable-thread-local.version}</version>
+            </dependency>
+
+            <!-- JDBC 执行监听：只登记版本，由使用该能力的模块显式依赖 -->
+            <dependency>
+                <groupId>net.ttddyy</groupId>
+                <artifactId>datasource-proxy</artifactId>
+                <version>${datasource-proxy.version}</version>
             </dependency>
 
             <!-- MyBatis-Plus：Boot 4 用专用 artifactId -->
