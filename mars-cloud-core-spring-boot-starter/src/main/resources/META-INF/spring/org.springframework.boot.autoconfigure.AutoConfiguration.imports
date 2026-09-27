@@ -1,1 +1,3 @@
 com.mars.cloud.core.autoconfigure.IdAutoConfiguration
+com.mars.cloud.core.autoconfigure.ResilienceAutoConfiguration
+com.mars.cloud.core.autoconfigure.WebServerResilienceAutoConfiguration

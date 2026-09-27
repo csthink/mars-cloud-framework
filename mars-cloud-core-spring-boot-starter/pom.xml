@@ -18,7 +18,7 @@
     <packaging>jar</packaging>
 
     <name>mars-cloud-core-spring-boot-starter</name>
-    <description>核心能力 Spring Boot Starter：目前提供分布式 ID（雪花算法）</description>
+    <description>核心能力 Spring Boot Starter：提供分布式 ID 与通用容错约束</description>
 
     <dependencies>
         <!-- 依赖纯工具/模型库（由 BOM 管版本，不写 <version>） -->
@@ -58,6 +58,16 @@
             <artifactId>hutool-core</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-web-server</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

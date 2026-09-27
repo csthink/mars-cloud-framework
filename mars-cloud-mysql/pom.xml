@@ -34,7 +34,6 @@
         <dependency>
             <groupId>com.mars.cloud</groupId>
             <artifactId>mars-cloud-core-spring-boot-starter</artifactId>
-            <scope>provided</scope>
         </dependency>
 
         <!-- 自动装配核心 -->
@@ -96,6 +95,10 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>net.ttddyy</groupId>
+            <artifactId>datasource-proxy</artifactId>
+        </dependency>
     </dependencies>
 
     <!-- 发布仓库配置由 parent 继承，这里不再重复 -->
@@ -156,7 +159,7 @@
                         <version>${project.version}</version>
                         <!-- 这里不要写 scope，让它仅作为“插件依赖”存在 -->
                     </dependency>
-                </dependencies>
+                            </dependencies>
             </plugin>
 
             <!-- 可选：给模块起一个稳定的 JPMS 名称 -->
