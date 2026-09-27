@@ -375,6 +375,34 @@
     {
       "pattern": "ERROR\\ NacosRuleSource:\\ Sentinel\\ 规则被拒绝，保留上一批：dataId=gateway\\-probe\\-sentinel\\-gw\\-flow\\-rules\\.json,\\ group=SENTINEL_GROUP,\\ type=gw\\-flow,\\ 原因：第\\ 1\\ 条规则的\\ resource\\ 不是网关已声明的路由\\ ID：prob（已声明\\ \\[callbacks,\\ code\\-defined,\\ probe\\]）",
       "reason": "Negative gateway rule test: an update that names an undeclared route is rejected, logged at ERROR by design, and the previous rules stay in force."
+    },
+    {
+      "pattern": "WARN\\ JobDispatcher:\\ 任务\\ (blocking|failing)\\ 执行失败：jobId=\\d+，logId=\\d+",
+      "reason": "Job starter dispatcher tests: the failing, timed-out, killed, covered and shut-down test jobs log the fixed per-run failure warning together with the stack trace."
+    },
+    {
+      "pattern": "WARN\\ CallbackSender:\\ 回调队列已满，丢弃最旧的一条执行结果：logId=21，handleCode=200",
+      "reason": "Job starter callback test: a queue of capacity two drops its oldest result when a third arrives and logs the fixed warning."
+    },
+    {
+      "pattern": "WARN\\ CallbackSender:\\ 执行器关闭时有\\ 2\\ 条执行结果未送达调度中心，调度中心将在执行器下线后把它们标为失败",
+      "reason": "Job starter callback test: stopping a sender whose scheduler is unreachable reports the undelivered results with the fixed warning."
+    },
+    {
+      "pattern": "WARN\\ CallbackSender:\\ 执行结果回报调度中心失败，按退避重发：2\\ 条，原因：http://127\\.0\\.0\\.1:\\d+/api/callback\\ 返回\\ code=500\\ msg=rejected",
+      "reason": "Job starter callback test: the fake scheduler rejects callbacks first, so the sender logs one warning before the retries succeed."
+    },
+    {
+      "pattern": "WARN\\ RegistryHeartbeat:\\ 执行器向调度中心注册失败，周期任务暂停，每\\ 50\\ 毫秒重试，恢复后记录一条\\ INFO：app=heartbeat\\-app，原因：http://127\\.0\\.0\\.1:\\d+/api/registry\\ 返回\\ code=500\\ msg=rejected",
+      "reason": "Job starter heartbeat test: the fake scheduler rejects registration first, so the heartbeat logs one warning and a recovery line afterwards."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.context\\.ApplicationContextException:\\ Failed\\ to\\ start\\ bean\\ 'marsJobExecutor'",
+      "reason": "Negative job starter test: an occupied executor port fails the executor lifecycle start instead of being ignored."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsJobConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.job\\.autoconfigure\\.MarsJobAutoConfiguration:\\ 缺少访问令牌：设置环境变量\\ MARS_JOB_ACCESS_TOKEN（与调度中心的\\ xxl\\.job\\.accessToken\\ 相同）",
+      "reason": "Negative job starter test: a missing access token fails startup with the fixed verifier message."
     }
   ],
   "service": [

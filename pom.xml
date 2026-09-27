@@ -32,6 +32,7 @@
         <module>mars-cloud-rocketmq-spring-boot-starter</module>
         <module>mars-cloud-observability-spring-boot-starter</module>
         <module>mars-cloud-sentinel-spring-boot-starter</module>
+        <module>mars-cloud-job-spring-boot-starter</module>
     </modules>
 
 </project>
