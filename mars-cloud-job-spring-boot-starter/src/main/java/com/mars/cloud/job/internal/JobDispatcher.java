@@ -205,12 +205,25 @@ public final class JobDispatcher {
             logs.begin(pending.logId());
             queue.addLast(pending);
             if (thread == null) {
-                thread = new Thread(this, "mars-job-" + jobId);
-                thread.setDaemon(true);
-                thread.start();
+                try {
+                    startThread();
+                } catch (RuntimeException | Error unstartable) {
+                    queue.removeLast();
+                    logs.end(pending.logId());
+                    log.error("任务编号 {} 的工作线程无法创建，本次触发回报失败", jobId, unstartable);
+                    return Protocol.Response.fail("执行器无法创建工作线程：" + unstartable.getClass().getName());
+                }
             }
             notifyAll();
             return Protocol.Response.success();
+        }
+
+        /** 先启动再登记：启动失败时 {@code thread} 保持为 null，下一次触发会再试。调用方持有本对象的锁。 */
+        private void startThread() {
+            Thread started = new Thread(this, "mars-job-" + jobId);
+            started.setDaemon(true);
+            started.start();
+            thread = started;
         }
 
         synchronized boolean busy() {
@@ -338,9 +351,11 @@ public final class JobDispatcher {
                         finished = false;
                         interruptMessage = null;
                         if (!queue.isEmpty() && !stopping) {
-                            thread = new Thread(this, "mars-job-" + jobId);
-                            thread.setDaemon(true);
-                            thread.start();
+                            try {
+                                startThread();
+                            } catch (RuntimeException | Error unstartable) {
+                                log.error("任务编号 {} 的工作线程无法重建，排队的触发等下一次触发时执行", jobId, unstartable);
+                            }
                         }
                         notifyAll();
                     }
@@ -368,8 +383,8 @@ public final class JobDispatcher {
         }
 
         /**
-         * 执行一次并回报结果。任务方法以外的步骤（链路追踪、超时定时器、执行日志）出错时同样以失败回报，
-         * 工作线程继续处理后面的触发。
+         * 执行一次并回报结果。任务方法执行前的步骤（超时定时器、链路追踪、第一行执行日志）出错时以失败回报；
+         * 方法执行完之后的步骤（例如结束 span）出错时保留方法本身的结果。两种情况工作线程都继续处理后面的触发。
          */
         private void execute(Pending pending) {
             Protocol.TriggerRequest trigger = pending.trigger();
@@ -390,11 +405,12 @@ public final class JobDispatcher {
                     try {
                         pending.method().invoke(context);
                     } catch (Throwable failure) {
+                        // 先留下方法本身的异常，最后才交给链路追踪：追踪实现出错时不吞掉它。
                         code = Protocol.FAIL;
-                        scope.error(failure);
                         message = failure.toString();
                         context.record("任务抛出异常：" + System.lineSeparator() + RunContext.stackTrace(failure));
                         log.warn("任务 {} 执行失败：jobId={}，logId={}", name, jobId, trigger.logId(), failure);
+                        scope.error(failure);
                     } finally {
                         methodFinished = true;
                     }

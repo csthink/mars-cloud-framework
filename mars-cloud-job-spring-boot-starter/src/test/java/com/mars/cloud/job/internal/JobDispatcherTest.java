@@ -329,6 +329,27 @@ class JobDispatcherTest {
     }
 
     @Test
+    void queuedTriggersRunOnANewThreadAfterTheWorkerDies() throws Exception {
+        dispatcher.shutdown(Duration.ofSeconds(1));
+        AtomicBoolean fatal = new AtomicBoolean(true);
+        // 第一次回报时抛出 Error，工作线程随之退出；排队的触发不能等到下一次触发才执行。
+        dispatcher = new JobDispatcher(registry, logs, result -> {
+            results.add(result);
+            if (fatal.getAndSet(false)) {
+                throw new AssertionError("the worker dies while reporting");
+            }
+        }, JobTracing.NONE, Duration.ofSeconds(90));
+        Protocol.TriggerRequest first = trigger(20, "blocking");
+        Protocol.TriggerRequest queued = trigger(20, "quick");
+        dispatcher.run(first);
+        awaitStarted();
+        dispatcher.run(queued);
+        jobs.release.release();
+        assertThat(resultFor(first).handleCode()).isEqualTo(Protocol.SUCCESS);
+        assertThat(resultFor(queued).handleCode()).isEqualTo(Protocol.SUCCESS);
+    }
+
+    @Test
     void aJobRunsWithoutTheCallerIdentityOfTheThreadThatSubmittedIt() {
         Protocol.TriggerRequest trigger = trigger(18, "identity");
         try (CallerContextHolder.Scope ignored = CallerContextHolder.open(new CallerContext("user-1", "portal", "default"))) {
