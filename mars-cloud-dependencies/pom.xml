@@ -39,6 +39,7 @@
         <mars-cloud-rocketmq-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-rocketmq-spring-boot-starter.version>
         <mars-cloud-observability-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-observability-spring-boot-starter.version>
         <mars-cloud-sentinel-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-sentinel-spring-boot-starter.version>
+        <mars-cloud-job-spring-boot-starter.version>1.0.0-SNAPSHOT</mars-cloud-job-spring-boot-starter.version>
 
         <!-- 常用依赖版本 -->
         <lombok.version>1.18.40</lombok.version>
@@ -216,6 +217,12 @@
                 <groupId>com.mars.cloud</groupId>
                 <artifactId>mars-cloud-sentinel-spring-boot-starter</artifactId>
                 <version>${mars-cloud-sentinel-spring-boot-starter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.mars.cloud</groupId>
+                <artifactId>mars-cloud-job-spring-boot-starter</artifactId>
+                <version>${mars-cloud-job-spring-boot-starter.version}</version>
             </dependency>
 
             <!-- 常用依赖版本声明 -->
