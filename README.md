@@ -140,6 +140,19 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 拦截异常交给应用自己的统一错误处理，不开放命令端口。接入方式见
 [`mars-cloud-sentinel-spring-boot-starter/README.md`](mars-cloud-sentinel-spring-boot-starter/README.md)。
 
+需要由任务调度中心（xxl-job-admin）按周期触发服务里的方法时，再引入：
+
+```xml
+<dependency>
+    <groupId>com.mars.cloud</groupId>
+    <artifactId>mars-cloud-job-spring-boot-starter</artifactId>
+</dependency>
+```
+
+该 starter 自己实现调度中心执行器一侧的协议，固定执行器命名与运行环境前缀、执行器端口（业务端口加 2000）与监听地址、
+必填的访问令牌、`@JobHandler` 任务方法的登记与链路追踪，只执行服务里登记的 Java 方法。接入方式见
+[`mars-cloud-job-spring-boot-starter/README.md`](mars-cloud-job-spring-boot-starter/README.md)。
+
 ### 参与本仓开发
 
 构建、测试与依赖约束见下文「[构建](#构建)」一节。
@@ -161,6 +174,7 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 | [`mars-cloud-rocketmq-spring-boot-starter`](mars-cloud-rocketmq-spring-boot-starter/README.md) | RocketMQ 事件消息：事务发送、消费约定、上下文透传、主题核验与运行环境前缀 |
 | [`mars-cloud-observability-spring-boot-starter`](mars-cloud-observability-spring-boot-starter/README.md) | 链路追踪与 OTLP 导出、Prometheus 指标、结构化日志与 trace 关联、管理端口与管理端点认证 |
 | [`mars-cloud-sentinel-spring-boot-starter`](mars-cloud-sentinel-spring-boot-starter/README.md) | Sentinel 限流降级：规则只从 Nacos 读取并整批校验、网关按客户端地址限流、Feign 客户端资源 |
+| [`mars-cloud-job-spring-boot-starter`](mars-cloud-job-spring-boot-starter/README.md) | 周期任务执行器：实现 xxl-job-admin 执行器协议、执行器命名端口与地址、访问令牌、任务方法登记与链路追踪 |
 
 依赖方向是单向的：starter → `common` / `dependencies` / 更底层的 starter
 （mvc starter 依赖 core starter 以获得分布式 ID），不允许反向依赖或成环。

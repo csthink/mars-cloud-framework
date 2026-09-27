@@ -29,7 +29,8 @@ mars-cloud-framework/            # 本仓：只出 jar，不部署
 ├── mars-cloud-security-test-support/
 ├── mars-cloud-rocketmq-spring-boot-starter/
 ├── mars-cloud-observability-spring-boot-starter/
-└── mars-cloud-sentinel-spring-boot-starter/
+├── mars-cloud-sentinel-spring-boot-starter/
+└── mars-cloud-job-spring-boot-starter/
 ```
 
 ## 划分三规则
@@ -73,6 +74,8 @@ common ◄──────── core-starter ◄─── mvc-starter       m
 - `sentinel starter` 依赖 Spring Cloud Alibaba 的 Sentinel starter 与 `nacos starter`（复用应用配置的 Nacos 客户端读取规则）；
   网关适配、`feign starter` 与 Micrometer 是可选依赖，存在时才装配网关过滤器、Feign 客户端资源与指标。
   它不依赖 MVC starter：拦截异常交回应用自己的统一错误处理。
+- `job starter` 依赖 `common`（运行环境前缀的命名规则）与 Jackson，自己实现 xxl-job-admin 执行器一侧的 HTTP 协议，
+  不依赖 xxl-job 发布的 Java 构件与其他 starter；Micrometer Tracing 是可选依赖，存在时每次执行开一个根 span。
 - 各模块的 `<parent>` 都是 `mars-cloud-dependencies`，根聚合 POM 只聚合、不做 parent。
 
 ## 横切能力设计
@@ -208,6 +211,18 @@ Sentinel 的 HTTP 命令端口能在运行期改规则，与「规则只从 Naco
 被拦截时 starter 不写响应：网关与 Servlet 应用把拦截异常交回各自的统一错误处理，Feign 调用映射为「下游不可用」。
 网关按客户端地址限流时，地址取自网关入站过滤器核对后写入的交换属性，不取 TCP 对端地址。
 接入方式见 [sentinel starter 使用说明](../mars-cloud-sentinel-spring-boot-starter/README.md)。
+
+### 周期任务：只执行登记的方法，只绑声明的地址
+
+`mars-cloud-job-spring-boot-starter` 让服务成为任务调度中心 xxl-job-admin 的执行器。执行器一侧的协议（`/beat`、`/idleBeat`、
+`/run`、`/kill`、`/log` 五个接口，以及对调度中心的注册、摘除与结果回调）由 starter 自己实现：执行器端口是业务端口加 2000，
+只绑 `server.address`；调度中心的每次调用都要带访问令牌；只执行 `@JobHandler` 登记的 Java 方法，调度中心下发的脚本类型任务一律回报失败。
+端口占用、令牌缺失、执行器名或端口不符约定、任务方法重名或签名不符，都让应用启动失败，而不是启动后静默不执行。
+
+任务方法是调用业务逻辑的薄壳，必须幂等；某条数据到点触发一次的定时留在服务内实现，不依赖调度中心。
+每次执行开一个根 span，执行日志第一行写出 traceId；周期任务不代表终端用户，执行期间没有调用方身份。
+任务定义由服务仓的迁移脚本写入调度中心的库，不在调度中心页面手工创建。
+接入方式见 [job starter 使用说明](../mars-cloud-job-spring-boot-starter/README.md)。
 
 ## 已知行为与偏差
 
