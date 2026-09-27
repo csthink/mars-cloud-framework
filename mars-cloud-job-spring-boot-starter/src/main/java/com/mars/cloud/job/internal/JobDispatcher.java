@@ -218,10 +218,15 @@ public final class JobDispatcher {
             return Protocol.Response.success();
         }
 
-        /** 先启动再登记：启动失败时 {@code thread} 保持为 null，下一次触发会再试。调用方持有本对象的锁。 */
+        /**
+         * 先启动再登记：启动失败时 {@code thread} 保持为 null，下一次触发会再试。调用方持有本对象的锁。
+         * 线程因未处理的错误退出时由这里的处理器写进服务日志，不落到 JVM 默认处理器的标准错误输出。
+         */
         private void startThread() {
             Thread started = new Thread(this, "mars-job-" + jobId);
             started.setDaemon(true);
+            started.setUncaughtExceptionHandler((dead, error) ->
+                    log.error("任务编号 {} 的工作线程因未处理的错误退出", jobId, error));
             started.start();
             thread = started;
         }

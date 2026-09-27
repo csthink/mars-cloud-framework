@@ -385,6 +385,10 @@
       "reason": "Negative job starter tests: the tracing fails before the method runs (the run is reported as failed) or when its span ends after the method succeeded (the success is kept); the worker goes on."
     },
     {
+      "pattern": "ERROR\\ JobDispatcher:\\ 任务编号\\ 20\\ 的工作线程因未处理的错误退出",
+      "reason": "Job starter test: the result consumer throws an Error on the first report, the worker thread dies and its handler logs it, and a new thread runs the queued trigger."
+    },
+    {
       "pattern": "WARN\\ CallbackSender:\\ 回调队列已满，丢弃最旧的一条执行结果：logId=21，handleCode=200",
       "reason": "Job starter callback test: a queue of capacity two drops its oldest result when a third arrives and logs the fixed warning."
     },
