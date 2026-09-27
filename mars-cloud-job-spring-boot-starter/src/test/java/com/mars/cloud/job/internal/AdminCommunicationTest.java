@@ -101,13 +101,31 @@ class AdminCommunicationTest {
     }
 
     @Test
+    void removalWaitsForARegistrationInFlightAndNothingIsRegisteredAfterIt() throws Exception {
+        admin.holdRegistrations();
+        RegistryHeartbeat heartbeat = new RegistryHeartbeat(new AdminClient(List.of(admin.uri()), TOKEN_VALUE, TIMEOUT),
+                "ordered-app", "http://127.0.0.1:10203/", scheduler, Duration.ofMillis(50));
+        heartbeat.start();
+        assertThat(admin.awaitHeldRegistration(Duration.ofSeconds(5))).isTrue();
+        Thread stopping = Thread.ofVirtual().start(heartbeat::stop);
+        // 摘除与在途的注册不互斥时，摘除会在这段时间里先到达调度中心。
+        Thread.sleep(200);
+        admin.releaseRegistrations();
+        stopping.join(Duration.ofSeconds(5));
+        Thread.sleep(200);
+        assertThat(admin.received().stream().map(FakeAdmin.Received::path).toList())
+                .containsExactly("/api/registry", "/api/registryRemove");
+    }
+
+    @Test
     void callbacksAreBatchedAndRetriedUntilDelivered(CapturedOutput output) {
         admin.failWith(Protocol.FAIL);
         CallbackSender sender = new CallbackSender(new AdminClient(List.of(admin.uri()), TOKEN_VALUE, TIMEOUT), 100,
                 Duration.ofMillis(20));
-        sender.start();
+        // 先入队再启动发送线程，第一批一定是这两条（启动在前时发送线程可能只取到第一条）。
         sender.accept(new Protocol.CallbackRequest(11, 1, 200, null));
         sender.accept(new Protocol.CallbackRequest(12, 1, 500, "boom"));
+        sender.start();
         await().atMost(Duration.ofSeconds(5)).until(() -> admin.received("/api/callback").size() >= 2);
         admin.recover();
         await().atMost(Duration.ofSeconds(5)).until(() -> admin.callbacks().stream().filter(r -> r.logId() == 12).count() >= 3);

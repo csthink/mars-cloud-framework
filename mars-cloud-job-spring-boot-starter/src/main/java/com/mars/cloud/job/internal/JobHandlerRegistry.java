@@ -105,12 +105,17 @@ public final class JobHandlerRegistry implements SmartInitializingSingleton, Bea
         boolean takesContext = parameters.length == 1 && parameters[0] == JobContext.class;
         require(parameters.length == 0 || takesContext,
                 "任务方法只能无参或只接受一个 JobContext：" + where);
+        // CGLIB 代理不拦截 final 方法，调用会落在没有注入依赖的代理实例上，运行时才出错。
+        require(!AopUtils.isCglibProxy(bean) || !Modifier.isFinal(method.getModifiers()),
+                "任务方法所在的 Bean 由 CGLIB 代理，final 方法不经过代理，去掉 final：" + where);
         Method invocable;
         try {
             invocable = AopUtils.selectInvocableMethod(method, bean.getClass());
         } catch (IllegalStateException notOnProxy) {
-            throw new IllegalStateException("任务方法在 Bean 的代理上不可调用：JDK 动态代理只暴露接口里声明的方法，任务方法要在 Bean 实现的接口里声明："
-                    + where, notOnProxy);
+            String advice = Modifier.isPrivate(method.getModifiers())
+                    ? "代理不能调用 private 方法，改为包级、protected 或 public"
+                    : "JDK 动态代理只暴露接口里声明的方法，任务方法要在 Bean 实现的接口里声明";
+            throw new IllegalStateException("任务方法在 Bean 的代理上不可调用：" + advice + "：" + where, notOnProxy);
         }
         ReflectionUtils.makeAccessible(invocable);
         return new JobMethod(name, beanName, bean, invocable, takesContext);

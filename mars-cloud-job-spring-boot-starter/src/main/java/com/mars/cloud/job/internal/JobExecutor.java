@@ -68,16 +68,31 @@ public final class JobExecutor implements SmartLifecycle {
         server = new ExecutorHttpServer(new InetSocketAddress(settings.bindAddress(), settings.port()),
                 settings.accessToken(), dispatcher);
         server.start();
-        callbacks.start();
-        registeredAddress = settings.registeredAddress(server.port());
-        maintenance = Executors.newSingleThreadScheduledExecutor(runnable -> {
-            Thread thread = new Thread(runnable, "mars-job-registry");
-            thread.setDaemon(true);
-            return thread;
-        });
-        maintenance.scheduleWithFixedDelay(() -> logs.purge(settings.logRetention()), 0, 1, TimeUnit.DAYS);
-        heartbeat = new RegistryHeartbeat(admin, settings.appName(), registeredAddress, maintenance, heartbeatInterval);
-        heartbeat.start();
+        boolean callbacksStarted = false;
+        try {
+            callbacks.start();
+            callbacksStarted = true;
+            registeredAddress = settings.registeredAddress(server.port());
+            maintenance = Executors.newSingleThreadScheduledExecutor(runnable -> {
+                Thread thread = new Thread(runnable, "mars-job-registry");
+                thread.setDaemon(true);
+                return thread;
+            });
+            maintenance.scheduleWithFixedDelay(() -> logs.purge(settings.logRetention()), 0, 1, TimeUnit.DAYS);
+            heartbeat = new RegistryHeartbeat(admin, settings.appName(), registeredAddress, maintenance, heartbeatInterval);
+            heartbeat.start();
+        } catch (RuntimeException | Error failure) {
+            // 启动失败时 Spring 不会调用 stop()，已绑定的端口与已启动的线程在这里释放。
+            if (maintenance != null) {
+                maintenance.shutdownNow();
+            }
+            server.stop();
+            dispatcher.shutdown(Duration.ZERO);
+            if (callbacksStarted) {
+                callbacks.stop(Duration.ZERO);
+            }
+            throw failure;
+        }
         running = true;
         log.info("执行器已启动：app={}，监听 {}:{}，注册地址 {}，任务 {}", settings.appName(),
                 settings.bindAddress() == null ? "*" : settings.bindAddress().getHostAddress(), server.port(),

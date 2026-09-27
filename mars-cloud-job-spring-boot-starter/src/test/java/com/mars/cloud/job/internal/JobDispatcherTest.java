@@ -1,5 +1,7 @@
 package com.mars.cloud.job.internal;
 
+import com.mars.cloud.common.context.CallerContext;
+import com.mars.cloud.common.context.CallerContextHolder;
 import com.mars.cloud.job.JobContext;
 import com.mars.cloud.job.JobHandler;
 import org.junit.jupiter.api.AfterEach;
@@ -19,6 +21,8 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -47,6 +51,29 @@ class JobDispatcherTest {
             started.countDown();
             release.acquire();
             calls.add("blocking:" + context.logId());
+        }
+
+        final CountDownLatch firstInterrupt = new CountDownLatch(1);
+
+        /** 吞掉第一次中断继续等待，第二次中断才结束。 */
+        @JobHandler("stubborn")
+        public void stubborn() {
+            try {
+                release.acquire();
+            } catch (InterruptedException first) {
+                calls.add("stubborn:swallowed");
+                firstInterrupt.countDown();
+            }
+            try {
+                release.acquire();
+            } catch (InterruptedException second) {
+                calls.add("stubborn:stopped");
+            }
+        }
+
+        @JobHandler("identity")
+        public void identity() {
+            calls.add("identity:" + CallerContextHolder.current().isPresent());
         }
     }
 
@@ -120,7 +147,7 @@ class JobDispatcherTest {
     @Test
     void anUnknownHandlerIsRejectedWithTheRegisteredNames() {
         Protocol.Response response = dispatcher.run(trigger(1, "missing"));
-        assertThat(response.msg()).isEqualTo("执行器上没有名为 missing 的任务方法，已登记：[blocking, failing, quick]");
+        assertThat(response.msg()).isEqualTo("执行器上没有名为 missing 的任务方法，已登记：[blocking, failing, identity, quick, stubborn]");
     }
 
     @Test
@@ -223,6 +250,77 @@ class JobDispatcherTest {
         dispatcher.run(running);
         awaitStarted();
         assertThat(dispatcher.run(running).msg()).isEqualTo("重复的触发：调度日志编号 " + running.logId() + " 已在执行或排队");
+    }
+
+    @Test
+    void aLogIdStillQueuedIsNotAcceptedAgain() throws Exception {
+        Protocol.TriggerRequest running = trigger(16, "blocking");
+        Protocol.TriggerRequest queued = trigger(16, "blocking");
+        dispatcher.run(running);
+        awaitStarted();
+        dispatcher.run(queued);
+        assertThat(dispatcher.run(queued).msg()).isEqualTo("重复的触发：调度日志编号 " + queued.logId() + " 已在执行或排队");
+    }
+
+    @Test
+    void aKillAfterATimeoutInterruptsAMethodThatSwallowedTheFirstInterrupt() throws Exception {
+        Protocol.TriggerRequest slow = trigger(14, "stubborn", "SERIAL_EXECUTION", 1, "");
+        dispatcher.run(slow);
+        assertThat(jobs.firstInterrupt.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(dispatcher.kill(14).succeeded()).isTrue();
+        assertThat(resultFor(slow)).extracting(Protocol.CallbackRequest::handleCode, Protocol.CallbackRequest::handleMsg)
+                .containsExactly(Protocol.TIMEOUT, "执行超时：超过 1 秒，已中断");
+        assertThat(jobs.calls).containsExactly("stubborn:swallowed", "stubborn:stopped");
+    }
+
+    @Test
+    void anInterruptRequestedWhileAResultIsReportedDoesNotReachTheNextRun() throws Exception {
+        dispatcher.shutdown(Duration.ofSeconds(1));
+        Protocol.TriggerRequest first = trigger(15, "quick");
+        Protocol.TriggerRequest cover = trigger(15, "blocking", "COVER_EARLY", 0, "");
+        AtomicReference<JobDispatcher> current = new AtomicReference<>();
+        // 覆盖之前调度的触发在第一次执行的方法已返回、结果正在回报时到达：它不能中断下一次执行。
+        dispatcher = new JobDispatcher(registry, logs, result -> {
+            results.add(result);
+            if (result.logId() == first.logId()) {
+                current.get().run(cover);
+            }
+        }, JobTracing.NONE, Duration.ofSeconds(90));
+        current.set(dispatcher);
+        dispatcher.run(first);
+        assertThat(resultFor(first).handleCode()).isEqualTo(Protocol.SUCCESS);
+        awaitStarted();
+        jobs.release.release();
+        assertThat(resultFor(cover).handleCode()).isEqualTo(Protocol.SUCCESS);
+    }
+
+    @Test
+    void aFailureOutsideTheMethodIsReportedAndTheWorkerGoesOn() {
+        dispatcher.shutdown(Duration.ofSeconds(1));
+        AtomicBoolean broken = new AtomicBoolean(true);
+        dispatcher = dispatcher(Duration.ofSeconds(90), (handler, jobId, logId) -> {
+            if (broken.getAndSet(false)) {
+                throw new IllegalStateException("tracing unavailable");
+            }
+            return JobTracing.NONE.start(handler, jobId, logId);
+        });
+        Protocol.TriggerRequest first = trigger(17, "quick");
+        dispatcher.run(first);
+        assertThat(resultFor(first)).extracting(Protocol.CallbackRequest::handleCode, Protocol.CallbackRequest::handleMsg)
+                .containsExactly(Protocol.FAIL, "执行器内部错误：java.lang.IllegalStateException");
+        Protocol.TriggerRequest second = trigger(17, "quick");
+        assertThat(dispatcher.run(second).succeeded()).isTrue();
+        assertThat(resultFor(second).handleCode()).isEqualTo(Protocol.SUCCESS);
+    }
+
+    @Test
+    void aJobRunsWithoutTheCallerIdentityOfTheThreadThatSubmittedIt() {
+        Protocol.TriggerRequest trigger = trigger(18, "identity");
+        try (CallerContextHolder.Scope ignored = CallerContextHolder.open(new CallerContext("user-1", "portal", "default"))) {
+            dispatcher.run(trigger);
+            resultFor(trigger);
+        }
+        assertThat(jobs.calls).containsExactly("identity:false");
     }
 
     @Test

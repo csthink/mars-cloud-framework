@@ -24,6 +24,9 @@ import java.util.function.Consumer;
  * 执行结果经回调队列异步回报调度中心。
  *
  * <p>锁顺序固定为先本对象、后工作线程对象；工作线程在持有自己的锁时不获取本对象的锁。
+ *
+ * <p>中断只落在任务方法执行期间：终止、超时与覆盖之前调度都中断执行线程，执行结束时在工作线程对象的锁内
+ * 标记结束并清除中断标志，此后的请求不再中断这个线程，下一次执行不会带着上一次的中断开始。
  */
 public final class JobDispatcher {
 
@@ -174,9 +177,11 @@ public final class JobDispatcher {
         private Pending running;
         private Thread thread;
         private boolean stopping;
-        /** 执行中的这次被要求中断时的结果；null 表示没有被要求中断。 */
+        /** 执行中的这次被要求中断时的结果（取第一次请求的原因）；null 表示没有被要求中断。 */
         private int interruptCode;
         private String interruptMessage;
+        /** 执行中的这次已经结束，不再接受中断。 */
+        private boolean finished;
 
         Worker(int jobId) {
             this.jobId = jobId;
@@ -248,12 +253,16 @@ public final class JobDispatcher {
             }
         }
 
+        /** 每次请求都中断执行线程（任务方法可能吞掉了上一次中断）；结果保留第一次请求的原因。 */
         private void interruptRunning(int code, String message) {
-            if (running != null && thread != null && interruptMessage == null) {
+            if (running == null || thread == null || finished) {
+                return;
+            }
+            if (interruptMessage == null) {
                 interruptCode = code;
                 interruptMessage = message;
-                thread.interrupt();
             }
+            thread.interrupt();
         }
 
         private synchronized void timeout(Pending pending, int seconds) {
@@ -295,27 +304,41 @@ public final class JobDispatcher {
 
         @Override
         public void run() {
-            while (true) {
-                Pending pending = take();
-                if (pending == null) {
-                    synchronized (this) {
-                        if (stopping) {
-                            thread = null;
-                            notifyAll();
+            try {
+                while (true) {
+                    Pending pending = take();
+                    if (pending == null) {
+                        synchronized (this) {
+                            if (stopping) {
+                                thread = null;
+                                notifyAll();
+                                return;
+                            }
+                        }
+                        if (retire(this)) {
                             return;
                         }
+                        continue;
                     }
-                    if (retire(this)) {
-                        return;
+                    execute(pending);
+                    synchronized (this) {
+                        running = null;
+                        finished = false;
+                        interruptCode = 0;
+                        interruptMessage = null;
+                        notifyAll();
                     }
-                    continue;
                 }
-                execute(pending);
+            } finally {
+                // 正常退出时这里已复位；线程因意外错误退出时复位状态，下次触发重建线程。
                 synchronized (this) {
-                    running = null;
-                    interruptCode = 0;
-                    interruptMessage = null;
-                    notifyAll();
+                    if (thread == Thread.currentThread()) {
+                        thread = null;
+                        running = null;
+                        finished = false;
+                        interruptMessage = null;
+                        notifyAll();
+                    }
                 }
             }
         }
@@ -339,43 +362,60 @@ public final class JobDispatcher {
             return pending;
         }
 
+        /**
+         * 执行一次并回报结果。任务方法以外的步骤（链路追踪、超时定时器、执行日志）出错时同样以失败回报，
+         * 工作线程继续处理后面的触发。
+         */
         private void execute(Pending pending) {
             Protocol.TriggerRequest trigger = pending.trigger();
             String name = pending.method().name();
             RunContext context = new RunContext(trigger, pending.method(), logs);
             int timeoutSeconds = trigger.executorTimeout();
-            ScheduledFuture<?> timer = timeoutSeconds > 0
-                    ? watchdog.schedule(() -> timeout(pending, timeoutSeconds), timeoutSeconds, TimeUnit.SECONDS)
-                    : null;
+            ScheduledFuture<?> timer = null;
             int code = Protocol.SUCCESS;
             String message = null;
-            try (JobTracing.Scope scope = tracing.start(name, jobId, trigger.logId())) {
-                context.record("开始执行任务 " + name + (scope.traceId() == null ? "" : "，traceId=" + scope.traceId())
-                        + "，参数=" + context.param() + "，分片 " + context.shardIndex() + "/" + context.shardTotal());
-                try {
-                    pending.method().invoke(context);
-                } catch (Throwable failure) {
-                    scope.error(failure);
-                    code = Protocol.FAIL;
-                    message = failure.toString();
-                    context.record("任务抛出异常：" + System.lineSeparator() + RunContext.stackTrace(failure));
-                    log.warn("任务 {} 执行失败：jobId={}，logId={}", name, jobId, trigger.logId(), failure);
+            try {
+                if (timeoutSeconds > 0) {
+                    timer = watchdog.schedule(() -> timeout(pending, timeoutSeconds), timeoutSeconds, TimeUnit.SECONDS);
                 }
+                try (JobTracing.Scope scope = tracing.start(name, jobId, trigger.logId())) {
+                    context.record("开始执行任务 " + name + (scope.traceId() == null ? "" : "，traceId=" + scope.traceId())
+                            + "，参数=" + context.param() + "，分片 " + context.shardIndex() + "/" + context.shardTotal());
+                    try {
+                        pending.method().invoke(context);
+                    } catch (Throwable failure) {
+                        scope.error(failure);
+                        code = Protocol.FAIL;
+                        message = failure.toString();
+                        context.record("任务抛出异常：" + System.lineSeparator() + RunContext.stackTrace(failure));
+                        log.warn("任务 {} 执行失败：jobId={}，logId={}", name, jobId, trigger.logId(), failure);
+                    }
+                }
+            } catch (Throwable unexpected) {
+                code = Protocol.FAIL;
+                message = "执行器内部错误：" + unexpected.getClass().getName();
+                log.error("任务 {} 的执行过程出错：jobId={}，logId={}", name, jobId, trigger.logId(), unexpected);
             } finally {
                 if (timer != null) {
                     timer.cancel(false);
                 }
-                Thread.interrupted();
             }
             synchronized (this) {
+                finished = true;
+                Thread.interrupted();
                 if (interruptMessage != null) {
                     code = interruptCode;
                     message = interruptMessage;
                 }
             }
-            context.record(code == Protocol.SUCCESS ? "任务执行成功" : "任务执行失败：" + message);
-            logs.end(trigger.logId());
-            report(trigger, code, message);
+            try {
+                context.record(code == Protocol.SUCCESS ? "任务执行成功" : "任务执行失败：" + message);
+            } catch (RuntimeException unwritable) {
+                log.error("任务 {} 的执行日志写入失败：jobId={}，logId={}", name, jobId, trigger.logId(), unwritable);
+            } finally {
+                logs.end(trigger.logId());
+                report(trigger, code, message);
+            }
         }
     }
 }

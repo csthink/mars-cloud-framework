@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>调度中心不可达时只在状态从成功变为失败时打一条告警，恢复时打一条 INFO，其间不重复打印。
  * 调度中心不可用时周期任务只是暂停，服务本身照常运行。
+ *
+ * <p>注册与摘除在同一把锁里进行，摘除之后不再注册：在途的一次注册先完成，摘除总是最后到达调度中心。
  */
 public final class RegistryHeartbeat {
 
@@ -25,7 +27,8 @@ public final class RegistryHeartbeat {
     private final ScheduledExecutorService scheduler;
     private final Duration interval;
     private ScheduledFuture<?> task;
-    /** null 表示还没有结果；只由调度线程读写。 */
+    private boolean stopped;
+    /** null 表示还没有结果。 */
     private Boolean registered;
 
     public RegistryHeartbeat(AdminClient admin, String appName, String address, ScheduledExecutorService scheduler,
@@ -37,10 +40,22 @@ public final class RegistryHeartbeat {
     }
 
     public synchronized void start() {
-        task = scheduler.scheduleWithFixedDelay(this::beat, 0, interval.toMillis(), TimeUnit.MILLISECONDS);
+        task = scheduler.scheduleWithFixedDelay(this::beatSafely, 0, interval.toMillis(), TimeUnit.MILLISECONDS);
     }
 
-    void beat() {
+    /** 周期任务里抛出的异常会让后续周期被取消，所以这里只记告警，下个周期照常注册。 */
+    private void beatSafely() {
+        try {
+            beat();
+        } catch (RuntimeException unexpected) {
+            log.warn("执行器注册出错，下个周期重试：app={}", registration.registryKey(), unexpected);
+        }
+    }
+
+    synchronized void beat() {
+        if (stopped) {
+            return;
+        }
         AdminClient.Outcome outcome = admin.registry(registration);
         if (outcome.succeeded() && !Boolean.TRUE.equals(registered)) {
             log.info("执行器已在调度中心注册：app={}，address={}", registration.registryKey(), registration.registryValue());
@@ -60,6 +75,7 @@ public final class RegistryHeartbeat {
         if (task == null) {
             return;
         }
+        stopped = true;
         task.cancel(false);
         task = null;
         AdminClient.Outcome outcome = admin.registryRemove(registration);

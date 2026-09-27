@@ -7,14 +7,21 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 测试用的调度中心：只实现执行器会调用的三个开放接口，记录收到的请求。
  *
  * <p>{@link #failWith(int)} 让之后的请求以指定的 code 回失败，{@link #httpStatus(int)} 让它们以指定的 HTTP 状态码回应。
+ * {@link #holdRegistrations()} 让注册请求停在处理之前，直到 {@link #releaseRegistrations()}；请求并发处理，
+ * 停住的注册不挡其他请求。请求按处理完成的顺序记录。
  */
 public final class FakeAdmin implements AutoCloseable {
 
@@ -25,12 +32,25 @@ public final class FakeAdmin implements AutoCloseable {
     private final List<Received> received = new CopyOnWriteArrayList<>();
     private final AtomicInteger code = new AtomicInteger(Protocol.SUCCESS);
     private final AtomicInteger status = new AtomicInteger(200);
+    private final ExecutorService requests = Executors.newVirtualThreadPerTaskExecutor();
+    private final CountDownLatch registrationHeld = new CountDownLatch(1);
+    private volatile CountDownLatch registrationGate;
 
     public FakeAdmin() throws IOException {
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server.setExecutor(requests);
         server.createContext("/api/", exchange -> {
             try (exchange) {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                CountDownLatch gate = registrationGate;
+                if (gate != null && exchange.getRequestURI().getPath().equals("/api/registry")) {
+                    registrationHeld.countDown();
+                    try {
+                        gate.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
                 received.add(new Received(exchange.getRequestURI().getPath(),
                         exchange.getRequestHeaders().getFirst(Protocol.ACCESS_TOKEN_HEADER), body));
                 if (status.get() != 200) {
@@ -72,6 +92,18 @@ public final class FakeAdmin implements AutoCloseable {
         status.set(httpStatus);
     }
 
+    public void holdRegistrations() {
+        registrationGate = new CountDownLatch(1);
+    }
+
+    public boolean awaitHeldRegistration(Duration timeout) throws InterruptedException {
+        return registrationHeld.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    public void releaseRegistrations() {
+        registrationGate.countDown();
+    }
+
     public void recover() {
         code.set(Protocol.SUCCESS);
         status.set(200);
@@ -79,6 +111,10 @@ public final class FakeAdmin implements AutoCloseable {
 
     @Override
     public void close() {
+        if (registrationGate != null) {
+            registrationGate.countDown();
+        }
         server.stop(0);
+        requests.close();
     }
 }

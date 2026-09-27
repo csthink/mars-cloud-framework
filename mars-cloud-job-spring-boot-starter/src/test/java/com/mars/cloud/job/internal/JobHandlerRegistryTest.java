@@ -240,6 +240,30 @@ class JobHandlerRegistryTest {
         rejects(factoryWith("undeclaredJobs", proxy.getProxy()), "JDK 动态代理只暴露接口里声明的方法");
     }
 
+    static class FinalJobs {
+        @JobHandler("final")
+        final void run() {
+        }
+    }
+
+    static class PrivateJobs {
+        @JobHandler("private")
+        private void run() {
+        }
+    }
+
+    @Test
+    void finalOrPrivateMethodsOnAClassProxyFailStartup() {
+        rejects(factoryWith("finalJobs", classProxy(new FinalJobs())), "final 方法不经过代理，去掉 final：finalJobs#run");
+        rejects(factoryWith("privateJobs", classProxy(new PrivateJobs())), "代理不能调用 private 方法，改为包级、protected 或 public：privateJobs#run");
+    }
+
+    private static Object classProxy(Object target) {
+        ProxyFactory factory = new ProxyFactory(target);
+        factory.setProxyTargetClass(true);
+        return factory.getProxy();
+    }
+
     @Test
     void beansWithoutHandlersAreIgnored() {
         Map<String, JobMethod> found = JobHandlerRegistry.scan(factoryWith("plain", "a string bean"));

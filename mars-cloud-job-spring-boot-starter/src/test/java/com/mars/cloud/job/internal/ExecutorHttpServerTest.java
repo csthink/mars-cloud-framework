@@ -8,9 +8,12 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -98,9 +101,30 @@ class ExecutorHttpServerTest {
         assertThat(post("/beat", null, "{}").msg()).isEqualTo(ExecutorHttpServer.WRONG_TOKEN);
         assertThat(post("/beat", "wrong-token-0123456789", "{}").msg()).isEqualTo(ExecutorHttpServer.WRONG_TOKEN);
         assertThat(post("/run", "wrong-token-0123456789",
-                "{\"jobId\":1,\"executorHandler\":\"noop\",\"glueType\":\"BEAN\",\"logId\":5}").code()).isEqualTo(Protocol.FAIL);
+                "{\"jobId\":1,\"executorHandler\":\"noop\",\"glueType\":\"BEAN\",\"logId\":5}"))
+                .extracting(Protocol.Response::code, Protocol.Response::msg).containsExactly(Protocol.FAIL, ExecutorHttpServer.WRONG_TOKEN);
         assertThat(results).isEmpty();
         assertThat(post("/beat", TOKEN_VALUE, "{}").succeeded()).isTrue();
+    }
+
+    @Test
+    void aRequestWithoutTheTokenIsAnsweredWithoutReadingItsBody() throws Exception {
+        // 请求头声明 8 MiB 正文，只发出 1 字节：先读正文的实现会一直等下去，读超时让用例失败。
+        try (Socket socket = new Socket(InetAddress.getLoopbackAddress(), server.port())) {
+            socket.setSoTimeout(5000);
+            OutputStream out = socket.getOutputStream();
+            out.write(("POST /run HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\nContent-Length: "
+                    + 8 * ExecutorHttpServer.MAX_BODY_BYTES + "\r\n\r\n{").getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+            InputStream in = socket.getInputStream();
+            StringBuilder response = new StringBuilder();
+            byte[] buffer = new byte[4096];
+            int read;
+            while (!response.toString().contains(ExecutorHttpServer.WRONG_TOKEN) && (read = in.read(buffer)) > 0) {
+                response.append(new String(buffer, 0, read, StandardCharsets.UTF_8));
+            }
+            assertThat(response.toString()).startsWith("HTTP/1.1 200").contains(ExecutorHttpServer.WRONG_TOKEN);
+        }
     }
 
     @Test

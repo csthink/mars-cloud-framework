@@ -153,7 +153,8 @@ public final class JobLogFiles {
                     deleteTree(day);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
+            // 目录遍历的错误也以非受检异常抛出；每天一次的清理是周期任务，异常会让后续清理被取消。
             log.warn("清理过期执行日志失败，下次清理时重试：dir={}，原因：{}", base, e.toString());
         }
     }

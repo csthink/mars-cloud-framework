@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -17,8 +18,9 @@ import java.util.concurrent.Executors;
  * 执行器的 HTTP 服务端：{@code POST /beat}、{@code /idleBeat}、{@code /run}、{@code /kill}、{@code /log}。
  *
  * <p>绑定到指定地址（{@code server.address} 是具体 IP 时只监听它），端口占用时 {@link #start()} 直接抛出，应用启动失败。
- * 每个请求先按 {@link Protocol#ACCESS_TOKEN_HEADER} 做常量时间比较，令牌不符时回 {@code The access token is wrong.}，
- * 这句与 xxl-job 执行器原有的提示相同，调度日志里能直接认出。请求体超过 1 MiB 回 413。
+ * 方法与路径之后、读请求体之前按 {@link Protocol#ACCESS_TOKEN_HEADER} 做常量时间比较，令牌不符时不读请求体，
+ * 回 {@code The access token is wrong.}，这句与 xxl-job 执行器原有的提示相同，调度日志里能直接认出。
+ * 请求体超过 1 MiB 回 413。
  */
 public final class ExecutorHttpServer {
 
@@ -84,12 +86,17 @@ public final class ExecutorHttpServer {
                 exchange.sendResponseHeaders(404, -1);
                 return;
             }
+            // 令牌在读请求体之前核对：没有令牌的请求不读正文，不占用读取正文的内存与时间。
+            if (!authorized(exchange)) {
+                respond(exchange, Protocol.Response.fail(WRONG_TOKEN));
+                return;
+            }
             byte[] body = readBody(exchange.getRequestBody());
             if (body == null) {
                 exchange.sendResponseHeaders(413, -1);
                 return;
             }
-            respond(exchange, authorized(exchange) ? dispatch(path, body) : Protocol.Response.fail(WRONG_TOKEN));
+            respond(exchange, dispatch(path, body));
         }
     }
 
@@ -119,7 +126,10 @@ public final class ExecutorHttpServer {
         byte[] json = Protocol.write(response);
         exchange.getResponseHeaders().add("Content-Type", "application/json;charset=UTF-8");
         exchange.sendResponseHeaders(200, json.length);
-        exchange.getResponseBody().write(json);
+        // 关闭响应流即发出响应：关闭交换时 JDK 先处理未读的请求体，再冲刷响应，令牌不符的请求会等到正文读完才得到回答。
+        try (OutputStream body = exchange.getResponseBody()) {
+            body.write(json);
+        }
     }
 
     /** 读取请求体；超过上限时返回 null。 */
