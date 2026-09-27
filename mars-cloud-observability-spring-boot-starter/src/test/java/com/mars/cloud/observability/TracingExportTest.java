@@ -6,14 +6,18 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.Ordered;
 import org.springframework.core.env.Environment;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestContext;
+import org.springframework.test.context.TestExecutionListener;
+import org.springframework.test.context.TestExecutionListeners;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,6 +44,9 @@ import static org.awaitility.Awaitility.await;
                 "mars.observability.management.username=ops",
                 "mars.observability.management.password=ops-secret"
         })
+@DirtiesContext
+@TestExecutionListeners(listeners = TracingExportTest.StopCollectorAfterContext.class,
+        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class TracingExportTest {
 
     private record Received(String path, String contentType, byte[] body) {
@@ -58,9 +65,23 @@ class TracingExportTest {
         server.start();
     }
 
-    @AfterAll
-    static void stopCollector() {
-        server.stop(0);
+    /**
+     * 接收器在应用上下文关闭之后才停：上下文里的批量导出器关闭时把尚未发送的 span 发给仍在运行的接收器。
+     * 在 {@code @AfterAll} 里停会早于上下文关闭，上下文此后仍按周期导出，连接失败在重试用尽后记一条 ERROR，
+     * 构建校验器把它判为未登记的诊断。{@code afterTestClass} 按监听器顺序倒序调用，最高优先级的这个监听器
+     * 排在 {@link DirtiesContext} 关闭上下文之后。
+     */
+    static final class StopCollectorAfterContext implements TestExecutionListener, Ordered {
+
+        @Override
+        public int getOrder() {
+            return Ordered.HIGHEST_PRECEDENCE;
+        }
+
+        @Override
+        public void afterTestClass(TestContext testContext) {
+            server.stop(0);
+        }
     }
 
     @DynamicPropertySource
