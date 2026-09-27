@@ -106,8 +106,11 @@ public class JobProperties {
         /** 执行日志文件保留时长，至少 1 天。 */
         private Duration logRetention = Duration.ofDays(7);
 
-        /** 关闭时等待执行中任务的时长；超过后中断任务。须短于 Spring 每个关闭阶段的超时（默认 30 秒）。 */
-        private Duration shutdownTimeout = Duration.ofSeconds(20);
+        /**
+         * 关闭时等待执行中任务的时长；超过后中断任务。执行器在 Web 服务器优雅关闭之后停止，
+         * 部署平台的终止宽限期要覆盖这两段等待。
+         */
+        private Duration shutdownTimeout = Duration.ofSeconds(30);
 
         public Integer getPort() {
             return port;

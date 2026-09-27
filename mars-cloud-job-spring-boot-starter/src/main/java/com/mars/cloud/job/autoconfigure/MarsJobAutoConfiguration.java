@@ -44,8 +44,9 @@ public class MarsJobAutoConfiguration {
     }
 
     /**
-     * 部署物打开延迟初始化时，这三个 Bean 仍在启动期创建：核验器与任务方法登记没有别的 Bean 依赖，
-     * 延迟后会静默跳过；执行器作为生命周期 Bean 也要在启动期绑定端口，端口冲突才能让启动失败。
+     * 部署物打开延迟初始化时，这三个 Bean 仍在启动期创建。任务方法登记在 {@code SmartInitializingSingleton}
+     * 回调里扫描任务方法，延迟创建的单例收不到这个回调（Spring Boot 已按这个接口把它排除在延迟初始化之外，
+     * 这里一并写明）；核验器与执行器排除后，核验与端口绑定的时机不依赖生命周期处理器怎样创建延迟的生命周期 Bean。
      */
     @Bean
     static LazyInitializationExcludeFilter marsJobBeansExcludedFromLazyInitialization() {
