@@ -108,7 +108,7 @@ public class JobProperties {
 
         /**
          * 关闭时等待执行中任务的时长；超过后中断任务。执行器在 Web 服务器优雅关闭之后停止，
-         * 部署平台的终止宽限期要覆盖这两段等待。
+         * 部署平台的终止宽限期要覆盖这两段等待，另加几秒用于线程收尾与回调发送。
          */
         private Duration shutdownTimeout = Duration.ofSeconds(30);
 

@@ -86,7 +86,7 @@ public final class ExecutorHttpServer {
                 exchange.sendResponseHeaders(404, -1);
                 return;
             }
-            // 令牌在读请求体之前核对：没有令牌的请求不读正文，不占用读取正文的内存与时间。
+            // 令牌在读请求体之前核对：没有令牌的请求不读取、不缓存正文，回应之后未读的正文由 JDK 丢弃。
             if (!authorized(exchange)) {
                 respond(exchange, Protocol.Response.fail(WRONG_TOKEN));
                 return;

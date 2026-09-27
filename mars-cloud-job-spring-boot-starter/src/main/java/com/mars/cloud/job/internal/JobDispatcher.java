@@ -330,13 +330,18 @@ public final class JobDispatcher {
                     }
                 }
             } finally {
-                // 正常退出时这里已复位；线程因意外错误退出时复位状态，下次触发重建线程。
+                // 正常退出时这里已复位；线程因意外错误退出时复位状态，还有排队的触发就换一个线程接着执行。
                 synchronized (this) {
                     if (thread == Thread.currentThread()) {
                         thread = null;
                         running = null;
                         finished = false;
                         interruptMessage = null;
+                        if (!queue.isEmpty() && !stopping) {
+                            thread = new Thread(this, "mars-job-" + jobId);
+                            thread.setDaemon(true);
+                            thread.start();
+                        }
                         notifyAll();
                     }
                 }
@@ -374,6 +379,7 @@ public final class JobDispatcher {
             ScheduledFuture<?> timer = null;
             int code = Protocol.SUCCESS;
             String message = null;
+            boolean methodFinished = false;
             try {
                 if (timeoutSeconds > 0) {
                     timer = watchdog.schedule(() -> timeout(pending, timeoutSeconds), timeoutSeconds, TimeUnit.SECONDS);
@@ -384,16 +390,23 @@ public final class JobDispatcher {
                     try {
                         pending.method().invoke(context);
                     } catch (Throwable failure) {
-                        scope.error(failure);
                         code = Protocol.FAIL;
+                        scope.error(failure);
                         message = failure.toString();
                         context.record("任务抛出异常：" + System.lineSeparator() + RunContext.stackTrace(failure));
                         log.warn("任务 {} 执行失败：jobId={}，logId={}", name, jobId, trigger.logId(), failure);
+                    } finally {
+                        methodFinished = true;
                     }
                 }
             } catch (Throwable unexpected) {
-                code = Protocol.FAIL;
-                message = "执行器内部错误：" + unexpected.getClass().getName();
+                // 任务方法已经执行完时保留它的结果（例如结束 span 时出错）；没执行到时按失败回报。
+                if (!methodFinished) {
+                    code = Protocol.FAIL;
+                }
+                if (code != Protocol.SUCCESS && message == null) {
+                    message = "执行器内部错误：" + unexpected.getClass().getName();
+                }
                 log.error("任务 {} 的执行过程出错：jobId={}，logId={}", name, jobId, trigger.logId(), unexpected);
             } finally {
                 if (timer != null) {

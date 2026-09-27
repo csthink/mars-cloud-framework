@@ -112,7 +112,7 @@ public final class JobHandlerRegistry implements SmartInitializingSingleton, Bea
         try {
             invocable = AopUtils.selectInvocableMethod(method, bean.getClass());
         } catch (IllegalStateException notOnProxy) {
-            String advice = Modifier.isPrivate(method.getModifiers())
+            String advice = !AopUtils.isJdkDynamicProxy(bean) && Modifier.isPrivate(method.getModifiers())
                     ? "代理不能调用 private 方法，改为包级、protected 或 public"
                     : "JDK 动态代理只暴露接口里声明的方法，任务方法要在 Bean 实现的接口里声明";
             throw new IllegalStateException("任务方法在 Bean 的代理上不可调用：" + advice + "：" + where, notOnProxy);

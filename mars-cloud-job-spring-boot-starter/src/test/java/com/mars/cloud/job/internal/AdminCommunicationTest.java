@@ -103,8 +103,9 @@ class AdminCommunicationTest {
     @Test
     void removalWaitsForARegistrationInFlightAndNothingIsRegisteredAfterIt() throws Exception {
         admin.holdRegistrations();
+        // 间隔取 1 分钟，只有启动时的那一次注册会在用例期间发出。
         RegistryHeartbeat heartbeat = new RegistryHeartbeat(new AdminClient(List.of(admin.uri()), TOKEN_VALUE, TIMEOUT),
-                "ordered-app", "http://127.0.0.1:10203/", scheduler, Duration.ofMillis(50));
+                "ordered-app", "http://127.0.0.1:10203/", scheduler, Duration.ofMinutes(1));
         heartbeat.start();
         assertThat(admin.awaitHeldRegistration(Duration.ofSeconds(5))).isTrue();
         Thread stopping = Thread.ofVirtual().start(heartbeat::stop);
@@ -112,7 +113,7 @@ class AdminCommunicationTest {
         Thread.sleep(200);
         admin.releaseRegistrations();
         stopping.join(Duration.ofSeconds(5));
-        Thread.sleep(200);
+        heartbeat.beat();
         assertThat(admin.received().stream().map(FakeAdmin.Received::path).toList())
                 .containsExactly("/api/registry", "/api/registryRemove");
     }

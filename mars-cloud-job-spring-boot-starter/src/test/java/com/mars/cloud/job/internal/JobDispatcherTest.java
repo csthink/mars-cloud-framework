@@ -314,6 +314,21 @@ class JobDispatcherTest {
     }
 
     @Test
+    void aFailureAfterTheMethodSucceededKeepsTheSuccess() {
+        dispatcher.shutdown(Duration.ofSeconds(1));
+        dispatcher = dispatcher(Duration.ofSeconds(90), (handler, jobId, logId) -> new JobTracing.Scope() {
+            @Override public String traceId() { return null; }
+            @Override public void error(Throwable failure) { }
+            @Override public void close() { throw new IllegalStateException("span end failed"); }
+        });
+        Protocol.TriggerRequest trigger = trigger(19, "quick");
+        dispatcher.run(trigger);
+        assertThat(resultFor(trigger)).extracting(Protocol.CallbackRequest::handleCode, Protocol.CallbackRequest::handleMsg)
+                .containsExactly(Protocol.SUCCESS, null);
+        assertThat(jobs.calls).hasSize(1);
+    }
+
+    @Test
     void aJobRunsWithoutTheCallerIdentityOfTheThreadThatSubmittedIt() {
         Protocol.TriggerRequest trigger = trigger(18, "identity");
         try (CallerContextHolder.Scope ignored = CallerContextHolder.open(new CallerContext("user-1", "portal", "default"))) {

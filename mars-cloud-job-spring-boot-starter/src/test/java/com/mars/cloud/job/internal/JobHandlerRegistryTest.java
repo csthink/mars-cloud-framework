@@ -252,6 +252,23 @@ class JobHandlerRegistryTest {
         }
     }
 
+    static class PrivateInterfaceJobs implements DeclaredJob {
+        @Override
+        public void declared() {
+        }
+
+        @JobHandler("privateOnInterfaceProxy")
+        private void run() {
+        }
+    }
+
+    @Test
+    void aPrivateMethodOnAJdkProxyGetsTheInterfaceAdvice() {
+        ProxyFactory proxy = new ProxyFactory(new PrivateInterfaceJobs());
+        proxy.addInterface(DeclaredJob.class);
+        rejects(factoryWith("privateInterfaceJobs", proxy.getProxy()), "JDK 动态代理只暴露接口里声明的方法");
+    }
+
     @Test
     void finalOrPrivateMethodsOnAClassProxyFailStartup() {
         rejects(factoryWith("finalJobs", classProxy(new FinalJobs())), "final 方法不经过代理，去掉 final：finalJobs#run");

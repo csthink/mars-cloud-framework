@@ -115,7 +115,7 @@ class ReportJobs {
 | `mars.job.executor.port-offset` | `2000` | 执行器端口相对业务端口的偏移量 |
 | `mars.job.executor.log-path` | 临时目录下 `mars-job/<执行器名>` | 执行日志目录，须是绝对路径 |
 | `mars.job.executor.log-retention` | `7d` | 执行日志保留时长，至少 1 天 |
-| `mars.job.executor.shutdown-timeout` | `30s` | 关闭时等待执行中任务的时长。执行器在 Web 服务器优雅关闭之后停止，部署平台的终止宽限期要覆盖这两段等待 |
+| `mars.job.executor.shutdown-timeout` | `30s` | 关闭时等待执行中任务的时长。执行器在 Web 服务器优雅关闭之后停止，部署平台的终止宽限期要覆盖这两段等待，另加几秒用于线程收尾与回调发送 |
 
 ## 测试
 

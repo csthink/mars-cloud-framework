@@ -381,8 +381,8 @@
       "reason": "Job starter dispatcher tests: the failing, timed-out, killed, covered and shut-down test jobs log the fixed per-run failure warning together with the stack trace."
     },
     {
-      "pattern": "ERROR\\ JobDispatcher:\\ 任务\\ quick\\ 的执行过程出错：jobId=17，logId=\\d+",
-      "reason": "Negative job starter test: the tracing fails before the method runs, and the run is reported as failed while the worker goes on."
+      "pattern": "ERROR\\ JobDispatcher:\\ 任务\\ quick\\ 的执行过程出错：jobId=(17|19)，logId=\\d+",
+      "reason": "Negative job starter tests: the tracing fails before the method runs (the run is reported as failed) or when its span ends after the method succeeded (the success is kept); the worker goes on."
     },
     {
       "pattern": "WARN\\ CallbackSender:\\ 回调队列已满，丢弃最旧的一条执行结果：logId=21，handleCode=200",
