@@ -3,6 +3,8 @@ package com.mars.cloud.mvc.autoconfigure;
 import com.mars.cloud.mvc.advice.GlobalExceptionAdvice;
 import com.mars.cloud.mvc.advice.GlobalResponseAdvice;
 import com.mars.cloud.mvc.error.ExceptionCodeConfiguration;
+import com.mars.cloud.mvc.error.ErrorCodeRegistrar;
+import com.mars.cloud.mvc.error.MvcErrorCode;
 import com.mars.cloud.mvc.util.AppContextHolder;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -10,6 +12,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
+
+import java.util.List;
 
 /**
  * @since 2025-10-30 13:10
@@ -19,6 +23,11 @@ import org.springframework.context.annotation.Bean;
 //@ConditionalOnClass({org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice.class,
 //        org.springframework.web.bind.annotation.RestControllerAdvice.class})
 public class MvcAdviceAutoConfiguration {
+
+    @Bean
+    public ErrorCodeRegistrar mvcErrorCodeRegistrar() {
+        return () -> List.of(MvcErrorCode.values());
+    }
 
     /**
      * 提供默认的全局响应封装 Advice

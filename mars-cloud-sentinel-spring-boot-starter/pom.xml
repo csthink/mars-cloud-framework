@@ -128,6 +128,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.mars.cloud</groupId>
+            <artifactId>mars-cloud-mvc-spring-boot-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- 网关与 Servlet 两种部署物的真端口测试；两者同在测试 classpath 上，各用例显式指定 Web 应用类型 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

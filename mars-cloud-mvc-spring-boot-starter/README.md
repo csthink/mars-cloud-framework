@@ -40,6 +40,7 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 | `ResourceNotFoundException` | 404 | |
 | `ConflictException` | 409 | |
 | `LockFailureException` | 409 | **框架自带**的锁失败异常，见下 |
+| Sentinel `BlockException` | 429 | `61006`，统一失败信封；仅在服务接入 Sentinel 后发生 |
 | 参数校验类异常 | 400 | 含 `MethodArgumentNotValidException` / `BindException` / `ConstraintViolationException` / `HandlerMethodValidationException` / `MissingServletRequestParameterException` / `MethodArgumentTypeMismatchException` / `IllegalArgumentException` |
 | `NoHandlerFoundException` | 404 | 找不到处理器 |
 | `HttpRequestMethodNotSupportedException` | 405 | 方法不支持 |
@@ -119,6 +120,19 @@ spring:
 
 三份资源同步维护：`i18n/error-code.properties`、`_zh_CN`、`_en_US`，key 形如
 `error.code.66001`。
+
+接入 Sentinel 的 Servlet 服务还要在这三份资源中提供 `error.code.61006`：
+
+```properties
+# error-code.properties / error-code_en_US.properties
+error.code.61006=Too many requests, please try again later
+# error-code_zh_CN.properties
+error.code.61006=请求过于频繁，请稍后再试
+```
+
+`GlobalExceptionAdvice` 将 `BlockException` 映射为 HTTP 429 与 MVC 区段的 `61006`。
+缺少文案时使用固定英文提示，不返回规则或资源名。MVC starter 因该处理分支依赖
+`sentinel-core`，但它本身不会启用 Sentinel 规则来源或拦截器。
 
 ## 请求上下文与工作线程
 

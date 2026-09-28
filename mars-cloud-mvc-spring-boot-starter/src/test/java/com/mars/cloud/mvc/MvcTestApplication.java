@@ -1,6 +1,7 @@
 package com.mars.cloud.mvc;
 
 import com.mars.cloud.common.error.ErrorCode;
+import com.alibaba.csp.sentinel.slots.block.flow.FlowException;
 import com.mars.cloud.mvc.annotation.IgnoreResponseAnnotation;
 import com.mars.cloud.mvc.error.ErrorCodeRegistrar;
 import lombok.Getter;
@@ -185,6 +186,11 @@ public class MvcTestApplication {
         @GetMapping("/boom")
         public Payload boom() {
             throw new IllegalStateException("boom");
+        }
+
+        @GetMapping("/blocked")
+        public Payload blocked() throws FlowException {
+            throw new FlowException("internal rule details");
         }
 
         /**

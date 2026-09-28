@@ -1,10 +1,12 @@
 package com.mars.cloud.mvc.advice;
 
 
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.mars.cloud.common.error.ErrorCode;
 import com.mars.cloud.common.exception.LockFailureException;
 import com.mars.cloud.common.response.UnifyResponse;
 import com.mars.cloud.mvc.error.ExceptionCodeConfiguration;
+import com.mars.cloud.mvc.error.MvcErrorCode;
 import com.mars.cloud.mvc.exception.AuthenticationException;
 import com.mars.cloud.mvc.exception.HttpException;
 import com.mars.cloud.mvc.util.*;
@@ -227,6 +229,16 @@ public class GlobalExceptionAdvice {
         log.error("LockFailureException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
         UnifyResponse<Object> body = failBody(of(409), msg(409, "Conflict"));
         buildErrorResult(body, ex.getMessage());
+        return body;
+    }
+
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    @ExceptionHandler(BlockException.class)
+    public UnifyResponse<Object> handleBlockException(BlockException ex) {
+        log.debug("Sentinel blocked request, URL=[{}]", RequestUtil.getRequestMethodAndUri());
+        UnifyResponse<Object> body = failBody(MvcErrorCode.RATE_LIMITED,
+                msg(MvcErrorCode.RATE_LIMITED, "Too many requests, please try again later"));
+        buildErrorResult(body, "Request blocked");
         return body;
     }
 

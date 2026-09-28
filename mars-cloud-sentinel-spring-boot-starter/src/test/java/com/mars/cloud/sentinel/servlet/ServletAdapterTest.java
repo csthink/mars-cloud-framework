@@ -24,7 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
                 // 测试 classpath 上也有网关与 Spring Cloud Alibaba 的网关模块：前者在 Servlet 应用里拒绝启动，
                 // 后者的环境后处理器把 Servlet 拦截器默认关掉。Servlet 服务的实际 classpath 上两者都没有
                 "spring.cloud.gateway.server.webflux.enabled=false",
-                "spring.cloud.sentinel.filter.enabled=true"
+                "spring.cloud.sentinel.filter.enabled=true",
+                "mars.mvc.response-wrapper.enabled=false",
+                "mars.mvc.exception-advice.enabled=false"
         })
 class ServletAdapterTest {
 

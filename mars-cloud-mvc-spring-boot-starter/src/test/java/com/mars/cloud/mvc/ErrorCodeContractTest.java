@@ -2,6 +2,8 @@ package com.mars.cloud.mvc;
 
 import com.mars.cloud.common.error.ErrorCode;
 import com.mars.cloud.mvc.MvcTestApplication.TestErrorCode;
+import com.mars.cloud.mvc.error.ErrorCodeRegistrar;
+import com.mars.cloud.mvc.error.MvcErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +12,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 
 import java.util.Locale;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,6 +24,17 @@ class ErrorCodeContractTest {
 
     @Autowired
     private MessageSource messageSource;
+
+    @Autowired
+    private List<ErrorCodeRegistrar> registrars;
+
+    @Test
+    @DisplayName("MVC 限流错误码参与启动期区间与重复校验")
+    void rateLimitedCode_isRegistered() {
+        assertThat(registrars.stream().flatMap(registrar -> registrar.codes().stream())
+                .map(ErrorCode::getCode).toList())
+                .contains(MvcErrorCode.RATE_LIMITED.getCode());
+    }
 
     @Test
     @DisplayName("错误码契约给出规范 i18n key：error.code.<数字>")

@@ -43,8 +43,16 @@ HTTP 状态码表达**协议语义**，`code` 表达**业务语义**，两者并
 | 无权限 | 403 | `false` | 业务错误码 |
 | 业务规则拒绝（`BusinessException`） | 200 | `false` | 业务错误码 |
 | 未预期异常 | 500 | `false` | 业务错误码 |
+| Servlet Sentinel 拦截 | 429 | `false` | `61006` |
 
-注意最后两行：业务规则拒绝走 HTTP 200，由 `success=false` + `code` 表达。
+业务规则拒绝走 HTTP 200，由 `success=false` + `code` 表达。
+
+Servlet 服务接入 Sentinel 后，`BlockException` 由 MVC starter 返回 HTTP 429 与
+`61006`；网关限流仍返回 HTTP 429 与网关区段的 `63006`。两侧使用相同的失败信封和
+用户提示，错误码归属各自组件。Servlet 服务应在 `i18n/error-code.properties`、
+`i18n/error-code_zh_CN.properties` 与 `i18n/error-code_en_US.properties` 中提供
+`error.code.61006`，中文为“请求过于频繁，请稍后再试”，英文为
+“Too many requests, please try again later”。缺少文案时使用固定英文提示。
 
 ### 跳过信封包装
 

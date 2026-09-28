@@ -95,4 +95,23 @@ class MvcContractTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("500"));
     }
+
+    @Test
+    @DisplayName("Sentinel 拦截：HTTP 429 + MVC 错误码 + 中文文案，不泄露规则")
+    void blockException_isLocalizedEnvelope() throws Exception {
+        mockMvc.perform(get("/blocked").header("Accept-Language", "zh-CN"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("61006"))
+                .andExpect(jsonPath("$.message").value("请求过于频繁，请稍后再试"))
+                .andExpect(jsonPath("$.result").doesNotExist());
+
+        mockMvc.perform(get("/blocked").header("Accept-Language", "en-US"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many requests, please try again later"));
+
+        mockMvc.perform(get("/blocked").header("Accept-Language", "fr-FR"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value("Too many requests, please try again later"));
+    }
 }

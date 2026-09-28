@@ -2,6 +2,7 @@
 spring:
   messages:
     basename: i18n/error-code
+    fallback-to-system-locale: false
 
 mars:
   error-code:
