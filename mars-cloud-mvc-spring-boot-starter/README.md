@@ -131,8 +131,9 @@ error.code.61006=请求过于频繁，请稍后再试
 ```
 
 `GlobalExceptionAdvice` 将 `BlockException` 映射为 HTTP 429 与 MVC 区段的 `61006`。
-缺少文案时使用固定英文提示，不返回规则或资源名。MVC starter 因该处理分支依赖
-`sentinel-core`，但它本身不会启用 Sentinel 规则来源或拦截器。
+若规范 key、兼容的纯数字 key 与 `mars.codes` 都没有文案，则使用固定英文提示；
+响应不返回规则或资源名。MVC starter 因该处理分支依赖 `sentinel-core`，
+但它本身不会启用 Sentinel 规则来源或拦截器。
 
 ## 请求上下文与工作线程
 

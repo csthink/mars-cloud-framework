@@ -52,7 +52,8 @@ Servlet 服务接入 Sentinel 后，`BlockException` 由 MVC starter 返回 HTTP
 用户提示，错误码归属各自组件。Servlet 服务应在 `i18n/error-code.properties`、
 `i18n/error-code_zh_CN.properties` 与 `i18n/error-code_en_US.properties` 中提供
 `error.code.61006`，中文为“请求过于频繁，请稍后再试”，英文为
-“Too many requests, please try again later”。缺少文案时使用固定英文提示。
+“Too many requests, please try again later”。若规范 key、兼容的纯数字 key 与
+`mars.codes` 都没有文案，则使用固定英文提示。
 
 ### 跳过信封包装
 
