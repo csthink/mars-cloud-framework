@@ -411,6 +411,50 @@
     {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsJobConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.job\\.autoconfigure\\.MarsJobAutoConfiguration:\\ 缺少访问令牌：设置环境变量\\ MARS_JOB_ACCESS_TOKEN（与调度中心的\\ xxl\\.job\\.accessToken\\ 相同）",
       "reason": "Negative job starter test: a missing access token fails startup with the fixed verifier message."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ Custom\\ ConfigurationPropertiesRebinder\\ must\\ extend\\ DataSourcePreservingRebinder",
+      "reason": "DatabaseRefreshTest deliberately rejects a custom rebinder that cannot preserve the pool."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'abstractConfigurableWebServerFactory':\\ Web\\ server\\ factory\\ must\\ use\\ graceful\\ shutdown",
+      "reason": "ResilienceTest deliberately rejects an immediate-shutdown web server factory."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'lifecycleLimits'\\ defined\\ in\\ com\\.mars\\.cloud\\.core\\.autoconfigure\\.ResilienceAutoConfiguration:\\ Failed\\ to\\ instantiate\\ \\[org\\.springframework\\.beans\\.factory\\.config\\.BeanPostProcessor\\]:\\ Factory\\ method\\ 'lifecycleLimits'\\ threw\\ exception\\ with\\ message:\\ server\\.shutdown\\ must\\ be\\ graceful",
+      "reason": "ResilienceTest deliberately rejects immediate shutdown."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'lifecycleLimits'\\ defined\\ in\\ com\\.mars\\.cloud\\.core\\.autoconfigure\\.ResilienceAutoConfiguration:\\ Failed\\ to\\ instantiate\\ \\[org\\.springframework\\.beans\\.factory\\.config\\.BeanPostProcessor\\]:\\ Factory\\ method\\ 'lifecycleLimits'\\ threw\\ exception\\ with\\ message:\\ spring\\.lifecycle\\.timeout\\-per\\-shutdown\\-phase\\ must\\ be\\ positive\\ and\\ no\\ greater\\ than\\ PT30S",
+      "reason": "ResilienceTest deliberately rejects invalid shutdown phase limits."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'lifecycleProcessor':\\ Custom\\ lifecycleProcessor\\ must\\ extend\\ BoundedLifecycleProcessor",
+      "reason": "ResilienceTest deliberately rejects an unbounded custom lifecycle processor."
+    },
+    {
+      "pattern": "WARN\\ Database:\\ Using\\ H2\\ 2\\.4\\.240\\ which\\ is\\ newer\\ than\\ the\\ version\\ Flyway\\ has\\ been\\ verified\\ with\\.\\ The\\ latest\\ verified\\ version\\ of\\ H2\\ is\\ 2\\.3\\.232\\.",
+      "reason": "Flyway compatibility test uses the H2 version managed by the shared BOM; migration is verified separately."
+    },
+    {
+      "pattern": "WARN\\ NacosRegistrationLifecycle:\\ Nacos\\ registration\\ operation=close\\ remote_state_unknown=true",
+      "reason": "RegistrationLifecycleTest closes an intentionally unresolved registration without claiming remote deletion."
+    },
+    {
+      "pattern": "WARN\\ NacosRegistrationLifecycle:\\ Nacos\\ registration\\ operation=register\\ remote_state_unknown=true",
+      "reason": "RegistrationLifecycleTest intentionally loses a registration response."
+    },
+    {
+      "pattern": "WARN\\ NacosRegistrationLifecycle:\\ Nacos\\ registration\\ operation=register_quarantined\\ remote_state_unknown=true",
+      "reason": "RegistrationLifecycleTest verifies that an unresolved registration cannot automatically recover."
+    },
+    {
+      "pattern": "WARN\\ NacosRegistrationLifecycle:\\ Nacos\\ registration\\ operation=renew\\ remote_state_unknown=true",
+      "reason": "RegistrationLifecycleTest stops the first server to verify address failover."
+    },
+    {
+      "pattern": "WARN\\ NacosReadinessEvaluator:\\ Readiness\\ check\\ failed:\\ TimeoutException",
+      "reason": "RegistrationLifecycleTest deliberately stalls the complete readiness check and verifies that no checks overlap."
     }
   ],
   "service": [
@@ -509,6 +553,18 @@
     {
       "pattern": "WARN\\ ConfigServletWebServerApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'marsMonitorDingTalkNotifierGuard'\\ defined\\ in\\ class\\ path\\ resource\\ \\[com/mars/cloud/service/monitor/MonitorNotificationConfiguration\\.class\\]:\\ 监控面板暂不支持钉钉通知，请删除\\ spring\\.boot\\.admin\\.notify\\.dingtalk\\.\\*\\ 配置：面板自带的钉钉通知器把签名参数编码了两次，与钉钉要求的单次编码不一致",
       "reason": "Negative monitor startup test: any DingTalk notifier setting, including an empty webhook URL, must fail to start because DingTalk notification is not supported."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ java\\.lang\\.IllegalStateException:\\ Gateway\\ route\\ response\\-timeout\\ must\\ be\\ positive\\ integral\\ milliseconds\\ no\\ greater\\ than\\ 3000",
+      "reason": "GatewayTimeoutLimitsTest deliberately rejects a Java route that disables the timeout."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'httpClient':\\ Gateway\\ HTTP\\ client\\ connect\\ timeout\\ must\\ be\\ between\\ 1\\ and\\ 1000\\ milliseconds",
+      "reason": "GatewayTimeoutLimitsTest deliberately rejects a custom client exceeding the limit."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 504\\ code=63004\\ GET\\ /upms/global\\-slow:\\ Response\\ took\\ longer\\ than\\ timeout:\\ PT3S",
+      "reason": "ErrorEnvelopeContractTest deliberately exceeds the global response timeout and asserts the 504 envelope."
     }
   ]
 }

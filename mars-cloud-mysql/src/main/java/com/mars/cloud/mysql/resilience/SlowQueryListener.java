@@ -33,14 +33,17 @@ public final class SlowQueryListener implements QueryExecutionListener {
     @Override
     public void afterQuery(ExecutionInfo execution, List<QueryInfo> queries) {
         if (execution.getElapsedTime() < thresholdMillis) { return; }
+        String fingerprint = fingerprint(queries);
+        int batchSize = execution.isBatch() ? execution.getBatchSize() : 0;
         LOG.atWarn().addKeyValue("event.type", "jdbc.slow")
                 .addKeyValue("duration.ms", execution.getElapsedTime())
                 .addKeyValue("datasource.name", dataSourceName)
                 .addKeyValue("statement.type", execution.getStatementType())
-                .addKeyValue("batch.size", execution.isBatch() ? execution.getBatchSize() : 0)
+                .addKeyValue("batch.size", batchSize)
                 .addKeyValue("success", execution.isSuccess())
-                .addKeyValue("sql.fingerprint", fingerprint(queries))
-                .log("Slow JDBC execution");
+                .addKeyValue("sql.fingerprint", fingerprint)
+                .log("event.type=jdbc.slow duration.ms={} datasource.name={} statement.type={} batch.size={} success={} sql.fingerprint={}",
+                        execution.getElapsedTime(), dataSourceName, execution.getStatementType(), batchSize, execution.isSuccess(), fingerprint);
     }
 
     private static String fingerprint(List<QueryInfo> queries) {

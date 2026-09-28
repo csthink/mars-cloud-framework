@@ -96,6 +96,46 @@ public class DatabaseResilienceTest {
     }
 
     @Test
+    void doesNotObserveAnAlreadyObservedDelegateAgain() {
+        HikariDataSource original=pool();
+        new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(MysqlResilienceAutoConfiguration.class))
+                .withBean("original",DataSource.class,()->original)
+                .withBean("delegating",DataSource.class,()->new org.springframework.jdbc.datasource.DelegatingDataSource(
+                        new ObservedDataSource(original,new SlowQueryListener("inner",Duration.ofSeconds(1)))))
+                .run(ctx->{
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx.getBean("delegating")).isExactlyInstanceOf(org.springframework.jdbc.datasource.DelegatingDataSource.class);
+                });
+    }
+
+    @Test
+    void transactionAwareProxyRemainsOutermostAndPlainJdbcParticipatesInRollback() {
+        HikariDataSource original=pool();
+        var transactionAware=new org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy(original);
+        new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(MysqlResilienceAutoConfiguration.class))
+                .withBean("dataSource",DataSource.class,()->transactionAware).run(ctx->{
+                    assertThat(ctx).hasNotFailed();
+                    DataSource source=ctx.getBean(DataSource.class);
+                    assertThat(source).isSameAs(transactionAware);
+                    try(var connection=source.getConnection();var statement=connection.createStatement()) {
+                        statement.execute("create table transactional_items(id integer)");
+                    }
+                    var transaction=new org.springframework.transaction.support.TransactionTemplate(
+                            new org.springframework.jdbc.datasource.DataSourceTransactionManager(source));
+                    transaction.executeWithoutResult(status->{
+                        try(var connection=source.getConnection();var statement=connection.createStatement()) {
+                            statement.executeUpdate("insert into transactional_items values(1)");
+                        } catch(SQLException failure) {throw new IllegalStateException(failure);}
+                        status.setRollbackOnly();
+                    });
+                    try(var connection=source.getConnection();var statement=connection.createStatement();var rows=statement.executeQuery("select count(*) from transactional_items")) {
+                        assertThat(rows.next()).isTrue();assertThat(rows.getInt(1)).isZero();
+                    }
+                });
+        assertThat(original.isClosed()).isTrue();
+    }
+
+    @Test
     void preservesGeneratedKeysBatchRollbackAndPoolExhaustionRecovery() throws Exception {
         HikariDataSource pool = pool();
         try (ObservedDataSource observed = new ObservedDataSource(pool, new SlowQueryListener("orders", Duration.ofSeconds(1)))) {
@@ -146,7 +186,17 @@ public class DatabaseResilienceTest {
             assertThat(events.list).hasSize(1);
             ILoggingEvent event = events.list.getFirst();
             assertThat(event.getThrowableProxy()).isNull();
-            assertThat(event.getFormattedMessage()).isEqualTo("Slow JDBC execution");
+            ch.qos.logback.classic.PatternLayout layout = new ch.qos.logback.classic.PatternLayout();
+            layout.setContext(logger.getLoggerContext()); layout.setPattern("%m %X{traceId}%n"); layout.start();
+            assertThat(layout.doLayout(event)).contains("event.type=jdbc.slow", "duration.ms=100", "datasource.name=orders",
+                    "batch.size=4", "success=false", "sql.fingerprint=", "trace-for-query")
+                    .doesNotContain("sql-sensitive-marker", "parameter-sensitive-marker", "exception-sensitive-marker");
+            layout.stop();
+            org.springframework.boot.logging.logback.StructuredLogEncoder ecs=new org.springframework.boot.logging.logback.StructuredLogEncoder();
+            ecs.setContext(logger.getLoggerContext()); ecs.setFormat("ecs"); ecs.start();
+            assertThat(new String(ecs.encode(event),java.nio.charset.StandardCharsets.UTF_8)).contains("jdbc.slow", "sql.fingerprint", "trace-for-query")
+                    .doesNotContain("sql-sensitive-marker", "parameter-sensitive-marker", "exception-sensitive-marker");
+            ecs.stop();
             assertThat(event.getKeyValuePairs().toString()).contains("jdbc.slow", "orders", "100", "false")
                     .doesNotContain("sql-sensitive-marker", "parameter-sensitive-marker", "exception-sensitive-marker");
             assertThat(event.getKeyValuePairs()).anySatisfy(pair -> {

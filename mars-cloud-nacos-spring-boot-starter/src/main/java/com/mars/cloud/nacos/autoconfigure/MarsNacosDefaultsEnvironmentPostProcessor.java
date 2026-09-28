@@ -15,10 +15,8 @@ import java.util.Map;
  * 例外有两处，见 README「默认值」：应用代码经 {@code SpringApplication#setDefaultProperties} 设置的默认属性
  * 不覆盖这里无条件写入的值；上下文刷新时才加入的 {@code @PropertySource} 排在它之后，同名值不生效。
  *
- * <p>关闭 Spring Cloud 的注册中心健康检查（{@code discoveryComposite}）。停机时 Nacos 的优雅停机先注销并关闭
- * Nacos 客户端，再按 {@code spring.cloud.nacos.discovery.graceful-shutdown-wait-time}（默认 10 秒）等待；
- * 等待期间有人查询健康端点（例如实例监控的轮询），这项检查查询注册中心，Nacos 客户端就被重新创建，
- * 停机中途重新连接 Nacos。这项检查只在根健康端点里，不在存活与就绪探针组里。
+ * <p>默认关闭根健康端点的注册中心检查（{@code discoveryComposite}），业务依赖通过各健康组声明。
+ * HTTP 注册检查完整就绪组，服务发现客户端在 Bean 销毁阶段关闭。
  *
  * <p>业务端口绑定在具体的 IPv4 地址上时，注册到 Nacos 的地址取同一个地址。没有配置注册地址时，
  * Spring Cloud Alibaba 注册第一块非回环网卡的地址，不参考 {@code server.address}；

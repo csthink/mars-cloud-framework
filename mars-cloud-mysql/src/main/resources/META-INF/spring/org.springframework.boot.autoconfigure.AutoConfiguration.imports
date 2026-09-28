@@ -1,2 +1,3 @@
 com.mars.cloud.mysql.autoconfigure.MysqlMybatisPlusAutoConfiguration
 com.mars.cloud.mysql.autoconfigure.MysqlResilienceAutoConfiguration
+com.mars.cloud.mysql.autoconfigure.MysqlRefreshAutoConfiguration

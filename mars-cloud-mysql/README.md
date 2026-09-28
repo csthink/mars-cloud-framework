@@ -91,3 +91,25 @@ mars:
 分页 SQL 才暴露，代价比启动失败大得多。
 
 业务侧声明自己的 `MybatisPlusInterceptor` Bean 即可完全接管，默认的不再创建。
+
+## 连接池与慢查询
+
+自动配置的 DataSource 使用以下 HikariCP 默认值，并在启动时检查实际连接池。自定义 DataSource 必须能通过
+`unwrap(HikariDataSource.class)` 提供底层连接池；无法验证时启动失败。
+
+| 配置 | 默认值 | 允许值 |
+| --- | --- | --- |
+| `spring.datasource.hikari.maximum-pool-size` | `10` | 1 到 10 |
+| `spring.datasource.hikari.minimum-idle` | 跟随 maximum-pool-size | 0 到 maximum-pool-size |
+| `spring.datasource.hikari.connection-timeout` | `1000` | 251 到 1000 毫秒 |
+| `spring.datasource.hikari.validation-timeout` | `500` | 250 到 500 毫秒，且小于 connection-timeout |
+| `spring.datasource.hikari.register-mbeans` | `false` | 默认关闭管理接口 |
+| `mars.datasource.slow-query-threshold` | `1s` | 正值，最大 1 秒 |
+
+配置刷新先验证新值；非法值被拒绝。DataSource 不参与 Spring Cloud 的属性重新绑定，已有连接池不会在线重建；
+调整合法连接池参数后需重启生效。自定义属性重新绑定器需继承 `DataSourcePreservingRebinder`，保留此行为。
+
+超过阈值的 JDBC execute 或 batch 在完成或失败后记录一条 WARN，覆盖 JdbcTemplate、MyBatis 与直接 JDBC 调用。
+日志仅含事件类型、耗时、逻辑 DataSource 名、语句类型、批量大小、成功状态及 SQL 模板 SHA-256 指纹；
+不记录 SQL、参数、结果集、连接 URL 或异常正文。已存在的 MDC traceId 由结构化日志输出关联。
+获取连接、提交、回滚和快速执行不生成慢查询事件。包装保留 unwrap、事务代理、健康检查、连接池指标及关闭行为。

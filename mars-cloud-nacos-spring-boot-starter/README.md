@@ -91,11 +91,30 @@ spring:
 | `spring.cloud.discovery.client.composite-indicator.enabled` | `false` | 根健康端点不含注册中心检查（`discoveryComposite`），见下文 |
 | `spring.cloud.nacos.discovery.ip` | 取 `server.address` 的规范形式 | 只在 `server.address` 是具体的 IPv4 地址时写入，见下文「注册地址」 |
 
-停机时，Spring Cloud Alibaba 的优雅停机先注销实例并关闭 Nacos 客户端，再按
-`spring.cloud.nacos.discovery.graceful-shutdown-wait-time`（默认 10 秒）等待，之后应用才真正停止。
-等待期间如果有人查询健康端点（例如实例监控的轮询），注册中心检查会查询 Nacos，Nacos 客户端就被重新创建，
-停机中途重新连接 Nacos。关闭这项检查后不再发生。它只在根健康端点里，存活与就绪探针（`liveness`、`readiness`）
-不受影响。需要这项检查的部署物可以显式设为 `true`。
+注册中心检查默认不加入根健康端点，避免把注册中心连通性混入业务依赖健康状态。
+需要时可显式启用；服务注册始终检查完整 readiness 组。
+
+## 就绪注册与停机
+
+注册实例使用 Nacos v3 Client HTTP API；SDK 仅用于配置和发现，不持有实例注册。
+业务端口已监听、所有 ApplicationRunner 完成、应用接受流量且完整 readiness 组为 UP 后，才首次注册。
+必须启用存活与就绪探针，分别保留 `livenessState`、`readinessState` 成员及对应健康贡献器。
+将数据库等必需依赖加入 readiness 组，依赖失败时才能阻止注册或触发注销。
+
+每次注册或续约前重新检查完整 readiness 组，健康检查最长等待 1 秒且不重叠。
+默认每 5 秒续约；健康状态不再满足时停止续约并显式删除实例，恢复后重新检查再注册。
+消费者必须关闭 `spring.cloud.nacos.discovery.naming-push-empty-protection`，接受空实例列表。
+注册响应未知时暂停自动重新注册；空列表本身不能证明先前请求不会迟到生效。
+
+关闭根上下文时立即停止新的注册和续约，实例清理最多等待 10 秒，然后进入 HTTP 优雅停机。
+服务发现客户端一直保留到 Bean 销毁，在途 Feign 请求仍可查询下游实例。
+实例清理等待、各生命周期阶段等待分别计时，不承诺 JVM 的硬退出时限。
+
+支持用户名/密码认证、临时实例、逗号分隔的显式地址列表以及 HTTP/HTTPS 和 context path。
+无 scheme 的主机名默认使用 8848 端口；显式 URI 按其端口语义解析。HTTPS 使用 JVM 信任库。
+每次 HTTP 请求总等待最多 2 秒，不自动重试或重定向。配置刷新先清理旧快照，再使用新配置。
+不支持 endpoint、AK/SK、永久实例、自定义认证 SPI 或心跳时间覆盖；不兼容配置在启动或刷新时被拒绝。
+同一实例身份同一时间只能由一个进程持有。
 
 ### 注册地址
 
@@ -117,7 +136,8 @@ Spring Cloud Alibaba 在没有配置注册地址时注册第一块非回环网�
 所以本 starter 照常推导，这些配置项不再影响注册地址。
 
 注册地址由本 starter 给出后，Spring Cloud Alibaba 不再把本机 IPv6 地址写进实例元数据 `IPv6`，这一项只在它自己选取注册地址时写入。
-注册地址需要与绑定地址不同时，显式配置 `spring.cloud.nacos.discovery.ip` 与 `spring.cloud.nacos.discovery.port`。
+注册地址需要与绑定地址不同时，显式配置 `spring.cloud.nacos.discovery.ip`。注册端口使用实际业务监听端口；
+显式 `spring.cloud.nacos.discovery.port` 必须与它一致，管理端口不注册。
 
 ## 运行时 JVM 参数
 

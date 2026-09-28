@@ -1,1 +1,4 @@
 com.mars.cloud.nacos.autoconfigure.NacosConventionAutoConfiguration
+com.mars.cloud.nacos.autoconfigure.NacosRegistrationAutoConfiguration
+com.mars.cloud.nacos.autoconfigure.NacosDiscoveryLifecycleAutoConfiguration
+com.mars.cloud.nacos.autoconfigure.NacosInactiveRegistrationAutoConfiguration

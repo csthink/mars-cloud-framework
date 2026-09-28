@@ -1,2 +1,5 @@
 org.springframework.boot.EnvironmentPostProcessor=\
 com.mars.cloud.nacos.autoconfigure.MarsNacosDefaultsEnvironmentPostProcessor
+
+org.springframework.boot.autoconfigure.AutoConfigurationImportFilter=\
+com.mars.cloud.nacos.autoconfigure.NacosRegistrationImportFilter

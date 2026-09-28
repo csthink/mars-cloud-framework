@@ -163,10 +163,10 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 | --- | --- |
 | `mars-cloud-dependencies` | 依赖管理 BOM。全仓**版本唯一出口**，所有模块以它为 parent |
 | `mars-cloud-common` | 纯工具与模型库：统一信封、错误码、调用方上下文、消息信封与命名规则。**不依赖任何 Spring / Servlet 运行时组件** |
-| `mars-cloud-core-spring-boot-starter` | 核心自动装配，目前提供分布式 ID（雪花算法） |
+| `mars-cloud-core-spring-boot-starter` | 分布式 ID（雪花算法）、优雅停机默认值及参数限制 |
 | `mars-cloud-mvc-spring-boot-starter` | Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间校验、i18n、请求上下文 |
-| `mars-cloud-mysql` | MyBatis-Plus 约定：基础实体、逻辑删除、审计字段填充、ID 生成器 |
-| `mars-cloud-nacos-spring-boot-starter` | Nacos 注册发现与配置中心：固定 Namespace、Group、Data ID、导入顺序与 fail-fast 约定 |
+| `mars-cloud-mysql` | MyBatis-Plus 约定、HikariCP 参数限制与 JDBC 慢查询观察 |
+| `mars-cloud-nacos-spring-boot-starter` | Nacos 配置与发现、完整就绪组控制的 HTTP 注册、停机先注销后关闭发现客户端 |
 | `mars-cloud-feign-spring-boot-starter` | Servlet 服务间同步读调用：OpenFeign、LoadBalancer、上下文传播、失败映射、超时与幂等重试 |
 | [`mars-cloud-security-spring-boot-starter`](mars-cloud-security-spring-boot-starter/README.md) | Servlet / WebFlux JWT 验证、身份上下文与方法权限检查 |
 | [`mars-cloud-security-feign`](mars-cloud-security-feign/README.md) | Servlet 权限服务调用及当前用户令牌转发 |

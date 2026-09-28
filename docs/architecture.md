@@ -129,6 +129,8 @@ Boot 4 带的是 Jackson 3，包名从 `com.fasterxml.jackson.*` 变为 `tools.j
 
 `mars-cloud-mysql` 把 `BaseEntity`、逻辑删除、审计字段自动填充、ID 生成器固化下来，
 业务侧只写实体与 Mapper。**Entity 不作为对外 API 的 DTO。**
+HikariCP 连接数与获取超时在启动时校验，JDBC 慢查询只记录耗时与 SQL 模板指纹；
+连接池参数及刷新规则见 [mysql 使用说明](../mars-cloud-mysql/README.md)。
 
 ### Nacos：接入必须满足同一套命名与失败语义
 
@@ -139,6 +141,9 @@ Boot 4 带的是 Jackson 3，包名从 `com.fasterxml.jackson.*` 变为 `tools.j
 - 应用配置固定为 `DEFAULT_GROUP/<spring.application.name>.yaml`
 - 共享配置先导入，应用配置后导入，且两层显式开启刷新
 - 两层都禁止 `optional:`，避免配置中心不可用时带着不完整配置继续启动
+
+实例注册使用 HTTP Client API，并在每次注册和续约前检查完整 readiness 组。SDK 只用于配置与发现；
+停机先注销，发现客户端保留至在途请求结束后的 Bean 销毁。限制与配置见 [Nacos 使用说明](../mars-cloud-nacos-spring-boot-starter/README.md)。
 
 Spring Cloud Alibaba 2025.1.x 使用 `spring.config.import`，不使用 `bootstrap.yml`。
 测试或明确不接入 Nacos 的进程必须同时关闭 Config 与 Discovery。配置模板见模块 README。
