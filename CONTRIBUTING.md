@@ -74,7 +74,7 @@ mvn -pl mars-cloud-nacos-spring-boot-starter -am test # Nacos 约定 + 其依赖
 声明了 `frontend-maven-plugin` 的模块，构建时先由 `maven-antrun-plugin` 的 `verify-node-archive` 执行（`initialize` 阶段）
 按 BOM 登记的 SHA-256 核对 Maven 本地仓库里的 Node 安装包；安装包缺失时从 `node.download-root` 下载，核对相符才放入。
 随后插件把这个安装包装进模块的 `target` 目录，再用它执行 npm。插件自身的下载地址指向不会被解析的 `.invalid` 域名，
-所以它不会自行下载。已登记的平台是 macOS 与 Linux 各自的 x64 与 arm64，其他平台上构建失败。
+所以它不会自行下载。已登记的平台是 macOS 与 Linux 各自的 x64 与 arm64（Alpine 等使用 musl 的 Linux 除外），其他平台上构建失败。
 核对步骤用 Ant 的 `get` 下载，读取 JVM 的代理系统属性（如 `-Dhttps.proxyHost`），不读 Maven `settings.xml` 里的代理；
 无法直连 nodejs.org 时，也可以用 `-Dnode.download-root=<以 / 结尾的镜像地址>` 更换下载地址，是否采用下载内容仍由摘要决定。
 核对步骤的下载不理会 Maven 的离线模式（`-o`），离线构建前本地仓库里要已有核对过的安装包。

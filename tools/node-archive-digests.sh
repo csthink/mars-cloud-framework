@@ -17,9 +17,9 @@ platforms='darwin-arm64 darwin-x64 linux-x64 linux-arm64'
 
 work="$(mktemp -d)"
 export GNUPGHOME="$work/gnupg"
-mkdir -m 700 "$GNUPGHOME"
 # gpg starts an agent for the temporary home; stop it before the directory is removed.
 trap 'gpgconf --kill gpg-agent 2>/dev/null || true; rm -rf "$work"' EXIT
+mkdir -m 700 "$GNUPGHOME"
 fetch() { curl --fail --silent --show-error --location --retry 3 "$1" -o "$2"; }
 
 fetch "$keys_root/keys.list" "$work/keys.list"
