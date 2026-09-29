@@ -16,7 +16,7 @@
 | 框架**不引入任何具体锁实现**（lock4j / Redisson 都不引） | 第三方锁组件连最轻的 core 包都会无条件自动装配，会让使用方启动失败。锁异常类型用 `com.mars.cloud.common.exception.LockFailureException` |
 | starter **不得**依赖任何具体认证产品（含第三方 IdP 的 artifact） | 框架只依赖标准协议，换 IdP 不改代码 |
 | 各模块 `<parent>` 是 `mars-cloud-dependencies`，**根聚合 POM 不做 parent** | 「版本唯一出口」契约 |
-| 依赖与构建插件的版本只在 `mars-cloud-dependencies` 声明一次，模块内**不写 `<version>`**。前端构建插件 `frontend-maven-plugin` 及它安装的 Node 版本（属性 `node.version`）同样由 BOM 给出，模块不写 `<nodeVersion>` | 同上。唯一例外是 `common` 的 Jackson——它拿不到 Boot 的依赖管理，版本在 BOM 里用属性钉住 |
+| 依赖版本只在 `mars-cloud-dependencies` 声明一次，模块内**不写 `<version>`**。前端构建插件 `frontend-maven-plugin` 的版本与它安装的 Node 版本（属性 `node.version`）同样只由 BOM 给出，模块声明这个插件时不写 `<version>` 与 `<nodeVersion>` | 同上。唯一例外是 `common` 的 Jackson——它拿不到 Boot 的依赖管理，版本在 BOM 里用属性钉住 |
 | 不为「以后可能用」提前引入组件 | 出现真实场景再建模块 |
 
 ## 模块边界
@@ -41,7 +41,7 @@
 | 自动装配 | `AutoConfiguration.imports` 是否同步、条件注解是否覆盖两种 Web 栈 |
 | Nacos 约定 | Config 与 Discovery 的 Namespace 是否一致；Group / Data ID / 导入顺序 / fail-fast 是否仍受测试保护 |
 | 持久化契约 | `BaseEntity` / 审计填充 / 逻辑删除的改动必须验证下游 |
-| 依赖与插件版本 | 只改 `mars-cloud-dependencies`，并跑全量构建 |
+| 依赖版本、前端构建插件与 Node 版本 | 只改 `mars-cloud-dependencies`，并跑全量构建 |
 
 ## 构建与验证
 
@@ -60,8 +60,8 @@
 JDK 24 起默认打印弃用警告，验证脚本把它视为未知诊断；应用 JVM 由 `spring-boot-maven-plugin` 与容器入口带同一参数。
 
 声明了 `frontend-maven-plugin` 的模块，构建时由插件把 BOM 指定的 Node 装进模块的 `target` 目录，再用它执行 npm。
-插件把 npm 等子进程写到标准错误输出的每一行记为 `[ERROR]`，验证脚本把它们视为未知诊断。npm 的提示用命令参数关闭
-（`--no-audit --no-fund --loglevel=error`）；关不掉的行按 [docs/ci.md](docs/ci.md) 的规则逐条登记并说明原因，不忽略整类。
+插件把 npm 等子进程写到标准错误输出的每一行记为 `[ERROR]`，验证脚本把它们视为诊断，未在 `.ci/log-policy.json` 登记的使验证失败。
+npm 的提示用命令参数关闭（`--no-audit --no-fund --loglevel=error`）。
 
 ```bash
 mvn clean install                                     # 全量 + 契约测试
