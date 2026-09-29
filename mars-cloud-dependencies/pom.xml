@@ -102,7 +102,7 @@
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <!--
           前端构建：frontend-maven-plugin 在构建期把 Node 安装到模块的 target 目录，再用它执行 npm。
-          node.version 取 Node 的 Active LTS 版本线的最新版，带前缀 v，与 nodejs.org 发行目录的名称一致；
+          升级 node.version 时取当时 Active LTS 版本线的最新版，带前缀 v，与 nodejs.org 发行目录的名称一致；
           npm 用这个 Node 自带的版本。使用本插件的模块，package.json 的 engines.node 与这里一致。
         -->
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
@@ -111,8 +111,8 @@
           Node 安装包的核对：下面 pluginManagement 里 maven-antrun-plugin 的 verify-node-archive 执行
           在安装 Node 之前，按这里登记的 SHA-256 核对 Maven 本地仓库里的安装包，缺失时从 node.download-root
           下载并核对后才放入。摘要取自该版本经 Node 发布者签名的 SHASUMS256.txt，改 node.version 时
-          用 tools/node-archive-digests.sh 核对签名并生成这四行。node.download-root 可以换成镜像，
-          是否采用下载内容仍由摘要决定。各平台用哪一行，由文件末尾按操作系统与架构激活的 profile 选定。
+          用 tools/node-archive-digests.sh 核对签名并生成这四行。node.download-root 以 / 结尾，可以换成
+          与 nodejs.org 目录结构相同的镜像，是否采用下载内容仍由摘要决定。各平台用哪一行，由文件末尾按操作系统与架构激活的 profile 选定。
         -->
         <maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
         <node.download-root>https://nodejs.org/dist/</node.download-root>
@@ -459,8 +459,11 @@
                   安装包位置与 frontend-maven-plugin 的缓存规则相同：
                   <本地仓库>/com/github/eirslett/node/<版本>/node-<版本>-<平台>.tar.gz（版本不带前缀 v）。
                   缓存存在：SHA-256 与登记值不符时构建失败，不删除文件，由人检查后删除重建。
-                  缓存缺失：下载到同目录的临时文件，核对相符才改名为缓存文件；不符则删除临时文件并失败。
+                  缓存缺失：下载到同目录的临时文件，核对相符才用 mv（rename(2)，原子替换）改名为缓存文件；
+                  不符则删除临时文件并失败。多个模块并行构建时各用自己的临时文件，读取方只会看到完整的文件。
                   本平台没有登记摘要（没有激活 node-* profile）：构建失败，不跳过核对。
+                  本地仓库取 settings.localRepository，与 Maven 实际使用的本地仓库一致（含 -Dmaven.repo.local）。
+                  下载不理会 Maven 的离线模式（-o）：离线构建前缓存里要已有核对过的安装包。
                 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -483,7 +486,7 @@
                                             <replaceregex pattern="^v" replace=""/>
                                         </filterchain>
                                     </loadresource>
-                                    <property name="node.archive.dir" value="${maven.repo.local}/com/github/eirslett/node/${node.plain-version}"/>
+                                    <property name="node.archive.dir" value="${settings.localRepository}/com/github/eirslett/node/${node.plain-version}"/>
                                     <property name="node.archive" value="${node.archive.dir}/node-${node.plain-version}-${node.classifier}.tar.gz"/>
                                     <available file="${node.archive}" property="node.archive.cached"/>
                                     <mkdir dir="${node.archive.dir}" unless:set="node.archive.cached"/>
@@ -503,7 +506,11 @@
                                           message="SHA-256 of the cached ${node.archive} does not match the digest registered for node-${node.version}-${node.classifier}; inspect the file, delete it and build again"/>
                                     <fail if="node.archive.invalid"
                                           message="SHA-256 of node-${node.version}-${node.classifier}.tar.gz downloaded from ${node.download-root} does not match the registered digest; the download was deleted"/>
-                                    <move file="${node.archive.part}" tofile="${node.archive}" unless:set="node.archive.cached"/>
+                                    <exec executable="mv" failonerror="true" unless:set="node.archive.cached">
+                                        <arg value="-f"/>
+                                        <arg file="${node.archive.part}"/>
+                                        <arg file="${node.archive}"/>
+                                    </exec>
                                 </target>
                             </configuration>
                         </execution>
@@ -518,9 +525,11 @@
                         <!--
                           只对声明了本插件的模块生效，执行步骤（install-node-and-npm、npm）由模块自己声明。
                           Node 装在模块的 target 目录，随 clean 删除，构建不使用构建机上已装的 Node；
-                          Node 安装包只取自 Maven 本地仓库里经上面 verify-node-archive 核对过的缓存。
+                          Node 安装包取自 Maven 本地仓库里的缓存；模块同时声明 maven-antrun-plugin 时，
+                          这份缓存在安装前经上面 verify-node-archive 核对。
                           两个下载地址指向 RFC 6761 保留、不会被解析的 .invalid 域名，所以本插件不会自行下载：
-                          模块漏声明 maven-antrun-plugin、缓存又缺失时，安装在这里失败；
+                          模块漏声明 maven-antrun-plugin、缓存又缺失时，安装在这里失败（缓存已存在时不经核对，
+                          所以声明前端插件的模块必须同时声明 antrun）；
                           npm 用 Node 自带的版本，模块不写 npmVersion。
                           本插件把 npm 等子进程写到标准错误输出的每一行记为 [ERROR]，正式构建的日志审查
                           把它们当作诊断：未在 .ci/log-policy.json 登记的使验证失败。
@@ -540,6 +549,8 @@
       平台名与 frontend-maven-plugin 的 Platform.getNodeClassifier 对这四个平台的结果一致。
       Linux 按 os.name 匹配，因为 macOS 同样属于 os.family=unix。
       这些 profile 只设属性，不改变依赖与插件；Windows 与使用 musl 的 Linux 没有登记。
+      Alpine（存在 /etc/alpine-release，frontend-maven-plugin 在那里使用 -musl 安装包）不激活 Linux 的两个 profile，
+      构建因平台未登记而失败。
     -->
     <profiles>
         <profile>
@@ -575,6 +586,9 @@
                     <name>Linux</name>
                     <arch>amd64</arch>
                 </os>
+                <file>
+                    <missing>/etc/alpine-release</missing>
+                </file>
             </activation>
             <properties>
                 <node.classifier>linux-x64</node.classifier>
@@ -588,6 +602,9 @@
                     <name>Linux</name>
                     <arch>aarch64</arch>
                 </os>
+                <file>
+                    <missing>/etc/alpine-release</missing>
+                </file>
             </activation>
             <properties>
                 <node.classifier>linux-arm64</node.classifier>

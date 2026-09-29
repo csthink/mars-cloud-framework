@@ -76,7 +76,8 @@ mvn -pl mars-cloud-nacos-spring-boot-starter -am test # Nacos 约定 + 其依赖
 随后插件把这个安装包装进模块的 `target` 目录，再用它执行 npm。插件自身的下载地址指向不会被解析的 `.invalid` 域名，
 所以它不会自行下载。已登记的平台是 macOS 与 Linux 各自的 x64 与 arm64，其他平台上构建失败。
 核对步骤用 Ant 的 `get` 下载，读取 JVM 的代理系统属性（如 `-Dhttps.proxyHost`），不读 Maven `settings.xml` 里的代理；
-无法直连 nodejs.org 时，也可以用 `-Dnode.download-root=<镜像地址>` 更换下载地址，是否采用下载内容仍由摘要决定。
+无法直连 nodejs.org 时，也可以用 `-Dnode.download-root=<以 / 结尾的镜像地址>` 更换下载地址，是否采用下载内容仍由摘要决定。
+核对步骤的下载不理会 Maven 的离线模式（`-o`），离线构建前本地仓库里要已有核对过的安装包。
 升级 `node.version` 时运行 `tools/node-archive-digests.sh <版本>`：它用 Node 发布者的公钥核对该版本 `SHASUMS256.txt` 的签名，
 通过后打印四个平台的 BOM 属性行（依赖 `curl` 与 `gpg`，只在本机运行，不进入 CI）。
 
