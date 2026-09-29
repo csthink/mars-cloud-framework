@@ -102,11 +102,24 @@
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <!--
           前端构建：frontend-maven-plugin 在构建期把 Node 安装到模块的 target 目录，再用它执行 npm。
-          node.version 取 Node 的长期支持版（LTS），带前缀 v，与 nodejs.org 发行目录的名称一致；
+          node.version 取 Node 的 Active LTS 版本线的最新版，带前缀 v，与 nodejs.org 发行目录的名称一致；
           npm 用这个 Node 自带的版本。使用本插件的模块，package.json 的 engines.node 与这里一致。
         -->
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
         <node.version>v24.21.0</node.version>
+        <!--
+          Node 安装包的核对：下面 pluginManagement 里 maven-antrun-plugin 的 verify-node-archive 执行
+          在安装 Node 之前，按这里登记的 SHA-256 核对 Maven 本地仓库里的安装包，缺失时从 node.download-root
+          下载并核对后才放入。摘要取自该版本经 Node 发布者签名的 SHASUMS256.txt，改 node.version 时
+          用 tools/node-archive-digests.sh 核对签名并生成这四行。node.download-root 可以换成镜像，
+          是否采用下载内容仍由摘要决定。各平台用哪一行，由文件末尾按操作系统与架构激活的 profile 选定。
+        -->
+        <maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
+        <node.download-root>https://nodejs.org/dist/</node.download-root>
+        <node.sha256.darwin-arm64>bed7eea5325e1108f32ce5228ddd6a5f0f08a499ee42aa7442aea583702f6057</node.sha256.darwin-arm64>
+        <node.sha256.darwin-x64>1462cb3b3046b815cf8ea436d3da450ec1a9f11dac7e5a46b0ada5305d7e8097</node.sha256.darwin-x64>
+        <node.sha256.linux-x64>6e1db87ef58b8819e5d5402eff1536491b18edd8eb7bee5ef7897876e88dc5ff</node.sha256.linux-x64>
+        <node.sha256.linux-arm64>724282c3b43aec998aa9527380465b45d229e021b58035f5f4f63095eabfe5d5</node.sha256.linux-arm64>
         <!--
           surefire argLine 的晚绑定基座。下面 pluginManagement 里的 argLine 以 @{argLine} 开头，
           这里必须存在，否则 @{argLine} 会以字面量进测试 JVM 命令行。
@@ -439,6 +452,64 @@
                     </configuration>
                 </plugin>
 
+                <!--
+                  本项目只用 antrun 做一件事：在 frontend-maven-plugin 安装 Node 之前核对安装包。
+                  声明了 frontend-maven-plugin 的模块同时声明本插件（不写版本与执行），verify-node-archive
+                  就会在 initialize 阶段运行，早于 install-node-and-npm。
+                  安装包位置与 frontend-maven-plugin 的缓存规则相同：
+                  <本地仓库>/com/github/eirslett/node/<版本>/node-<版本>-<平台>.tar.gz（版本不带前缀 v）。
+                  缓存存在：SHA-256 与登记值不符时构建失败，不删除文件，由人检查后删除重建。
+                  缓存缺失：下载到同目录的临时文件，核对相符才改名为缓存文件；不符则删除临时文件并失败。
+                  本平台没有登记摘要（没有激活 node-* profile）：构建失败，不跳过核对。
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>${maven-antrun-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>verify-node-archive</id>
+                            <phase>initialize</phase>
+                            <goals>
+                                <goal>run</goal>
+                            </goals>
+                            <configuration>
+                                <target xmlns:if="ant:if" xmlns:unless="ant:unless">
+                                    <fail unless="node.classifier"
+                                          message="No Node archive digest is registered for this platform (os.name=${os.name}, os.arch=${os.arch})"/>
+                                    <loadresource property="node.plain-version">
+                                        <string value="${node.version}"/>
+                                        <filterchain>
+                                            <replaceregex pattern="^v" replace=""/>
+                                        </filterchain>
+                                    </loadresource>
+                                    <property name="node.archive.dir" value="${maven.repo.local}/com/github/eirslett/node/${node.plain-version}"/>
+                                    <property name="node.archive" value="${node.archive.dir}/node-${node.plain-version}-${node.classifier}.tar.gz"/>
+                                    <available file="${node.archive}" property="node.archive.cached"/>
+                                    <mkdir dir="${node.archive.dir}" unless:set="node.archive.cached"/>
+                                    <tempfile property="node.archive.part" destdir="${node.archive.dir}" prefix=".node-" suffix=".part"
+                                              deleteonexit="true" unless:set="node.archive.cached"/>
+                                    <get src="${node.download-root}${node.version}/node-${node.version}-${node.classifier}.tar.gz"
+                                         dest="${node.archive.part}" quiet="true" unless:set="node.archive.cached"/>
+                                    <property name="node.archive.checked" value="${node.archive}" if:set="node.archive.cached"/>
+                                    <property name="node.archive.checked" value="${node.archive.part}"/>
+                                    <checksum file="${node.archive.checked}" algorithm="SHA-256" property="${node.sha256}"
+                                              verifyproperty="node.archive.valid"/>
+                                    <condition property="node.archive.invalid">
+                                        <isfalse value="${node.archive.valid}"/>
+                                    </condition>
+                                    <delete file="${node.archive.part}" if:set="node.archive.invalid" unless:set="node.archive.cached"/>
+                                    <fail if="node.archive.invalid" if:set="node.archive.cached"
+                                          message="SHA-256 of the cached ${node.archive} does not match the digest registered for node-${node.version}-${node.classifier}; inspect the file, delete it and build again"/>
+                                    <fail if="node.archive.invalid"
+                                          message="SHA-256 of node-${node.version}-${node.classifier}.tar.gz downloaded from ${node.download-root} does not match the registered digest; the download was deleted"/>
+                                    <move file="${node.archive.part}" tofile="${node.archive}" unless:set="node.archive.cached"/>
+                                </target>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
                 <plugin>
                     <groupId>com.github.eirslett</groupId>
                     <artifactId>frontend-maven-plugin</artifactId>
@@ -447,16 +518,82 @@
                         <!--
                           只对声明了本插件的模块生效，执行步骤（install-node-and-npm、npm）由模块自己声明。
                           Node 装在模块的 target 目录，随 clean 删除，构建不使用构建机上已装的 Node；
-                          下载的 Node 安装包缓存在 Maven 本地仓库。
+                          Node 安装包只取自 Maven 本地仓库里经上面 verify-node-archive 核对过的缓存。
+                          两个下载地址指向 RFC 6761 保留、不会被解析的 .invalid 域名，所以本插件不会自行下载：
+                          模块漏声明 maven-antrun-plugin、缓存又缺失时，安装在这里失败；
+                          npm 用 Node 自带的版本，模块不写 npmVersion。
                           本插件把 npm 等子进程写到标准错误输出的每一行记为 [ERROR]，正式构建的日志审查
-                          把它们当作诊断：未在 .ci/log-policy.json 登记的一律判构建失败。
+                          把它们当作诊断：未在 .ci/log-policy.json 登记的使验证失败。
                         -->
                         <nodeVersion>${node.version}</nodeVersion>
                         <installDirectory>${project.build.directory}</installDirectory>
+                        <nodeDownloadRoot>https://verified-node-archive-required.invalid/</nodeDownloadRoot>
+                        <npmDownloadRoot>https://verified-node-archive-required.invalid/</npmDownloadRoot>
                     </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
     </build>
+
+    <!--
+      按构建机的操作系统与架构选定 Node 安装包的平台名与摘要，供 verify-node-archive 使用。
+      平台名与 frontend-maven-plugin 的 Platform.getNodeClassifier 对这四个平台的结果一致。
+      Linux 按 os.name 匹配，因为 macOS 同样属于 os.family=unix。
+      这些 profile 只设属性，不改变依赖与插件；Windows 与使用 musl 的 Linux 没有登记。
+    -->
+    <profiles>
+        <profile>
+            <id>node-darwin-arm64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <node.classifier>darwin-arm64</node.classifier>
+                <node.sha256>${node.sha256.darwin-arm64}</node.sha256>
+            </properties>
+        </profile>
+        <profile>
+            <id>node-darwin-x64</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>x86_64</arch>
+                </os>
+            </activation>
+            <properties>
+                <node.classifier>darwin-x64</node.classifier>
+                <node.sha256>${node.sha256.darwin-x64}</node.sha256>
+            </properties>
+        </profile>
+        <profile>
+            <id>node-linux-x64</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <node.classifier>linux-x64</node.classifier>
+                <node.sha256>${node.sha256.linux-x64}</node.sha256>
+            </properties>
+        </profile>
+        <profile>
+            <id>node-linux-arm64</id>
+            <activation>
+                <os>
+                    <name>Linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <node.classifier>linux-arm64</node.classifier>
+                <node.sha256>${node.sha256.linux-arm64}</node.sha256>
+            </properties>
+        </profile>
+    </profiles>
 
 </project>

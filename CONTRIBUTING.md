@@ -16,7 +16,7 @@
 | 框架**不引入任何具体锁实现**（lock4j / Redisson 都不引） | 第三方锁组件连最轻的 core 包都会无条件自动装配，会让使用方启动失败。锁异常类型用 `com.mars.cloud.common.exception.LockFailureException` |
 | starter **不得**依赖任何具体认证产品（含第三方 IdP 的 artifact） | 框架只依赖标准协议，换 IdP 不改代码 |
 | 各模块 `<parent>` 是 `mars-cloud-dependencies`，**根聚合 POM 不做 parent** | 「版本唯一出口」契约 |
-| 依赖版本只在 `mars-cloud-dependencies` 声明一次，模块内**不写 `<version>`**。前端构建插件 `frontend-maven-plugin` 的版本与它安装的 Node 版本（属性 `node.version`）同样只由 BOM 给出，模块声明这个插件时不写 `<version>` 与 `<nodeVersion>` | 同上。唯一例外是 `common` 的 Jackson——它拿不到 Boot 的依赖管理，版本在 BOM 里用属性钉住 |
+| 依赖版本只在 `mars-cloud-dependencies` 声明一次，模块内**不写 `<version>`**。前端构建插件 `frontend-maven-plugin` 的版本与它安装的 Node 版本（属性 `node.version`）同样只由 BOM 给出，模块声明这个插件时不写 `<version>` 与 `<nodeVersion>`；同时声明 `maven-antrun-plugin`（同样不写版本与执行），由它在安装 Node 前核对安装包；只用 `install-node-and-npm` 安装 Node，不写 `npmVersion`，不用插件的 yarn、pnpm、bun 目标 | 同上。唯一例外是 `common` 的 Jackson——它拿不到 Boot 的依赖管理，版本在 BOM 里用属性钉住 |
 | 不为「以后可能用」提前引入组件 | 出现真实场景再建模块 |
 
 ## 模块边界
@@ -41,7 +41,7 @@
 | 自动装配 | `AutoConfiguration.imports` 是否同步、条件注解是否覆盖两种 Web 栈 |
 | Nacos 约定 | Config 与 Discovery 的 Namespace 是否一致；Group / Data ID / 导入顺序 / fail-fast 是否仍受测试保护 |
 | 持久化契约 | `BaseEntity` / 审计填充 / 逻辑删除的改动必须验证下游 |
-| 依赖版本、前端构建插件与 Node 版本 | 只改 `mars-cloud-dependencies`，并跑全量构建 |
+| 依赖版本、前端构建插件与 Node 版本 | 只改 `mars-cloud-dependencies`，并跑全量构建；改 `node.version` 时用 `tools/node-archive-digests.sh` 重新生成四个平台的安装包摘要 |
 
 ## 构建与验证
 
@@ -59,10 +59,6 @@
 该属性还包含 `--sun-misc-unsafe-memory-access=allow`：RocketMQ 客户端一旦加载就经 fastjson2 调用 `sun.misc.Unsafe`，
 JDK 24 起默认打印弃用警告，验证脚本把它视为未知诊断；应用 JVM 由 `spring-boot-maven-plugin` 与容器入口带同一参数。
 
-声明了 `frontend-maven-plugin` 的模块，构建时由插件把 BOM 指定的 Node 装进模块的 `target` 目录，再用它执行 npm。
-插件把 npm 等子进程写到标准错误输出的每一行记为 `[ERROR]`，验证脚本把它们视为诊断，未在 `.ci/log-policy.json` 登记的使验证失败。
-npm 的提示用命令参数关闭（`--no-audit --no-fund --loglevel=error`）。
-
 ```bash
 mvn clean install                                     # 全量 + 契约测试
 mvn -pl mars-cloud-common clean test                  # 单模块
@@ -74,6 +70,18 @@ mvn -pl mars-cloud-nacos-spring-boot-starter -am test # Nacos 约定 + 其依赖
 
 本仓的契约测试是**回归网**，改到统一响应、异常映射、i18n 或错误码时必须全绿。
 测试类与它们固定的契约见 [README](README.md) 的「构建」一节。
+
+声明了 `frontend-maven-plugin` 的模块，构建时先由 `maven-antrun-plugin` 的 `verify-node-archive` 执行（`initialize` 阶段）
+按 BOM 登记的 SHA-256 核对 Maven 本地仓库里的 Node 安装包；安装包缺失时从 `node.download-root` 下载，核对相符才放入。
+随后插件把这个安装包装进模块的 `target` 目录，再用它执行 npm。插件自身的下载地址指向不会被解析的 `.invalid` 域名，
+所以它不会自行下载。已登记的平台是 macOS 与 Linux 各自的 x64 与 arm64，其他平台上构建失败。
+核对步骤用 Ant 的 `get` 下载，读取 JVM 的代理系统属性（如 `-Dhttps.proxyHost`），不读 Maven `settings.xml` 里的代理；
+无法直连 nodejs.org 时，也可以用 `-Dnode.download-root=<镜像地址>` 更换下载地址，是否采用下载内容仍由摘要决定。
+升级 `node.version` 时运行 `tools/node-archive-digests.sh <版本>`：它用 Node 发布者的公钥核对该版本 `SHASUMS256.txt` 的签名，
+通过后打印四个平台的 BOM 属性行（依赖 `curl` 与 `gpg`，只在本机运行，不进入 CI）。
+
+插件把 npm 等子进程写到标准错误输出的每一行记为 `[ERROR]`，验证脚本把它们视为诊断，未在 `.ci/log-policy.json` 登记的使验证失败。
+npm 的提示用命令参数关闭（`--no-audit --no-fund --loglevel=error`）。
 
 ## 提交前
 
