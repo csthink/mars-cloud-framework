@@ -1,5 +1,8 @@
 name: CI
 
+# 基础检查：编译（含测试源码，不运行测试）、验证工具单元测试、本仓红线扫描。
+# 全量构建、全部测试与使用方兼容性构建由 tools/verify.sh 在推送前完成，见 docs/ci.md。
+
 on:
   push:
   pull_request:
@@ -14,33 +17,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Verify sources and tests
+  check:
+    name: Compile and scan sources
     runs-on: ubuntu-latest
     steps:
       - name: Checkout framework
+        id: checkout
         uses: actions/checkout@v7
         with:
-          repository: csthink/mars-cloud-framework
-          path: sources/framework
-          fetch-depth: 0
           ref: ${{ github.sha }}
-      - name: Checkout service
-        uses: actions/checkout@v7
-        with:
-          repository: csthink/mars-cloud-service
-          path: sources/service
-          fetch-depth: 0
-          ref: main
-      - name: Resolve source commits
-        id: sources
-        env:
-          EVENT_REF: ${{ github.ref }}
-        run: |
-          echo "sha=$(git -C sources/framework rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          if [ "$EVENT_REF" = refs/heads/main ]; then source=main; else source=candidate; fi
-          echo "source=$source" >> "$GITHUB_OUTPUT"
-          echo "declared=" >> "$GITHUB_OUTPUT"
       - name: Install Corretto
         id: java
         uses: actions/setup-java@v6
@@ -48,54 +33,28 @@ jobs:
           distribution: corretto
           java-version: '25'
           cache: maven
-          cache-dependency-path: |
-            sources/framework/**/pom.xml
-            sources/service/**/pom.xml
+          cache-dependency-path: '**/pom.xml'
 
       - name: Install Maven
         id: maven
         run: |
-          bash sources/framework/tools/install-maven.sh "$RUNNER_TEMP/maven"
+          bash tools/install-maven.sh "$RUNNER_TEMP/maven"
           echo "$RUNNER_TEMP/maven/apache-maven-3.9.14/bin" >> "$GITHUB_PATH"
 
       - name: Test verification tools
         id: tools
-        run: |
-          python3 -m unittest discover -s sources/framework/tools/tests -v
+        run: python3 -m unittest discover -s tools/tests -v
 
-      - name: Build exact sources
+      # -DskipTests 仍编译测试源码，只是不运行；不用 -Dmaven.test.skip。
+      - name: Compile sources
         id: compile
-        env:
-          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          FRAMEWORK_DIR: ${{ github.workspace }}/sources/framework
-          FRAMEWORK_SHA: ${{ steps.sources.outputs.sha }}
-          FRAMEWORK_SOURCE: ${{ steps.sources.outputs.source }}
-          DECLARED_FRAMEWORK: ${{ steps.sources.outputs.declared }}
-        run: |
-          bash sources/framework/tools/verify.sh \
-            --framework "$FRAMEWORK_DIR" --framework-sha "$FRAMEWORK_SHA" \
-            --service "$GITHUB_WORKSPACE/sources/service" \
-            --service-sha "$(git -C sources/service rev-parse HEAD)" \
-            --framework-source "$FRAMEWORK_SOURCE" --declared-framework "$DECLARED_FRAMEWORK" \
-            --purpose compatibility --cache "$HOME/.m2/repository" --output "$RUNNER_TEMP/verification"
+        run: mvn -B -ntp -DskipTests verify
 
       - name: Scan public sources
         id: scan
-        run: |
-          bash sources/framework/tools/check-public-safety-generic.sh sources/framework
-          bash sources/service/tools/check-public-safety-generic.sh sources/service
+        run: bash tools/check-public-safety-generic.sh .
 
-      - name: Upload verification evidence
-        id: evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: verification-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/verification/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Require every verification step
+      - name: Require every check step
         if: always()
         env:
           OUTCOMES: ${{ toJSON(steps) }}
@@ -103,45 +62,19 @@ jobs:
           python3 - <<'PYCODE'
           import json, os
           steps = json.loads(os.environ['OUTCOMES'])
-          required = ('sources', 'java', 'maven', 'tools', 'compile', 'scan', 'evidence')
+          required = ('checkout', 'java', 'maven', 'tools', 'compile', 'scan')
           failed = [name for name in required if steps.get(name, {}).get('outcome') != 'success']
           if failed:
               raise SystemExit('Required steps did not succeed: ' + ', '.join(failed))
           PYCODE
 
-  build:
-    name: 构建 + 测试 + 安全扫描
-    needs: verify
+  summary:
+    name: 编译 + 安全扫描
+    needs: check
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Require successful verification
+      - name: Require successful checks
         env:
-          RESULT: ${{ needs.verify.result }}
+          RESULT: ${{ needs.check.result }}
         run: test "$RESULT" = success
-
-  dispatch-service:
-    name: 通知 service 仓重建
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      # 跨仓触发必须用 PAT：GITHUB_TOKEN 只能操作本仓，无法 dispatch 到另一个仓。
-      # secret 未配置时**跳过而不是失败**——否则新克隆的仓一提交就红。
-      # 配置方法见 docs/ci.md。
-      - name: 触发 mars-cloud-service 的 CI
-        env:
-          DISPATCH_TOKEN: ${{ secrets.SERVICE_DISPATCH_TOKEN }}
-          # gh CLI 从 GH_TOKEN 取认证
-          GH_TOKEN: ${{ secrets.SERVICE_DISPATCH_TOKEN }}
-        run: |
-          if [ -z "${DISPATCH_TOKEN}" ]; then
-            echo "未配置 SERVICE_DISPATCH_TOKEN，跳过跨仓触发（见 docs/ci.md）。"
-            exit 0
-          fi
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/csthink/mars-cloud-service/dispatches \
-            -f event_type=framework-updated
-          echo "已向 mars-cloud-service 发送 framework-updated 事件"

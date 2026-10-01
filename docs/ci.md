@@ -1,10 +1,17 @@
 # 持续集成与正式验证
 
-所有分支的 push、指向 main 的 pull request 和手动触发都会运行 [CI](../.github/workflows/ci.yml)。工作流不推送 main。框架候选在合并前即可与 service main 构建，验证使用方兼容性。
+验证分两层：
+
+| 层 | 在哪里运行 | 内容 |
+| --- | --- | --- |
+| 正式验证 | 开发者本机，推送前 | `tools/verify.sh`：两仓源码的全量构建与全部测试，加日志审查；framework 候选与 service main 一起构建，验证使用方兼容性 |
+| 基础检查 | [CI](../.github/workflows/ci.yml)，所有分支的 push、指向 main 的 pull request 和手动触发 | 编译本仓（含测试源码，不运行测试）、验证工具单元测试、本仓公开内容扫描 |
+
+基础检查只证明推送的提交能编译、扫描通过；测试是否全部通过以正式验证报告为准。工作流不推送 main。
 
 ## 统一构建入口
 
-本地与 CI 共用 `tools/verify.sh` / `tools/verify.py`。工具链是 **Amazon Corretto JDK 25、Apache Maven 3.9.14、Python 3**。CI 通过 `tools/install-maven.sh` 下载 Maven 官方分发包并核验固定 SHA512；完整运行版本写进报告。测试 JVM 参数来自 BOM，不覆盖 `argLine`。
+正式验证的唯一入口是 `tools/verify.sh` / `tools/verify.py`。工具链是 **Amazon Corretto JDK 25、Apache Maven 3.9.14、Python 3**。`tools/install-maven.sh` 下载 Maven 官方分发包并核验固定 SHA512，基础检查用它安装 Maven；完整运行版本写进报告。测试 JVM 参数来自 BOM，不覆盖 `argLine`。
 
 正式验证明确两仓源码路径和完整 SHA，源码必须已提交且干净：
 
@@ -22,7 +29,7 @@ bash tools/verify.sh \
 
 ## 日志与报告
 
-`report.json` 记录两仓实际 SHA、工作区状态、构建目的、依赖来源、完整工具版本、Maven 命令、退出状态、测试数量、日志诊断和 CI 运行身份。PR 的临时合并 SHA 与源分支 SHA 分别记录。完整 Maven 日志和 Surefire XML 随报告上传，artifact 名含 run ID 与 attempt；保留 30 天。报告过期后须重新验证。
+`report.json` 记录两仓实际 SHA、工作区状态、构建目的、依赖来源、完整工具版本、Maven 命令、退出状态、测试数量与日志诊断；完整 Maven 日志和 Surefire XML 与它放在同一个报告目录。报告只对它记录的两个 SHA 有效，源码或依赖改变须重新验证。
 
 所有有测试源码的模块必须产生报告，每个测试类必须出现；失败、错误、跳过或缺失报告都失败。JUnit 嵌套容器按实际 testcase 计数，不能因外层计数为零而漏掉子测试。
 
@@ -30,59 +37,15 @@ bash tools/verify.sh \
 
 应用日志按级别所在行识别，诊断写成「级别 类名: 消息」。有的消息从下一行才开始，级别所在行在类名处结束；这时取下一条非空、且不是新日志记录的行作为消息，照常与允许项比对，不会因为级别所在行没有消息而漏检。
 
-## CI 输入和必需检查
+## 基础检查与必需检查
 
-framework CI 直接固定自身提交与 service main 的提交，**不调用 service 的依赖解析器**，因此不会把 framework 候选替换成 main。service CI 的依赖声明与选择规则见 [service CI](https://github.com/csthink/mars-cloud-service/blob/main/docs/ci.md)。
+CI 只检出本仓，不检出其他仓库，不上传构建产物。步骤：
 
-CI 运行工具回归、统一构建、两仓公开扫描并上传证据。必需检查名称保持 `构建 + 测试 + 安全扫描`；汇总始终运行，必要步骤缺失、跳过、取消或不是 success 都不能通过。审核结果须对应指定的 workflow、run、最新 attempt 和源码 SHA。源码或依赖改变须重新验证。
+1. 安装 Corretto 25 与 Maven 3.9.14
+2. `python3 -m unittest discover -s tools/tests`：验证工具自身的单元测试
+3. `mvn -B -ntp -DskipTests verify`：编译全部模块与测试源码，不运行测试
+4. `tools/check-public-safety-generic.sh .`：本仓公开内容扫描
+
+必需检查名称是 `编译 + 安全扫描`；汇总始终运行，必要步骤缺失、跳过、取消或不是 success 都不能通过。
 
 安全扫描只覆盖凭据 / 私钥、本机路径、内网地址等已知模式；公开内容仍需人工复核。`tools/check-public-safety-generic.sh` 是 hook 与 CI 的同一实现。当前不发布 Maven 制品。
-
-## 触发 mars-cloud-service
-
-本仓 main 的 push 构建成功后，会向 `csthink/mars-cloud-service` 发送 `framework-updated` 事件，
-让下游在框架变更后自动重建——否则「框架改了、服务没跟上」只能靠人记得去跑。
-
-跨仓触发**必须用 PAT**：工作流自带的 `GITHUB_TOKEN` 只能操作本仓，
-而且用 `GITHUB_TOKEN` 创建的事件**不会触发新的工作流运行**（GitHub 的既定行为）。
-
-**未配置该 secret 时该步骤会跳过并打印提示，不会让流水线失败**——
-否则新克隆的仓一提交就是红的。
-
-### 配置步骤（需要仓库管理员在网页操作）
-
-fine-grained PAT **只能在 GitHub 网页创建，没有 API 或 CLI 可以生成**，
-所以这一步无法由自动化代劳。权限刻意收到最小：
-
-1. 打开 <https://github.com/settings/personal-access-tokens/new>
-2. **Token name**：`mars-cloud-framework → service dispatch`
-3. **Expiration**：按组织策略选（建议 90 天，到期轮换）
-4. **Repository access** → 选 **Only select repositories** → 只勾 `csthink/mars-cloud-service`
-5. **Permissions** → Repository permissions → 只开一项：
-   **Contents: Read and write**（`repository_dispatch` 事件即由它覆盖）。
-   其余全部保持 **No access**——尤其不要给 `Administration`、`Workflows`、`Secrets`
-6. 生成后复制 token，存为本仓 secret（用管道，**不要写进命令行参数**，
-   否则会留在 shell 历史里）：
-
-   ```bash
-   printf '%s' '<粘贴 token>' | gh secret set SERVICE_DISPATCH_TOKEN -R csthink/mars-cloud-framework
-   ```
-
-7. 验证：
-
-   ```bash
-   # 查看最近一次 main push 的通知 job；手动触发不发送跨仓事件
-   gh run list -R csthink/mars-cloud-framework --branch main --event push --limit 5
-   gh run list -R csthink/mars-cloud-service --limit 5   # 应出现 event=repository_dispatch 的 run
-   ```
-
-> ⚠️ **不要用个人 CLI token（`gho_…`）充当这个 secret。** 它带 `repo` 全范围权限，
-> 远超「向一个仓发一个事件」所需。跨仓只读目标仓 + 发事件，用上面的细粒度权限就够了。
-
-### 轮换
-
-到期或怀疑泄漏时：删旧 token → 按上面步骤生成新的 → 覆盖 secret。删 secret 用：
-
-```bash
-gh secret delete SERVICE_DISPATCH_TOKEN -R csthink/mars-cloud-framework
-```
