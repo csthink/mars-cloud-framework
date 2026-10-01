@@ -565,6 +565,22 @@
     {
       "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 504\\ code=63004\\ GET\\ /upms/global\\-slow:\\ Response\\ took\\ longer\\ than\\ timeout:\\ PT3S",
       "reason": "ErrorEnvelopeContractTest deliberately exceeds the global response timeout and asserts the 504 envelope."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 504\\ code=63004\\ GET\\ /stream/x:\\ Response\\ took\\ longer\\ than\\ timeout:\\ PT1S",
+      "reason": "UpstreamBodyTimeoutTest deliberately delays the upstream headers past the streaming test route's response timeout."
+    },
+    {
+      "pattern": "WARN\\ EnvelopeErrorWebExceptionHandler:\\ 网关错误\\ 504\\ code=63004\\ GET\\ /(stream|plain|sample/body\\-timeout)/x:\\ upstream\\ sent\\ no\\ response\\ body\\ for\\ 1000\\ ms\\ after\\ [0-9]+\\ ms",
+      "reason": "UpstreamBodyTimeoutTest deliberately sends headers without a body chunk within the idle timeout, so the gateway answers 504 before committing the response."
+    },
+    {
+      "pattern": "WARN\\ UpstreamBodyTimeoutFilter:\\ Gateway\\ route\\ (stream|plain)\\-test\\ closed\\ the\\ client\\ connection:\\ upstream\\ sent\\ no\\ response\\ body\\ for\\ 1000\\ ms\\ after\\ [0-9]+\\ ms",
+      "reason": "UpstreamBodyTimeoutTest deliberately pauses a committed body longer than the idle timeout; the gateway logs one warning when it closes the connection."
+    },
+    {
+      "pattern": "WARN\\ UpstreamBodyTimeoutFilter:\\ Gateway\\ route\\ stream\\-test\\ closed\\ the\\ client\\ connection:\\ upstream\\ response\\ exceeded\\ mars\\-stream\\-max\\-duration\\ 6000\\ ms\\ after\\ [0-9]+\\ ms",
+      "reason": "UpstreamBodyTimeoutTest deliberately streams longer than the maximum duration; the gateway logs one warning when it closes the connection."
     }
   ]
 }
