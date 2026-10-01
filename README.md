@@ -256,6 +256,7 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 | Nacos client | 3.1.1（由 Spring Cloud Alibaba BOM 管理） |
 | Jackson | 3.1.5（注解仍是 `com.fasterxml.jackson.annotation` 2.21） |
 | MyBatis-Plus | 3.5.17（`mybatis-plus-spring-boot4-starter`） |
+| Spring AI | 2.0.1（`spring-ai-bom`；2.0.x 支持 Boot 4.0.x 与 4.1.x，不要升到构建于 Boot 4.2 的 2.1.x） |
 
 ## 文档
 
