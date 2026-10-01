@@ -174,7 +174,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Spring AI BOM：放在 Boot BOM 之后，Spring AI 制品以外的版本仍由 Boot BOM 决定 -->
+            <!-- Spring AI BOM：只管理 org.springframework.ai 的制品，与上面三个 BOM 没有重叠，不改变它们管理的任何版本 -->
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
