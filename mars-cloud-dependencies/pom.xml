@@ -81,6 +81,11 @@
         -->
         <sentinel-logging-slf4j.version>1.8.9</sentinel-logging-slf4j.version>
         <datasource-proxy.version>1.11.0</datasource-proxy.version>
+        <!--
+          阿里云号码认证服务（Dypnsapi 2017-05-25）的同步 SDK：一键登录取号（GetMobile）与短信认证（SendSmsVerifyCode）。
+          版本 2.0.0 于 2025-09-28 发布；它依赖的 tea、tea-openapi 等基础库不在这里单独钉版本，以 SDK 发布时的组合为准。
+        -->
+        <aliyun-dypnsapi.version>2.0.0</aliyun-dypnsapi.version>
 
         <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
@@ -293,6 +298,23 @@
                 <groupId>de.codecentric</groupId>
                 <artifactId>spring-boot-admin-starter-server</artifactId>
                 <version>${spring-boot-admin.version}</version>
+            </dependency>
+
+            <!--
+              阿里云号码认证服务的同步 SDK：登记版本，由需要调用它的服务引用。
+              它经 tea-openapi 0.3.10 以 compile 范围带入测试覆盖率代理 org.jacoco.agent（runtime 分类器），
+              运行时用不到，在这里排除，引用方不必各自排除。
+            -->
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>dypnsapi20170525</artifactId>
+                <version>${aliyun-dypnsapi.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>org.jacoco.agent</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <!-- Sentinel 的记录日志与命令中心日志经 slf4j 输出：只登记版本，供 mars-cloud-sentinel-spring-boot-starter 引用 -->
