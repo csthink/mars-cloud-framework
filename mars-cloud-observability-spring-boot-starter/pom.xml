@@ -17,7 +17,7 @@
     <packaging>jar</packaging>
 
     <name>mars-cloud-observability-spring-boot-starter</name>
-    <description>可观测性 Starter：链路追踪与 OTLP 导出、Prometheus 指标、结构化日志与 trace 关联、管理端口推导与核验、管理端点 Basic 认证、管理端口写入服务实例元数据</description>
+    <description>可观测性 Starter：追踪上下文传播、Prometheus 指标、结构化日志与 trace 关联、管理端口推导与核验、管理端点 Basic 认证、管理端口写入服务实例元数据</description>
 
     <dependencies>
         <dependency>
@@ -25,31 +25,14 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!--
-          链路追踪：Micrometer Tracing 的 OpenTelemetry 桥与 OTLP 导出。
-          排除 micrometer-registry-otlp：指标只走 Prometheus，不再向 OTLP 端点推一份。
-          排除 okhttp 发送器：默认实现会把 okhttp 与 kotlin-stdlib 带进每个部署物，
-          改用下面的 JDK HttpClient 发送器，依赖足迹由 DependencyBoundaryTest 守住。
-        -->
+        <!-- 追踪装配与上下文桥接；导出由独立部署方案配置，不传递 exporter 或 sender。 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-opentelemetry</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.micrometer</groupId>
-                    <artifactId>micrometer-registry-otlp</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.opentelemetry</groupId>
-                    <artifactId>opentelemetry-exporter-sender-okhttp</artifactId>
-                </exclusion>
-            </exclusions>
+            <artifactId>spring-boot-micrometer-tracing-opentelemetry</artifactId>
         </dependency>
-
-        <!-- OTLP 导出器的发送实现：JDK 自带的 HttpClient，不引入 okhttp 与 kotlin-stdlib -->
         <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-exporter-sender-jdk</artifactId>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
         </dependency>
 
         <!-- 指标：/actuator/prometheus -->

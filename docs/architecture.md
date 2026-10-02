@@ -192,7 +192,7 @@ broker 关闭自动创建时，starter 在启动期核验或创建主题与消�
 ### 可观测性：一条 trace 贯穿进程，日志按 traceId 关联
 
 `mars-cloud-observability-spring-boot-starter` 让每个可部署应用具备同一套可观测性：Micrometer Tracing 经
-OpenTelemetry 桥以 W3C `traceparent` 传播，结束的 span 以 OTLP over HTTP 导出；控制台日志是 Elastic Common Schema
+OpenTelemetry 桥以 W3C `traceparent` 传播，当前组件提供日志关联；集中追踪的目标后端为 Jaeger，部署时另行配置 OTLP 导出。控制台日志是 Elastic Common Schema
 的 JSON，每行带 `traceId` 与 `spanId`，日志后端据此把日志关联到调用链；指标经 `/actuator/prometheus` 输出，带应用名标签。
 响应式栈的请求在 Reactor 线程之间切换，starter 打开 Reactor 的自动上下文传播，切换后的日志行仍带当前请求的 `traceId`。
 

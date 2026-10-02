@@ -35,7 +35,7 @@ class EnvironmentVariableMappingTest {
                 .isEqualTo("health,info,prometheus,metrics,loggers,threaddump,heapdump");
     }
 
-    @Test void theTracingEndpointVariableIsMappedTheSameWay() {
+    @Test void legacyTracingEndpointIsNotMapped() {
         ConfigurableEnvironment environment = environmentWith(Map.of(
                 "OTLP_TRACING_ENDPOINT", "http://127.0.0.1:4318/v1/traces"));
 
@@ -43,7 +43,7 @@ class EnvironmentVariableMappingTest {
                 .postProcessEnvironment(environment, new SpringApplication());
 
         assertThat(environment.getProperty(MarsObservabilityDefaultsEnvironmentPostProcessor.TRACING_ENDPOINT_PROPERTY))
-                .isEqualTo("http://127.0.0.1:4318/v1/traces");
+                .isNull();
     }
 
     /** 管理端口的推导同样要在真实环境变量下成立。 */

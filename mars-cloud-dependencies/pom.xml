@@ -69,9 +69,9 @@
           实例监控：Spring Boot Admin 4.0.4 依赖 spring-boot-starter 4.0.5，与本项目的 Boot 4.0.x 同线。
           **不要升到 4.1.x**，它依赖 Boot 4.1.0。
           链路追踪与指标不在这里登记版本，它们各自的托管来源是：
-          spring-boot-starter-opentelemetry 由 spring-boot-dependencies 直接托管；
+          spring-boot-micrometer-tracing-opentelemetry 由 spring-boot-dependencies 直接托管；
           micrometer-registry-prometheus 由它导入的 micrometer-bom 托管；
-          opentelemetry-exporter-sender-jdk 由它导入的 opentelemetry-bom 托管。
+          micrometer-tracing-bridge-otel 由它导入的 micrometer-tracing-bom 托管。
           在这里单独钉版本会与 Boot 基线脱钩。
         -->
         <spring-boot-admin.version>4.0.4</spring-boot-admin.version>

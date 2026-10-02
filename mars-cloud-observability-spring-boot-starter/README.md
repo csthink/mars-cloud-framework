@@ -1,6 +1,6 @@
 # mars-cloud-observability-spring-boot-starter
 
-可观测性 starter：链路追踪（Micrometer Tracing 加 OpenTelemetry 桥，OTLP 导出）、Prometheus 指标、
+可观测性 starter：链路追踪（Micrometer Tracing 加 OpenTelemetry 桥，上下文传播）、Prometheus 指标、
 带 `traceId` 的结构化日志，以及管理端点的端口、暴露面与 Basic 认证约定。每个可部署应用都引入它。
 
 ## 坐标
@@ -12,9 +12,10 @@
 </dependency>
 ```
 
-它带来 `spring-boot-starter-actuator`、`spring-boot-starter-opentelemetry`、`micrometer-registry-prometheus`
-与 OTLP 导出器的 JDK `HttpClient` 发送实现。已排除 okhttp 发送器（连同 kotlin-stdlib）与 OTLP 指标注册表：
-指标只走 Prometheus。部署物删掉自己的 Actuator、指标注册表依赖与 `management.*` 配置，由本 starter 统一给出。
+它带来 `spring-boot-starter-actuator`、`spring-boot-micrometer-tracing-opentelemetry`、
+`micrometer-tracing-bridge-otel` 与 `micrometer-registry-prometheus`，不传递 OTLP exporter 或 sender。
+指标只走 Prometheus。部署物删掉自己的 Actuator、指标注册表依赖，由本 starter 统一给出。
+Jaeger 仍是集中追踪的目标后端，部署它时需另行配置导出组件；当前组件提供日志关联与上下文传播。
 
 管理端点的认证链需要 Spring Boot 的 Web 安全模块。需要认证的部署物在自己的 POM 里声明：
 
@@ -32,7 +33,6 @@
 | 变量 | 作用 |
 | --- | --- |
 | `MARS_MANAGEMENT_USERNAME` / `MARS_MANAGEMENT_PASSWORD` | 管理端点 Basic 认证的唯一账号。对应属性 `mars.observability.management.username` / `password`。口令用 bcrypt 编码，不能超过 72 字节（按 UTF-8 计），超过时启动失败 |
-| `OTLP_TRACING_ENDPOINT` | 调用链导出端点，OTLP over HTTP 的完整地址，例如 `http://127.0.0.1:4318/v1/traces`。留空则不导出，应用照常启动 |
 
 显式配置的属性优先于这几个环境变量；属性配置为空白时视为没有配置，仍读环境变量。属性的宽松绑定形式
 （如 `MARS_OBSERVABILITY_MANAGEMENT_USERNAME`）同样有效。
@@ -58,7 +58,6 @@ starter 在环境末尾追加最低优先级的属性源（推导出的管理地
 | `management.endpoint.health.probes.enabled` | `true` | 提供 `liveness` 与 `readiness` 探针组 |
 | `management.metrics.tags.application` | `${spring.application.name}` | 每个指标带应用名标签 |
 | `management.tracing.sampling.probability` | `1.0` | 全量采样；生产按流量在配置中心调低 |
-| `management.opentelemetry.tracing.export.otlp.endpoint` | 取 `OTLP_TRACING_ENDPOINT` | Spring Boot 4 的属性名。Boot 3 的 `management.otlp.tracing.endpoint` 在 Boot 4 已废弃，配上去不报错也不生效 |
 | `spring.reactor.context-propagation` | `auto` | 请求在 Reactor 线程之间切换后，日志仍带当前的 `traceId`（见「日志」） |
 | `logging.structured.format.console` | `ecs` | `mars.observability.logging.console-format=plain` 时不写这一项 |
 
@@ -133,7 +132,8 @@ Web 应用的认证链没有装配时，生效的清单只能包含 `health` 与
 
 采用 Micrometer Tracing 的 OpenTelemetry 桥，传播格式为 W3C `traceparent`（Spring Boot 默认）。Feign 调用、
 Spring Cloud Gateway 转发与 RocketMQ 消息各自经 Micrometer 的观测传播 trace，本 starter 提供 `Tracer` 与
-`Propagator` 的运行时实现与导出。结束的 span 以 OTLP over HTTP（protobuf）送到 `OTLP_TRACING_ENDPOINT`，
+`Propagator` 的运行时实现与上下文传播。追踪器生成的 `traceId`、`spanId` 写入结构化日志，
+不向追踪后端发送 span。旧 OTLP 地址和导出开关不能在缺少 exporter 的组件中产生网络发送。
 `service.name` 取 `spring.application.name`。
 
 ## 日志

@@ -22,21 +22,13 @@ import org.springframework.test.context.TestExecutionListeners;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
-/**
- * 追踪导出：结束的 span 会以 OTLP 协议送到配置的端点。
- *
- * <p>测试自己起一个回环 HTTP 接收器当作追踪后端，断言收到的请求走的是
- * protobuf over HTTP，正文里带应用名。这样既验证了导出链路，也不依赖真实后端。
- * 采样比例不在这里设置：用例走组件的默认值，Spring Boot 自己的默认值只采样十分之一。
- */
+
+/** 旧导出配置存在时仍可生成与传播上下文，发送与关闭阶段都无导出请求。 */
 @SpringBootTest(classes = PlainProbeApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
@@ -57,6 +49,8 @@ class TracingExportTest {
 
     @Autowired Tracer tracer;
     @Autowired Environment environment;
+    @Autowired io.micrometer.tracing.propagation.Propagator propagator;
+    @Autowired org.springframework.context.ApplicationContext context;
 
     @BeforeAll
     static void startCollector() throws IOException {
@@ -65,12 +59,6 @@ class TracingExportTest {
         server.start();
     }
 
-    /**
-     * 接收器在应用上下文关闭之后才停：上下文里的批量导出器关闭时把尚未发送的 span 发给仍在运行的接收器。
-     * 在 {@code @AfterAll} 里停会早于上下文关闭，上下文此后仍按周期导出，连接失败在重试用尽后记一条 ERROR，
-     * 构建校验器把它判为未登记的诊断。{@code afterTestClass} 按监听器顺序倒序调用，最高优先级的这个监听器
-     * 排在 {@link DirtiesContext} 关闭上下文之后。
-     */
     static final class StopCollectorAfterContext implements TestExecutionListener, Ordered {
 
         @Override
@@ -80,7 +68,12 @@ class TracingExportTest {
 
         @Override
         public void afterTestClass(TestContext testContext) {
-            server.stop(0);
+            try {
+                assertThat(received).isEmpty();
+            }
+            finally {
+                server.stop(0);
+            }
         }
     }
 
@@ -88,16 +81,8 @@ class TracingExportTest {
     static void collectorEndpoint(DynamicPropertyRegistry registry) {
         registry.add(MarsObservabilityDefaultsEnvironmentPostProcessor.TRACING_ENDPOINT_PROPERTY,
                 () -> "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/traces");
-    }
-
-    /**
-     * 阳性对照：Boot 3 的属性名在 Boot 4 已按 error 级废弃，配上去既不报错也不生效。
-     * 把它钉在这里，避免有人照旧文档改回旧名后，导出静默失效却没人发现。
-     */
-    @Test void theLegacyPropertyNameIsNotTheOneWeWrite() {
-        assertThat(MarsObservabilityDefaultsEnvironmentPostProcessor.TRACING_ENDPOINT_PROPERTY)
-                .isEqualTo("management.opentelemetry.tracing.export.otlp.endpoint")
-                .isNotEqualTo("management.otlp.tracing.endpoint");
+        registry.add("OTLP_TRACING_ENDPOINT", () -> "http://127.0.0.1:" + server.getAddress().getPort() + "/v1/traces");
+        registry.add("management.tracing.export.otlp.enabled", () -> "true");
     }
 
     /** 组件默认全量采样；生产按流量在配置中心调低。 */
@@ -105,23 +90,21 @@ class TracingExportTest {
         assertThat(environment.getProperty("management.tracing.sampling.probability")).isEqualTo("1.0");
     }
 
-    @Test void finishedSpansReachTheConfiguredEndpoint() {
-        Span span = tracer.nextSpan().name("exported-span").start();
+    @Test void propagatesWithoutExporting() throws Exception {
+        assertThat(context.getBeansOfType(io.opentelemetry.sdk.trace.export.SpanExporter.class)).isEmpty();
+        Span span = tracer.nextSpan().name("local-span").start();
+        java.util.Map<String, String> headers = new java.util.HashMap<>();
         try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
-            span.tag("probe", "tracing-export");
+            propagator.inject(span.context(), headers, java.util.Map::put);
+            assertThat(org.slf4j.MDC.get("traceId")).isEqualTo(span.context().traceId());
         }
-        finally {
-            span.end();
-        }
-
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertThat(received).isNotEmpty());
-
-        Received first = received.get(0);
-        assertThat(first.path()).isEqualTo("/v1/traces");
-        assertThat(first.contentType()).isEqualTo("application/x-protobuf");
-        assertThat(new String(first.body(), StandardCharsets.ISO_8859_1))
-                .contains("tracing-probe")
-                .contains("exported-span");
+        Span child = propagator.extract(headers, java.util.Map::get).name("received-span").start();
+        assertThat(child.context().traceId()).isEqualTo(span.context().traceId());
+        assertThat(child.context().spanId()).isNotEqualTo(span.context().spanId());
+        child.end();
+        span.end();
+        Thread.sleep(5500);
+        assertThat(received).isEmpty();
     }
 
     private static void record(HttpExchange exchange) throws IOException {

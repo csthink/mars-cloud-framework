@@ -9,9 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DependencyBoundaryTest {
 
-    /** OTLP 的发送实现用 JDK 自带的 HttpClient。 */
-    @Test void otlpUsesTheJdkSender() {
-        assertThat(present("io.opentelemetry.exporter.sender.jdk.internal.JdkHttpSender")).isTrue();
+    /** 追踪传播不传递网络导出器与发送器。 */
+    @Test void doesNotBringExportersOrSenders() {
+        assertThat(present("io.opentelemetry.exporter.sender.jdk.internal.JdkHttpSender")).isFalse();
+        assertThat(present("io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter")).isFalse();
+        assertThat(present("io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter")).isFalse();
+        assertThat(present("io.opentelemetry.exporter.sender.okhttp.internal.OkHttpHttpSender")).isFalse();
     }
 
     /** 默认的 okhttp 发送器会把 okhttp 与 Kotlin 运行时带进每个部署物，已排除。 */

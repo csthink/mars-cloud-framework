@@ -123,7 +123,7 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 </dependency>
 ```
 
-该 starter 固定链路追踪与 OTLP 导出、Prometheus 指标、带 `traceId` 的结构化日志，以及管理端口（业务端口加 1000）、
+该 starter 固定追踪上下文传播、Prometheus 指标、带 `traceId` 的结构化日志，以及管理端口（业务端口加 1000）、
 管理端点暴露面与 Basic 认证约定。配置项与环境变量见
 [`mars-cloud-observability-spring-boot-starter/README.md`](mars-cloud-observability-spring-boot-starter/README.md)。
 
@@ -172,7 +172,7 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 | [`mars-cloud-security-feign`](mars-cloud-security-feign/README.md) | Servlet 权限服务调用及当前用户令牌转发 |
 | [`mars-cloud-security-test-support`](mars-cloud-security-test-support/README.md) | 仅测试使用的临时 RSA 签发器与 JWKS 服务 |
 | [`mars-cloud-rocketmq-spring-boot-starter`](mars-cloud-rocketmq-spring-boot-starter/README.md) | RocketMQ 事件消息：事务发送、消费约定、上下文透传、主题核验与运行环境前缀 |
-| [`mars-cloud-observability-spring-boot-starter`](mars-cloud-observability-spring-boot-starter/README.md) | 链路追踪与 OTLP 导出、Prometheus 指标、结构化日志与 trace 关联、管理端口与管理端点认证 |
+| [`mars-cloud-observability-spring-boot-starter`](mars-cloud-observability-spring-boot-starter/README.md) | 追踪上下文传播、Prometheus 指标、结构化日志与 trace 关联、管理端口与管理端点认证 |
 | [`mars-cloud-sentinel-spring-boot-starter`](mars-cloud-sentinel-spring-boot-starter/README.md) | Sentinel 限流降级：规则只从 Nacos 读取并整批校验、网关按客户端地址限流、Feign 客户端资源 |
 | [`mars-cloud-job-spring-boot-starter`](mars-cloud-job-spring-boot-starter/README.md) | 周期任务执行器：实现 xxl-job-admin 执行器协议、执行器命名端口与地址、访问令牌、任务方法登记与链路追踪 |
 

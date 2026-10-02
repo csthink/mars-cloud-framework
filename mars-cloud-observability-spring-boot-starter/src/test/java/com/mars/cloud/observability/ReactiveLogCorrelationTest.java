@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>日志的 traceId 取自线程本地的 MDC，而 Boot 默认的
  * {@code spring.reactor.context-propagation=limited} 不会在切换线程时把当前观测恢复进来，
- * 结果是调用链在追踪后端里完整，日志行却丢失 traceId，按 traceId 从日志查不到这个应用的记录。
+ * 结果是日志行丢失 traceId，按 traceId 从日志查不到这个应用的记录。
  */
 @SpringBootTest(classes = ReactiveProbeApplication.class,
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -49,21 +49,32 @@ class ReactiveLogCorrelationTest {
 
     @Test void logLineAfterAThreadSwitchCarriesTheIncomingTraceId(CapturedOutput output)
             throws IOException, InterruptedException {
+        verifyThreadSwitch(output, TRACEPARENT, TRACE_ID);
+    }
+
+    @Test void unsampledRequestKeepsContextAfterThreadSwitch(CapturedOutput output)
+            throws IOException, InterruptedException {
+        verifyThreadSwitch(output, "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-00f067aa0ba902b7-00", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    }
+
+    private void verifyThreadSwitch(CapturedOutput output, String parent, String traceId)
+            throws IOException, InterruptedException {
         HttpResponse<String> response = HttpClient.newHttpClient().send(
                 HttpRequest.newBuilder(URI.create(
                                 "http://127.0.0.1:" + businessPort + "/business/after-thread-switch"))
-                        .header("traceparent", TRACEPARENT)
+                        .header("traceparent", parent)
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
         assertThat(response.body()).isEqualTo("after-thread-switch-ok");
 
         String line = Arrays.stream(output.toString().split("\n"))
                 .filter(candidate -> candidate.startsWith("{")
-                        && candidate.contains(ReactiveProbeApplication.AFTER_THREAD_SWITCH_MARKER))
+                        && candidate.contains(ReactiveProbeApplication.AFTER_THREAD_SWITCH_MARKER)
+                        && candidate.contains(traceId))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("没有找到 JSON 格式的日志行；实际输出：" + output));
         // 先确认这一行确实写在 Reactor 的 parallel 线程上，否则用例测不到线程切换。
         assertThat(line).contains("\"name\":\"parallel-");
-        assertThat(line).contains("\"traceId\":\"" + TRACE_ID + "\"");
+        assertThat(line).contains("\"traceId\":\"" + traceId + "\"");
     }
 }

@@ -24,7 +24,7 @@ import java.util.Map;
 public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
     static final String PROPERTY_SOURCE_NAME = "marsObservabilityDefaults";
-    /** Boot 4 的 OTLP 追踪导出端点属性名；Boot 3 的 management.otlp.tracing.endpoint 已失效。 */
+    /** 历史导出端点属性名，保留常量供兼容；组件不再映射或使用它。 */
     public static final String TRACING_ENDPOINT_PROPERTY =
             "management.opentelemetry.tracing.export.otlp.endpoint";
     /** 管理端点认证账号的属性名，对应环境变量 MARS_MANAGEMENT_USERNAME。 */
@@ -65,18 +65,12 @@ public final class MarsObservabilityDefaultsEnvironmentPostProcessor implements 
         defaults.put("management.endpoint.health.probes.enabled", true);
         defaults.put("management.metrics.tags.application", "${spring.application.name:unknown}");
 
-        // 链路追踪：全量采样，生产按流量在配置中心调低；导出端点由环境变量给出。
-        // 属性名用 Boot 4 的前缀。Boot 3 的 management.otlp.tracing.* 在 4.0 已按 error 级废弃，
-        // 但配上去既不报错也不生效，导出器会静默地不创建，所以这里不能沿用旧名。
+        // 保留采样与传播，不装配导出器。
         defaults.put("management.tracing.sampling.probability", "1.0");
-        String endpoint = environment.getProperty("OTLP_TRACING_ENDPOINT");
-        if (endpoint != null && !endpoint.isBlank()) {
-            defaults.put(TRACING_ENDPOINT_PROPERTY, endpoint);
-        }
 
         // 日志的 traceId 取自线程本地的 MDC。响应式栈的请求在 Reactor 线程之间切换，
         // Boot 默认的 limited 不会在切换后把当前观测恢复进来，切换之后的日志行因此丢失 traceId，
-        // 而调用链在追踪后端里是完整的。auto 让 Reactor 在每个操作符上恢复它。
+        // auto 让 Reactor 在每个操作符上恢复它。
         // 不按 Web 栈区分：Servlet 部署物里经 Reactor 执行的调用（例如 WebClient）切换线程时是同一机制。
         defaults.put("spring.reactor.context-propagation", "auto");
 
