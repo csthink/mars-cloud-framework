@@ -85,6 +85,16 @@ class AccountDeletionEventsTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"1.0", "1.5", "1.9", "1e0", "\"1\"", "true", "[]", "{}", "2147483648"})
+    void versionMustBeAnIntegerJsonTokenWithoutCoercion(String versionJson) {
+        for (Object payload : new Object[]{deleted(), completed(Participant.NOTICE)}) {
+            String invalid = MAPPER.writeValueAsString(payload).replace("\"schema_version\":1", "\"schema_version\":" + versionJson);
+            assertThatThrownBy(() -> MAPPER.readValue(invalid, payload.getClass()))
+                    .isInstanceOf(tools.jackson.core.JacksonException.class);
+        }
+    }
+
+    @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "\t\n"})
     void blankIdentifiersAreRejectedInConstructorsAndJson(String value) {

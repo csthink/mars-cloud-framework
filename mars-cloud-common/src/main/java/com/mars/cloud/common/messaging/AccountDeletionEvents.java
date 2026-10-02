@@ -3,6 +3,11 @@ package com.mars.cloud.common.messaging;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -61,7 +66,8 @@ public final class AccountDeletionEvents {
      * @param deletedAt 账号注销时间
      */
     public record AccountDeleted(
-            @JsonProperty(value = "schema_version", required = true) int schemaVersion,
+            @JsonProperty(value = "schema_version", required = true)
+            @JsonDeserialize(using = SchemaVersionDeserializer.class) int schemaVersion,
             @JsonProperty(value = "request_id", required = true) String requestId,
             @JsonProperty(value = "user_id", required = true) String userId,
             @JsonProperty(value = "deleted_at", required = true) Instant deletedAt) {
@@ -91,7 +97,8 @@ public final class AccountDeletionEvents {
      * @param completedAt 该参与方的清理完成时间
      */
     public record AccountDataDeleted(
-            @JsonProperty(value = "schema_version", required = true) int schemaVersion,
+            @JsonProperty(value = "schema_version", required = true)
+            @JsonDeserialize(using = SchemaVersionDeserializer.class) int schemaVersion,
             @JsonProperty(value = "request_id", required = true) String requestId,
             @JsonProperty(value = "user_id", required = true) String userId,
             @JsonProperty(value = "deleted_at", required = true) Instant deletedAt,
@@ -111,6 +118,17 @@ public final class AccountDeletionEvents {
         /** 返回按请求编号和参与方组成的业务键。 */
         public String businessKey() {
             return requestId + ":" + participant.value();
+        }
+    }
+
+    /** 仅供本契约的版本字段使用，拒绝小数及字符串到整数的隐式转换。 */
+    public static final class SchemaVersionDeserializer extends ValueDeserializer<Integer> {
+        @Override
+        public Integer deserialize(JsonParser parser, DeserializationContext context) {
+            if (!parser.hasToken(JsonToken.VALUE_NUMBER_INT)) {
+                return context.reportInputMismatch(Integer.class, "schema_version 必须是 JSON 整数");
+            }
+            return parser.getIntValue();
         }
     }
 

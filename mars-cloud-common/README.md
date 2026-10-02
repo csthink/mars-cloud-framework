@@ -67,7 +67,7 @@ EventEnvelope<OrderPaid> event = EventEnvelope.of("PAID", "mars-cloud-order-serv
 `AccountDeletionEvents` 提供 `account-event` 主题与 `ACCOUNT_DELETED`、`ACCOUNT_DATA_DELETED` 两种 tag。
 `AccountDeleted` 载荷含 `schema_version`（当前为 1）、`request_id`、字符串 `user_id` 和 `deleted_at`；
 `AccountDataDeleted` 再增加 `participant`（notice、upms 或 lingai）与 `completed_at`。时间采用 ISO-8601 UTC 格式。
-构造和反序列化拒绝未知版本、空编号、空时间与未知参与方；消息不含手机号或凭据。
+构造和反序列化拒绝未知版本、空编号、空时间与未知参与方；JSON 版本字段只接受整数，不将小数或字符串转成整数。消息不含手机号或凭据。
 
 载荷放入既有 `EventEnvelope`，`event_type` 使用相应 tag，信封和消息的业务键使用载荷的 `businessKey()`：
 注销事件为请求编号，清理结果为请求编号加冒号和参与方标识。主题、消费组和生产者组仍由运行环境统一加前缀。
