@@ -22,7 +22,7 @@
 | `com.mars.cloud.common.error` | 错误码契约 `ErrorCode` |
 | `com.mars.cloud.common.exception` | 与实现无关的通用异常，目前是 `LockFailureException` |
 | `com.mars.cloud.common.context` | 调用方上下文 `CallerContext`、阻塞线程上下文持有者与内部请求头名 |
-| `com.mars.cloud.common.messaging` | 事件消息信封 `EventEnvelope`、与中间件无关的消息头名 `MessagingHeaders`、主题与消费组命名规则 `MessagingNames` |
+| `com.mars.cloud.common.messaging` | 事件消息信封 `EventEnvelope`、与中间件无关的消息头名 `MessagingHeaders`、主题与消费组命名规则 `MessagingNames`、账号注销消息契约 `AccountDeletionEvents` |
 | `com.mars.cloud.common.domain.util` | 通用工具：`IDGenerator`、`JsonUtil`、`TimeUtils` |
 
 ### CallerContext
@@ -61,6 +61,21 @@ EventEnvelope<OrderPaid> event = EventEnvelope.of("PAID", "mars-cloud-order-serv
 
 `MessagingHeaders` 只放与中间件无关的头名：`traceparent`、`tracestate` 与 `X-Mars-Event-Id`；
 调用方身份继续用 `InternalCallHeaders` 的三个头名。中间件特有的头名由对应的 starter 定义。
+
+### 账号注销消息
+
+`AccountDeletionEvents` 提供 `account-event` 主题与 `ACCOUNT_DELETED`、`ACCOUNT_DATA_DELETED` 两种 tag。
+`AccountDeleted` 载荷含 `schema_version`（当前为 1）、`request_id`、字符串 `user_id` 和 `deleted_at`；
+`AccountDataDeleted` 再增加 `participant`（notice、upms 或 lingai）与 `completed_at`。时间采用 ISO-8601 UTC 格式。
+构造和反序列化拒绝未知版本、空编号、空时间与未知参与方；消息不含手机号或凭据。
+
+载荷放入既有 `EventEnvelope`，`event_type` 使用相应 tag，信封和消息的业务键使用载荷的 `businessKey()`：
+注销事件为请求编号，清理结果为请求编号加冒号和参与方标识。主题、消费组和生产者组仍由运行环境统一加前缀。
+发送时使用已持久化的事件标识；重投同一业务事实时保留该标识，避免每次重投生成新身份。
+
+这些类型只提供消息格式，不自动执行账号注销、数据删除、来源认证或幂等处理。
+消费方须校验信封事件类型、业务键、版本和生产应用与参与方的对应关系，并通过 broker 权限限制发布来源；
+载荷声明的参与方不能作为来源认证。一个参与方的结果只表示该服务完成，全部参与方完成需要生产应用另行汇总。
 
 ### UnifyResponse
 
