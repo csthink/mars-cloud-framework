@@ -169,11 +169,11 @@
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
-      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event（小写字母、数字与单个连字符），收到:\\ Payment",
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event\\ 或是固定账号清理结果主题（小写字母、数字与单个连字符），收到:\\ Payment",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
-      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event（小写字母、数字与单个连字符），收到:\\ payment",
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event\\ 或是固定账号清理结果主题（小写字母、数字与单个连字符），收到:\\ payment",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
@@ -455,6 +455,18 @@
     {
       "pattern": "WARN\\ NacosReadinessEvaluator:\\ Readiness\\ check\\ failed:\\ TimeoutException",
       "reason": "RegistrationLifecycleTest deliberately stalls the complete readiness check and verifies that no checks overlap."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event\\ 或是固定账号清理结果主题（小写字母、数字与单个连字符），收到:\\ account\\-data\\-deleted\\-support",
+      "reason": "RocketMqConventionVerifierTest deliberately rejects an unregistered account result topic."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event\\ 或是固定账号清理结果主题（小写字母、数字与单个连字符），收到:\\ account\\-data\\-deleted\\-notice\\-extra",
+      "reason": "RocketMqConventionVerifierTest deliberately rejects an unregistered account result topic."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event\\ 或是固定账号清理结果主题（小写字母、数字与单个连字符），收到:\\ s5\\-account\\-data\\-deleted\\-notice",
+      "reason": "RocketMqConventionVerifierTest deliberately rejects an unregistered account result topic."
     }
   ],
   "service": [
