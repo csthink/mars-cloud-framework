@@ -29,7 +29,7 @@ RocketMQ 消息 starter：Spring Cloud Stream 函数式模型加 Spring Cloud Al
 
 ## 配置约定
 
-主题名形如 `<domain>-event`，消费组名必须是 `<应用名>-<主题>`；每个生产 binding 必须显式配置 `producer.group`，
+主题名形如 `<domain>-event`，或为 `account-data-deleted-notice`、`account-data-deleted-upms`、`account-data-deleted-lingai` 三个固定结果主题；消费组名必须是 `<应用名>-<主题>`；每个生产 binding 必须显式配置 `producer.group`，
 以 `<应用名>-` 开头且进程内唯一（binder 默认的 anonymous 组会让同主题的生产者共用客户端实例，broker 也按生产者组路由事务回查）。
 三者都只写不带前缀的名字，starter 加运行环境前缀；tag 是大写事件名。启动期校验不满足即失败，错误消息说明违反的规则。
 

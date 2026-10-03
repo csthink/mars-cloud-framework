@@ -15,7 +15,7 @@ import java.util.Objects;
 /**
  * 账号注销与服务数据清理结果的消息契约。载荷通过 {@link EventEnvelope} 发送。
  *
- * <p>这里只校验载荷结构；事件来源、业务键与信封的一致性、事务及幂等处理由应用负责。
+ * <p>提供载荷结构及显式消息一致性校验；broker 来源认证、事务及幂等处理由应用负责。
  */
 public final class AccountDeletionEvents {
 
@@ -28,17 +28,43 @@ public final class AccountDeletionEvents {
     /** 当前载荷版本。 */
     public static final int SCHEMA_VERSION = 1;
 
+    /** auth 专用的账号注销事件生产应用。 */
+    public static final String AUTH_PRODUCER = "mars-cloud-auth-service";
+    /** notice 独占发布的清理结果主题，不带运行环境前缀。 */
+    public static final String NOTICE_RESULT_TOPIC = "account-data-deleted-notice";
+    /** UPMS 独占发布的清理结果主题，不带运行环境前缀。 */
+    public static final String UPMS_RESULT_TOPIC = "account-data-deleted-upms";
+    /** lingai 独占发布的清理结果主题，不带运行环境前缀。 */
+    public static final String LINGAI_RESULT_TOPIC = "account-data-deleted-lingai";
+
     private AccountDeletionEvents() {
     }
 
     /** 数据清理参与方，JSON 使用固定的小写标识。 */
     public enum Participant {
-        NOTICE("notice"), UPMS("upms"), LINGAI("lingai");
+        NOTICE("notice", NOTICE_RESULT_TOPIC, "mars-cloud-notice-service"),
+        UPMS("upms", UPMS_RESULT_TOPIC, "mars-cloud-upms-service"),
+        LINGAI("lingai", LINGAI_RESULT_TOPIC, "mars-cloud-lingai-service");
 
         private final String value;
 
-        Participant(String value) {
+        private final String resultTopic;
+        private final String producer;
+
+        Participant(String value, String resultTopic, String producer) {
             this.value = value;
+            this.resultTopic = resultTopic;
+            this.producer = producer;
+        }
+
+        /** 不带运行环境前缀的清理结果主题。 */
+        public String resultTopic() {
+            return resultTopic;
+        }
+
+        /** 本参与方对应的固定生产应用名。 */
+        public String producer() {
+            return producer;
         }
 
         @JsonValue
@@ -118,6 +144,67 @@ public final class AccountDeletionEvents {
         /** 返回按请求编号和参与方组成的业务键。 */
         public String businessKey() {
             return requestId + ":" + participant.value();
+        }
+    }
+
+    /** 判断不带运行环境前缀的主题是否是三个固定的清理结果主题之一。 */
+    public static boolean isResultTopic(String topic) {
+        return NOTICE_RESULT_TOPIC.equals(topic) || UPMS_RESULT_TOPIC.equals(topic) || LINGAI_RESULT_TOPIC.equals(topic);
+    }
+
+    /**
+     * 校验账号注销消息的一致性并返回类型确定的载荷。
+     *
+     * <p>topic、tag、key 必须来自实际收到的消息，不能从信封复制。prefix 来自应用配置。
+     * 此校验不代替 broker 的应用身份及主题发布权限，也不核实注销业务事实。
+     *
+     * @param prefix 配置的运行环境前缀，无前缀时传空字符串
+     * @param topic 实际收到的完整主题名
+     * @param tag 实际收到的 tag
+     * @param key 实际收到的业务键
+     * @param event 已反序列化载荷的信封
+     * @return 账号注销载荷
+     */
+    public static AccountDeleted validateDeleted(String prefix, String topic, String tag, String key, EventEnvelope<?> event) {
+        Objects.requireNonNull(event, "event 不能为空");
+        if (!(event.payload() instanceof AccountDeleted payload)) {
+            throw new IllegalArgumentException("payload 必须是 AccountDeleted");
+        }
+        validateDelivery(prefix, TOPIC, ACCOUNT_DELETED, AUTH_PRODUCER, payload.businessKey(), topic, tag, key, event);
+        return payload;
+    }
+
+    /**
+     * 校验参与方结果消息的一致性并返回类型确定的载荷。
+     *
+     * <p>主题与生产应用按载荷参与方的固定映射校验，拒绝通过共用账号主题传送结果。
+     * topic、tag、key 必须来自实际消息；应用仍须用 broker 独立身份限制发布权限。
+     *
+     * @param prefix 配置的运行环境前缀，无前缀时传空字符串
+     * @param topic 实际收到的完整主题名
+     * @param tag 实际收到的 tag
+     * @param key 实际收到的业务键
+     * @param event 已反序列化载荷的信封
+     * @return 参与方清理结果载荷
+     */
+    public static AccountDataDeleted validateResult(String prefix, String topic, String tag, String key, EventEnvelope<?> event) {
+        Objects.requireNonNull(event, "event 不能为空");
+        if (!(event.payload() instanceof AccountDataDeleted payload)) {
+            throw new IllegalArgumentException("payload 必须是 AccountDataDeleted");
+        }
+        Participant participant = payload.participant();
+        validateDelivery(prefix, participant.resultTopic(), ACCOUNT_DATA_DELETED, participant.producer(),
+                payload.businessKey(), topic, tag, key, event);
+        return payload;
+    }
+
+    private static void validateDelivery(String prefix, String rawTopic, String type, String producer, String businessKey,
+                                         String topic, String tag, String key, EventEnvelope<?> event) {
+        if (!MessagingNames.withPrefix(prefix, rawTopic).equals(topic)
+                || !type.equals(tag) || !type.equals(event.eventType())
+                || !businessKey.equals(key) || !businessKey.equals(event.key())
+                || !producer.equals(event.producer())) {
+            throw new IllegalArgumentException("账号注销消息的主题、事件类型、业务键或生产应用不一致");
         }
     }
 

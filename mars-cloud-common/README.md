@@ -55,7 +55,7 @@ Reactive 代码只复用 `CallerContext` 值对象与 `InternalCallHeaders`，�
 EventEnvelope<OrderPaid> event = EventEnvelope.of("PAID", "mars-cloud-order-service", orderId, new OrderPaid(orderId, amount));
 ```
 
-`MessagingNames` 给出主题名 `<domain>-event`、消费组名 `<应用名>-<主题>` 与 tag 的形态校验，
+`MessagingNames` 给出主题名 `<domain>-event`（账号清理结果另有三个固定主题）、消费组名 `<应用名>-<主题>` 与 tag 的形态校验，
 以及运行环境前缀的增删：`withPrefix("s1-", "order-event")` 得到 `s1-order-event`，已带前缀的名字再加前缀会被拒绝。
 主题名与消费组名必须一起加前缀，因为 RocketMQ 要求同一消费组的订阅完全一致。
 
@@ -64,7 +64,17 @@ EventEnvelope<OrderPaid> event = EventEnvelope.of("PAID", "mars-cloud-order-serv
 
 ### 账号注销消息
 
-`AccountDeletionEvents` 提供 `account-event` 主题与 `ACCOUNT_DELETED`、`ACCOUNT_DATA_DELETED` 两种 tag。
+`AccountDeletionEvents` 提供账号注销与参与方清理结果的主题映射，tag 分别为 `ACCOUNT_DELETED` 与 `ACCOUNT_DATA_DELETED`。
+
+| 不带环境前缀的主题 | 发布应用 | tag |
+| --- | --- | --- |
+| `account-event` | `mars-cloud-auth-service` | `ACCOUNT_DELETED` |
+| `account-data-deleted-notice` | `mars-cloud-notice-service` | `ACCOUNT_DATA_DELETED` |
+| `account-data-deleted-upms` | `mars-cloud-upms-service` | `ACCOUNT_DATA_DELETED` |
+| `account-data-deleted-lingai` | `mars-cloud-lingai-service` | `ACCOUNT_DATA_DELETED` |
+
+`Participant.resultTopic()` 和 `Participant.producer()` 返回结果主题与对应生产应用。
+`MessagingNames` 只对这三个固定结果主题增加命名许可；其他不以 `-event` 结尾的主题仍被拒绝。
 `AccountDeleted` 载荷含 `schema_version`（当前为 1）、`request_id`、字符串 `user_id` 和 `deleted_at`；
 `AccountDataDeleted` 再增加 `participant`（notice、upms 或 lingai）与 `completed_at`。时间采用 ISO-8601 UTC 格式。
 构造和反序列化拒绝未知版本、空编号、空时间与未知参与方；JSON 版本字段只接受整数，不将小数或字符串转成整数。消息不含手机号或凭据。
@@ -73,8 +83,10 @@ EventEnvelope<OrderPaid> event = EventEnvelope.of("PAID", "mars-cloud-order-serv
 注销事件为请求编号，清理结果为请求编号加冒号和参与方标识。主题、消费组和生产者组仍由运行环境统一加前缀。
 发送时使用已持久化的事件标识；重投同一业务事实时保留该标识，避免每次重投生成新身份。
 
-这些类型只提供消息格式，不自动执行账号注销、数据删除、来源认证或幂等处理。
-消费方须校验信封事件类型、业务键、版本和生产应用与参与方的对应关系，并通过 broker 权限限制发布来源；
+消费方可显式调用 `validateDeleted(prefix, topic, tag, key, event)` 或 `validateResult(prefix, topic, tag, key, event)`。
+`prefix` 来自应用配置，`topic`、`tag`、`key` 必须取自实际收到的消息，不能用信封字段替代；载荷须先反序列化为对应记录类型。
+方法检查带前缀的主题、tag、业务键、信封及载荷类型与生产应用映射，成功返回载荷，不执行账号注销、数据删除或幂等处理。
+应用仍须核对持久化业务事实，并通过 broker 的独立应用身份和主题发布权限限制来源；
 载荷声明的参与方不能作为来源认证。一个参与方的结果只表示该服务完成，全部参与方完成需要生产应用另行汇总。
 
 ### UnifyResponse

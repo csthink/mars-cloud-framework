@@ -1,6 +1,8 @@
 package com.mars.cloud.rocketmq;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +57,25 @@ class RocketMqConventionVerifierTest {
         assertFails(runner.withPropertyValues("spring.cloud.stream.bindings.paymentPlain-out-0.destination="), "必须显式配置 destination");
         assertFails(runner.withPropertyValues("spring.cloud.stream.bindings.paymentPlain-out-0.destination=Payment"), "必须形如 <domain>-event");
         assertFails(runner.withPropertyValues("spring.cloud.stream.bindings.paymentPlain-out-0.destination=payment"), "必须形如 <domain>-event");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"account-data-deleted-notice", "account-data-deleted-upms", "account-data-deleted-lingai"})
+    void fixedAccountResultTopicsPassConsumerAndProducerBindingChecks(String topic) {
+        for (String prefix : new String[]{"", "s5-"}) {
+            runner.withPropertyValues("mars.rocketmq.prefix=" + prefix,
+                    "spring.cloud.stream.bindings.orderPaid-in-0.destination=" + topic,
+                    "spring.cloud.stream.bindings.orderPaid-in-0.group=" + StreamTestSupport.APPLICATION + "-" + topic,
+                    "spring.cloud.stream.bindings.paymentPlain-out-0.destination=" + topic)
+                    .run(context -> assertThat(context).hasNotFailed());
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"account-data-deleted-support", "account-data-deleted-notice-extra", "s5-account-data-deleted-notice"})
+    void unregisteredAccountResultTopicsStillFailStartup(String topic) {
+        assertFails(runner.withPropertyValues("spring.cloud.stream.bindings.paymentPlain-out-0.destination=" + topic),
+                "必须形如 <domain>-event");
     }
 
     @Test

@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 /**
  * 主题、消费组、tag 与运行环境前缀的命名规则。
  *
- * <p>主题名形如 {@code <domain>-event}，消费组名形如 {@code <应用名>-<主题>}，两者都只允许小写字母、数字与
+ * <p>主题名形如 {@code <domain>-event} 或为 {@link AccountDeletionEvents} 的三个固定结果主题，消费组名形如 {@code <应用名>-<主题>}，两者都只允许小写字母、数字与
  * 单个连字符分隔的片段；tag 是大写的事件名。运行环境前缀形如 {@code s1-}，由运行环境给出，
  * 主题名与消费组名必须一起加前缀：RocketMQ 要求同一消费组的订阅完全一致，两个运行环境用同名消费组订阅
  * 不同前缀的主题会互相打坏订阅关系。
@@ -56,9 +56,10 @@ public final class MessagingNames {
         return name != null && NAME.matcher(name).matches();
     }
 
-    /** 名字是否是主题名：符合形态并以 {@value #TOPIC_SUFFIX} 结尾。 */
+    /** 名字是否是无前缀主题名：领域事件主题或三个固定账号清理结果主题。 */
     public static boolean isTopic(String name) {
-        return isName(name) && name.endsWith(TOPIC_SUFFIX) && name.length() > TOPIC_SUFFIX.length();
+        return isName(name) && ((name.endsWith(TOPIC_SUFFIX) && name.length() > TOPIC_SUFFIX.length())
+                || AccountDeletionEvents.isResultTopic(name));
     }
 
     /** 名字是否符合 tag 的形态。 */
@@ -78,7 +79,7 @@ public final class MessagingNames {
     /** 校验并返回一个主题名。 */
     public static String requireTopic(String topic) {
         if (!isTopic(topic)) {
-            throw new IllegalArgumentException("topic 必须形如 <domain>" + TOPIC_SUFFIX + "，收到: " + topic);
+            throw new IllegalArgumentException("topic 必须形如 <domain>" + TOPIC_SUFFIX + " 或是固定账号清理结果主题，收到: " + topic);
         }
         return topic;
     }

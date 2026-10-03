@@ -177,7 +177,7 @@ WebClient 驱动的 HTTP Service Client。两个客户端都按固定服务名�
 
 `mars-cloud-rocketmq-spring-boot-starter` 只提供 Spring Cloud Stream 的函数式模型：生产者经 `StreamBridge`，
 消费者是 `Consumer<Message<EventEnvelope<T>>>` bean。消息体固定为 `common` 的 `EventEnvelope`，
-主题名 `<domain>-event`、消费组名 `<应用名>-<主题>`、生产者组名以应用名开头且进程内唯一、tag 为事件名，由启动期校验强制；
+主题名 `<domain>-event`（账号清理结果另有三个固定主题）、消费组名 `<应用名>-<主题>`、生产者组名以应用名开头且进程内唯一、tag 为事件名，由启动期校验强制；
 运行环境前缀由环境变量给出，starter 加到全部主题、消费组与生产者组上，重试与死信主题随消费组派生。
 
 写库与发消息一律用 RocketMQ 事务消息：`TransactionalEventPublisher` 先发半消息，再在调用线程执行调用方的本地事务，

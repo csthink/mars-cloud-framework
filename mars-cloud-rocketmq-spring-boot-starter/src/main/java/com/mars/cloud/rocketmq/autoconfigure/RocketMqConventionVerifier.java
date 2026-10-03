@@ -89,7 +89,7 @@ public final class RocketMqConventionVerifier implements InitializingBean {
         require(prefix.isEmpty() || !rawTopic.startsWith(prefix),
                 "binding [" + name + "] 的 destination 不得自带运行环境前缀 " + prefix + "，前缀由 starter 按 MARS_MQ_PREFIX 加上: " + rawTopic);
         require(MessagingNames.isTopic(rawTopic),
-                "binding [" + name + "] 的 destination 必须形如 <domain>-event（小写字母、数字与单个连字符），收到: " + rawTopic);
+                "binding [" + name + "] 的 destination 必须形如 <domain>-event 或是固定账号清理结果主题（小写字母、数字与单个连字符），收到: " + rawTopic);
         require(!binding.messageTrace(),
                 "binding [" + name + "] 的 enable-msg-trace 必须关闭：消息轨迹主题不在本项目的可观测性设计里");
         if (binding.kind() == RocketMqBinding.Kind.CONSUMER) {
