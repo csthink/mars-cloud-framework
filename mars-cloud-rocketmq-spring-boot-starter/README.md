@@ -41,7 +41,7 @@ spring:
     function:
       definition: orderPaid
     stream:
-      output-bindings: entitlementGranted;orderTimeout
+      output-bindings: entitlementGranted-out-0;orderTimeout-out-0
       bindings:
         orderPaid-in-0:
           destination: order-event
@@ -65,6 +65,11 @@ spring:
 starter 给出的默认值：进程内重试关闭（`consumer.max-attempts=1`，校验器拒绝其他值）、RocketMQ 重投上限
 `push.max-reconsume-times=16`、消息轨迹关闭。消费失败抛异常即可，RocketMQ 按退避重投，超过上限进入
 `%DLQ%<消费组>`；业务代码不写重试循环。
+
+事务输出使用默认的 `mars-rocketmq` binder 类型；具名 binder 的 `type` 同样应为 `mars-rocketmq`。
+该类型复用 SCA 的普通发送、消费及配置，事务输出在生产者第一次启动之前安装当前应用的监听器。
+事务 binding 必须在启动阶段建立（上例 `output-bindings` 使用完整 binding 名）；实际绑定未启动时应用启动失败。
+显式使用原 `rocketmq` 类型的事务 binding 会被拒绝。单元测试可显式选择 `integration` 测试 binder。
 
 ## 发送
 

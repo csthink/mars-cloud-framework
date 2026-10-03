@@ -7,7 +7,7 @@ spring:
     function:
       definition: contractEvent
     stream:
-      output-bindings: contractTx;contractPlain
+      output-bindings: contractTx-out-0;contractPlain-out-0
       bindings:
         contractEvent-in-0:
           destination: contract-event

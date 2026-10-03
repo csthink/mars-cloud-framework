@@ -41,6 +41,7 @@ public final class MarsRocketMqDefaultsEnvironmentPostProcessor implements Envir
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         if (!environment.getPropertySources().contains(DEFAULTS_SOURCE)) {
             Map<String, Object> defaults = new LinkedHashMap<>();
+            defaults.put("spring.cloud.stream.default-binder", "mars-rocketmq");
             defaults.put("spring.cloud.stream.default.consumer.max-attempts", 1);
             defaults.put("spring.cloud.stream.rocketmq.default.consumer.push.max-reconsume-times", 16);
             defaults.put("spring.cloud.stream.rocketmq.binder.enable-msg-trace", false);

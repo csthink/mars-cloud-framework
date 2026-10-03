@@ -14,6 +14,7 @@ class MarsRocketMqDefaultsEnvironmentPostProcessorTest {
     void defaultsSwitchOffInProcessRetryAndMessageTrace() {
         MockEnvironment environment = new MockEnvironment();
         processor.postProcessEnvironment(environment, null);
+        assertThat(environment.getProperty("spring.cloud.stream.default-binder")).isEqualTo("mars-rocketmq");
         assertThat(environment.getProperty("spring.cloud.stream.default.consumer.max-attempts")).isEqualTo("1");
         assertThat(environment.getProperty("spring.cloud.stream.rocketmq.default.consumer.push.max-reconsume-times")).isEqualTo("16");
         assertThat(environment.getProperty("spring.cloud.stream.rocketmq.binder.enable-msg-trace")).isEqualTo("false");

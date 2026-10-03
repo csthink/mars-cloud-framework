@@ -86,6 +86,12 @@ public class MarsRocketMqAutoConfiguration {
     }
 
     @Bean
+    public TransactionBindingLifecycle transactionBindingLifecycle(RocketMqBindingCatalog catalog,
+            BindingServiceProperties properties, org.springframework.cloud.stream.binding.BindingService service, org.springframework.cloud.stream.binder.BinderFactory factory) {
+        return new TransactionBindingLifecycle(catalog, properties, service, factory);
+    }
+
+    @Bean
     public TransactionalEventPublisher transactionalEventPublisher(StreamBridge streamBridge,
                                                                    RocketMqBindingCatalog catalog,
                                                                    MessageTracing tracing) {

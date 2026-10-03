@@ -62,6 +62,7 @@ final class StreamTestSupport {
                 .withUserConfiguration(TestChannelBinderConfiguration.class)
                 .withPropertyValues(
                         "spring.application.name=" + APPLICATION,
+                        "spring.cloud.stream.default-binder=integration",
                         "spring.cloud.stream.rocketmq.binder.name-server=127.0.0.1:1",
                         "mars.rocketmq.topology=off");
     }
@@ -72,7 +73,7 @@ final class StreamTestSupport {
                 "spring.cloud.function.definition=orderPaid",
                 "spring.cloud.stream.bindings.orderPaid-in-0.destination=" + TOPIC,
                 "spring.cloud.stream.bindings.orderPaid-in-0.group=" + GROUP,
-                "spring.cloud.stream.output-bindings=paymentTx;paymentPlain;orderLoop",
+                "spring.cloud.stream.output-bindings=paymentTx-out-0;paymentPlain-out-0;orderLoop-out-0",
                 "spring.cloud.stream.bindings.paymentTx-out-0.destination=" + OUT_TOPIC,
                 "spring.cloud.stream.rocketmq.bindings.paymentTx-out-0.producer.group=" + APPLICATION + "-payment-tx",
                 "spring.cloud.stream.rocketmq.bindings.paymentTx-out-0.producer.producer-type=Trans",

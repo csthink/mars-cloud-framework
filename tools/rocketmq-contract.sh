@@ -25,6 +25,7 @@ mkdir -p "$REPORT_DIR"
 
 export ROCKETMQ_NAME_SERVER="$NAME_SERVER"
 export MARS_MQ_PREFIX="$PREFIX"
+export ROCKETMQ_CONTRACT_REPORT_DIR="$REPORT_DIR"
 LOG="$REPORT_DIR/maven.log"
 {
   echo "framework: $(git -C "$ROOT" rev-parse HEAD)"
@@ -35,11 +36,11 @@ LOG="$REPORT_DIR/maven.log"
 
 set +e
 (cd "$ROOT" && mvn -B -ntp -Procketmq-contract -pl "$MODULE" -am -DfailIfNoTests=false \
-  -Dsurefire.failIfNoSpecifiedTests=false -Dtest='RocketMqContractTest' verify) > "$LOG" 2>&1
+  -Dsurefire.failIfNoSpecifiedTests=false -Dtest='RocketMqContractTest,RocketMqColdStartContractTest' verify) > "$LOG" 2>&1
 STATUS=$?
 set -e
 mkdir -p "$REPORT_DIR/surefire-reports"
-cp "$ROOT/$MODULE"/target/surefire-reports/*RocketMqContractTest* "$REPORT_DIR/surefire-reports/" 2>/dev/null || true
+cp "$ROOT/$MODULE"/target/surefire-reports/*RocketMq*ContractTest* "$REPORT_DIR/surefire-reports/" 2>/dev/null || true
 echo "finished: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$REPORT_DIR/run.txt"
 echo "exit: $STATUS" >> "$REPORT_DIR/run.txt"
 grep -E 'Tests run:.*RocketMqContractTest|BUILD (SUCCESS|FAILURE)' "$LOG" | tail -3

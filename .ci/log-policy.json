@@ -467,6 +467,34 @@
     {
       "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'rocketMqConventionVerifier'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.autoconfigure\\.MarsRocketMqAutoConfiguration:\\ binding\\ \\[paymentPlain\\-out\\-0\\]\\ 的\\ destination\\ 必须形如\\ <domain>\\-event\\ 或是固定账号清理结果主题（小写字母、数字与单个连字符），收到:\\ s5\\-account\\-data\\-deleted\\-notice",
       "reason": "RocketMqConventionVerifierTest deliberately rejects an unregistered account result topic."
+    },
+    {
+      "pattern": "ERROR\\ BindingService:\\ Failed\\ to\\ create\\ producer\\ binding;\\ retrying\\ in\\ 30\\ seconds",
+      "reason": "TransactionBindingLifecycleTest deliberately rejects missing or mistyped listeners, failed producer startup, disabled or missing bindings, and incompatible binder configuration. Context failure and resource shutdown are asserted."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.beans\\.factory\\.BeanCreationException:\\ Error\\ creating\\ bean\\ with\\ name\\ 'transactionBindingLifecycle'\\ defined\\ in\\ com\\.mars\\.cloud\\.rocketmq\\.TransactionBindingLifecycleTest\\$Checks:\\ 事务\\ binding\\ \\[paymentTx\\-out\\-0\\]\\ 必须使用\\ mars\\-rocketmq\\ binder，收到:\\ rocketmq",
+      "reason": "TransactionBindingLifecycleTest deliberately rejects missing or mistyped listeners, failed producer startup, disabled or missing bindings, and incompatible binder configuration. Context failure and resource shutdown are asserted."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.context\\.ApplicationContextException:\\ Failed\\ to\\ start\\ bean\\ 'binderFactory'",
+      "reason": "TransactionBindingLifecycleTest deliberately rejects missing or mistyped listeners, failed producer startup, disabled or missing bindings, and incompatible binder configuration. Context failure and resource shutdown are asserted."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.context\\.ApplicationContextException:\\ Failed\\ to\\ start\\ bean\\ 'outputBindingLifecycle'",
+      "reason": "TransactionBindingLifecycleTest deliberately rejects missing or mistyped listeners, failed producer startup, disabled or missing bindings, and incompatible binder configuration. Context failure and resource shutdown are asserted."
+    },
+    {
+      "pattern": "WARN\\ AnnotationConfigApplicationContext:\\ Exception\\ encountered\\ during\\ context\\ initialization\\ \\-\\ cancelling\\ refresh\\ attempt:\\ org\\.springframework\\.context\\.ApplicationContextException:\\ Failed\\ to\\ start\\ bean\\ 'transactionBindingLifecycle'",
+      "reason": "TransactionBindingLifecycleTest deliberately rejects missing or mistyped listeners, failed producer startup, disabled or missing bindings, and incompatible binder configuration. Context failure and resource shutdown are asserted."
+    },
+    {
+      "pattern": "WARN\\ BindingService:\\ Trying\\ to\\ unbind\\ 'otherTx\\-out\\-0',\\ but\\ no\\ binding\\ found\\.",
+      "reason": "TransactionBindingLifecycleTest deliberately rejects missing or mistyped listeners, failed producer startup, disabled or missing bindings, and incompatible binder configuration. Context failure and resource shutdown are asserted."
+    },
+    {
+      "pattern": "WARN\\ BindingService:\\ Trying\\ to\\ unbind\\ 'paymentTx\\-out\\-0',\\ but\\ no\\ binding\\ found\\.",
+      "reason": "TransactionBindingLifecycleTest deliberately rejects missing or mistyped listeners, failed producer startup, disabled or missing bindings, and incompatible binder configuration. Context failure and resource shutdown are asserted."
     }
   ],
   "service": [
