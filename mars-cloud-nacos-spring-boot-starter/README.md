@@ -173,3 +173,9 @@ mvn -pl mars-cloud-nacos-spring-boot-starter -am test
 
 契约测试覆盖自动装配注册、命名生成、离线模式、Namespace 一致性、Group、Data ID、
 导入顺序与禁止 `optional:`。默认值用例覆盖注册中心健康检查与注册地址的推导条件。
+
+## 响应式服务发现与取消
+
+响应式发现查询开始后，取消 HTTP 请求只结束该请求对结果的等待，不中断正在执行的 Nacos 同步调用。尚未开始的排队查询被取消后不执行；每次订阅独立查询，不在本组件内跨查询缓存实例。SDK 的超时、错误记录和既有失败配置保持生效。
+
+应用关闭时停止接受新发现查询，在 `spring.lifecycle.timeout-per-shutdown-phase` 指定的时限内等待在途查询结束，然后由原有发现生命周期组件关闭 Nacos 客户端。该时限必须为正；超时会报告错误。关闭 Discovery、关闭响应式发现或应用提供自定义 `NacosReactiveDiscoveryClient` 时，本组件不替换其行为。
