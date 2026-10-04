@@ -621,6 +621,22 @@
     {
       "pattern": "WARN\\ UpstreamBodyTimeoutFilter:\\ Gateway\\ route\\ stream\\-test\\ closed\\ the\\ client\\ connection:\\ upstream\\ response\\ exceeded\\ mars\\-stream\\-max\\-duration\\ 6000\\ ms\\ after\\ [0-9]+\\ ms",
       "reason": "UpstreamBodyTimeoutTest deliberately streams longer than the maximum duration; the gateway logs one warning when it closes the connection."
+    },
+    {
+      "pattern": "WARN EnvelopeErrorWebExceptionHandler: 网关错误 504 code=63004 GET /inference/x: Response took longer than timeout: PT5S",
+      "reason": "UpstreamBodyTimeoutTest deliberately delays long-running response headers beyond five seconds."
+    },
+    {
+      "pattern": "WARN EnvelopeErrorWebExceptionHandler: 网关错误 504 code=63004 GET /(inference|sample/inference-timeout)/x: upstream sent no response body for 1000 ms after [0-9]+ ms",
+      "reason": "UpstreamBodyTimeoutTest verifies that long-running requests retain a short first-body idle timeout and preserve gateway CORS headers."
+    },
+    {
+      "pattern": "WARN UpstreamBodyTimeoutFilter: Gateway route inference-test closed the client connection: upstream sent no response body for 1000 ms after [0-9]+ ms",
+      "reason": "UpstreamBodyTimeoutTest deliberately stalls a committed long-running body past its one-second idle limit."
+    },
+    {
+      "pattern": "WARN UpstreamBodyTimeoutFilter: Gateway route inference-test closed the client connection: upstream response exceeded mars-request-max-duration 6000 ms after [0-9]+ ms",
+      "reason": "UpstreamBodyTimeoutTest verifies the complete long-running deadline, including response-header wait and client back pressure."
     }
   ]
 }
