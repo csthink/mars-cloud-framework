@@ -637,6 +637,22 @@
     {
       "pattern": "WARN UpstreamBodyTimeoutFilter: Gateway route inference-test closed the client connection: upstream response exceeded mars-request-max-duration 6000 ms after [0-9]+ ms",
       "reason": "UpstreamBodyTimeoutTest verifies the complete long-running deadline, including response-header wait and client back pressure."
+    },
+    {
+      "pattern": "WARN SpeechDelivery: Speech object speech/v1/gone\\.mp3 of [0-9a-f]{12} is missing; synthesizing again",
+      "reason": "SpeechDeliveryTest deliberately indexes audio whose stored object does not exist; the delivery logs the missing object before and after taking the synthesis lock and synthesizes again."
+    },
+    {
+      "pattern": "WARN SpeechDelivery: Speech synthesis for [0-9a-f]{12} was not counted: QUOTA_UNAVAILABLE",
+      "reason": "SpeechDeliveryTest deliberately fails the daily speech count after the audio was stored; the audio is still returned and the uncounted synthesis is logged."
+    },
+    {
+      "pattern": "WARN OssAudioStore: OSS read failed with status 403 request request-1",
+      "reason": "AudioStoreTest deliberately answers a GetObject with 403 from its loopback server to check that the store reports the speech store as unavailable."
+    },
+    {
+      "pattern": "WARN OssAudioStore: OSS write failed with status 403 request request-1",
+      "reason": "AudioStoreTest deliberately answers a PutObject with 403 from its loopback server to check that the store reports the speech store as unavailable."
     }
   ]
 }
