@@ -86,6 +86,11 @@
           版本 2.0.0 于 2025-09-28 发布；它依赖的 tea、tea-openapi 等基础库不在这里单独钉版本，以 SDK 发布时的组合为准。
         -->
         <aliyun-dypnsapi.version>2.0.0</aliyun-dypnsapi.version>
+        <!--
+          阿里云凭据客户端：从访问密钥、STS 令牌或 ECS 实例 RAM 角色取得调用阿里云接口的凭据，临时凭据过期前自动刷新。
+          版本 1.0.1 与上面的号码认证 SDK 经 tea-openapi 0.3.10 带入的版本相同，登记后已有模块的解析结果不变。
+        -->
+        <aliyun-credentials.version>1.0.1</aliyun-credentials.version>
 
         <!-- MyBatis-Plus 的 Boot 4 专用 starter 是独立 artifactId，不是同一个包升版本 -->
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
@@ -309,6 +314,23 @@
                 <groupId>com.aliyun</groupId>
                 <artifactId>dypnsapi20170525</artifactId>
                 <version>${aliyun-dypnsapi.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>org.jacoco.agent</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <!--
+              阿里云凭据客户端：登记版本，由需要直接取得阿里云凭据的服务引用。
+              它自己的 pom 以 compile 范围声明了测试覆盖率代理 org.jacoco.agent（runtime 分类器），
+              运行时用不到，在这里排除，引用方不必各自排除。
+            -->
+            <dependency>
+                <groupId>com.aliyun</groupId>
+                <artifactId>credentials-java</artifactId>
+                <version>${aliyun-credentials.version}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>org.jacoco</groupId>
