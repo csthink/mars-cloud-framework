@@ -639,8 +639,8 @@
       "reason": "UpstreamBodyTimeoutTest verifies the complete long-running deadline, including response-header wait and client back pressure."
     },
     {
-      "pattern": "WARN SpeechDelivery: Speech object speech/v1/gone\\.mp3 of [0-9a-f]{12} is missing; synthesizing again",
-      "reason": "SpeechDeliveryTest deliberately indexes audio whose stored object does not exist; the delivery logs the missing object before and after taking the synthesis lock and synthesizes again."
+      "pattern": "WARN SpeechDelivery: Speech object speech/v1/gone(-preferred)?\\.mp3 of [0-9a-f]{12} is missing",
+      "reason": "SpeechDeliveryTest deliberately indexes audio whose stored object does not exist: once as the only stored audio, which the delivery then synthesizes again, and once as the preferred audio beside a readable stored copy, which the delivery serves instead. Each missing object is logged and its index row removed."
     },
     {
       "pattern": "WARN SpeechDelivery: Speech synthesis for [0-9a-f]{12} was not counted: QUOTA_UNAVAILABLE",
