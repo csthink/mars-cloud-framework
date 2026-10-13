@@ -5,13 +5,20 @@ import com.mars.cloud.mvc.MvcTestApplication.TestController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code spring-boot-webmvc-test}，本测试不需要为此多引一个测试依赖。
  */
 @SpringBootTest(classes = {App.class, TestController.class})
+@ExtendWith(OutputCaptureExtension.class)
 class MvcContractTest {
 
     @Autowired
@@ -94,6 +102,41 @@ class MvcContractTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("500"));
+    }
+
+    @Test
+    @DisplayName("正文格式不支持：HTTP 415 + 错误码 415，响应头列出可接受的格式，记一行 WARN、不带调用栈")
+    void unsupportedMediaType_isClientError(CapturedOutput output) throws Exception {
+        mockMvc.perform(post("/json-body").contentType(MediaType.APPLICATION_FORM_URLENCODED).content("name=a&value=1"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(header().string("Accept", org.hamcrest.Matchers.containsString("application/json")))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("415"));
+        assertClientWarning(output, "HttpMediaTypeNotSupportedException, URL=[");
+    }
+
+    @Test
+    @DisplayName("正文读不出来：HTTP 400 + 错误码 400，记 WARN")
+    void unreadableBody_isBadRequest(CapturedOutput output) throws Exception {
+        mockMvc.perform(post("/json-body").contentType(MediaType.APPLICATION_JSON).content("{"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("400"));
+        assertClientWarning(output, "HttpMessageNotReadableException, URL=[");
+    }
+
+    @Test
+    @DisplayName("未预期异常仍记 ERROR 与调用栈")
+    void unexpectedException_isLoggedAsError(CapturedOutput output) throws Exception {
+        mockMvc.perform(get("/boom")).andExpect(status().isInternalServerError());
+        assertThat(output.getAll()).contains("ERROR").contains("Unhandled Exception, URL=[")
+                .contains("java.lang.IllegalStateException: boom");
+    }
+
+    /** 客户端错误只记一行 WARN：没有 ERROR，也没有调用栈。 */
+    private static void assertClientWarning(CapturedOutput output, String message) {
+        assertThat(output.getAll()).contains("WARN").contains(message)
+                .doesNotContain("ERROR").doesNotContain("\tat org.springframework");
     }
 
     @Test

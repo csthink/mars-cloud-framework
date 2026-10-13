@@ -11,6 +11,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -186,6 +188,15 @@ public class MvcTestApplication {
         @GetMapping("/boom")
         public Payload boom() {
             throw new IllegalStateException("boom");
+        }
+
+        /**
+         * JSON 正文 → 用来验证正文格式不支持（415）与正文读不出来（400）都是客户端错误。不声明 consumes：
+         * 与业务接口一样，处理方法已经选定、读正文时才发现格式不对，这时异常由 mvc starter 的统一处理接住。
+         */
+        @PostMapping("/json-body")
+        public Payload jsonBody(@RequestBody Payload payload) {
+            return payload;
         }
 
         @GetMapping("/blocked")

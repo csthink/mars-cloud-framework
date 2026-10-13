@@ -5,15 +5,23 @@
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
-      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ MethodArgumentTypeMismatchException,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "pattern": "WARN\\ GlobalExceptionAdvice:\\ MethodArgumentTypeMismatchException,\\ URL=\\[not\\ a\\ http\\ request\\]",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
-      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ MissingServletRequestParameterException,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "pattern": "WARN\\ GlobalExceptionAdvice:\\ MissingServletRequestParameterException,\\ URL=\\[not\\ a\\ http\\ request\\]",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
       "pattern": "ERROR\\ GlobalExceptionAdvice:\\ Unhandled\\ Exception,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ GlobalExceptionAdvice:\\ HttpMessageNotReadableException,\\ URL=\\[not\\ a\\ http\\ request\\]",
+      "reason": "Negative contract test: intentional invalid input or unavailable fixture."
+    },
+    {
+      "pattern": "WARN\\ GlobalExceptionAdvice:\\ HttpMediaTypeNotSupportedException,\\ URL=\\[not\\ a\\ http\\ request\\]",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
@@ -499,7 +507,7 @@
   ],
   "service": [
     {
-      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ HttpException,\\ URL=\\[GET\\ \\-\\ /v1/orders/missing\\]",
+      "pattern": "WARN\\ GlobalExceptionAdvice:\\ HttpException,\\ URL=\\[GET\\ \\-\\ /v1/orders/missing\\]",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
@@ -507,7 +515,7 @@
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {
-      "pattern": "ERROR\\ GlobalExceptionAdvice:\\ MethodArgumentNotValidException,\\ URL=\\[POST\\ \\-\\ /v1/orders\\]",
+      "pattern": "WARN\\ GlobalExceptionAdvice:\\ MethodArgumentNotValidException,\\ URL=\\[POST\\ \\-\\ /v1/orders\\]",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {

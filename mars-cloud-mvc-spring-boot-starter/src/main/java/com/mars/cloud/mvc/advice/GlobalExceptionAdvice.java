@@ -20,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -53,8 +55,6 @@ public class GlobalExceptionAdvice {
 
     @ExceptionHandler(HttpException.class)
     public ResponseEntity<UnifyResponse<Object>> handleHttpException(HttpException ex) {
-        log.error("HttpException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
-
         int code = ex.getErrCode(); // 业务码
         String message = (ex.getErrorEnum() != null)
                 ? msg(ex.getErrorEnum(), ex.getMessage())
@@ -67,6 +67,11 @@ public class GlobalExceptionAdvice {
 
         HttpStatus status = HttpStatus.resolve(ex.getHttpStatusCode());
         if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
+        if (status.is4xxClientError()) {
+            clientError("HttpException");
+        } else {
+            log.error("HttpException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        }
 
         return ResponseEntity.status(status).body(body);
     }
@@ -75,7 +80,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(AuthenticationException.class)
     public UnifyResponse<Object> handleAuthenticationException(AuthenticationException ex) {
-        log.error("AuthenticationException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("AuthenticationException");
 
         // 优先取业务码/枚举，兜底直接用异常里的 errCode
         ErrorCode ec = ex.getErrorEnum() != null ? ex.getErrorEnum() : of(ex.getErrCode());
@@ -91,7 +96,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public UnifyResponse<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-        log.error("MethodArgumentNotValidException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("MethodArgumentNotValidException");
 
         Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors()
                 .stream()
@@ -119,7 +124,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BindException.class)
     public UnifyResponse<Object> handleBindException(BindException ex) {
-        log.error("BindException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("BindException");
         String joinMsg = ex.getAllErrors().stream()
                 .map(ObjectError::getDefaultMessage)
                 .filter(Objects::nonNull)
@@ -134,7 +139,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public UnifyResponse<Object> handleMissingParam(MissingServletRequestParameterException ex) {
-        log.error("MissingServletRequestParameterException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("MissingServletRequestParameterException");
         String detail = String.format("缺少必要参数: name=%s, type=%s", ex.getParameterName(), ex.getParameterType());
         UnifyResponse<Object> body = failBody(of(400), msg(400, detail));
         buildErrorResult(body, detail);
@@ -144,7 +149,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public UnifyResponse<Object> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
-        log.error("HttpRequestMethodNotSupportedException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("HttpRequestMethodNotSupportedException");
         UnifyResponse<Object> body = failBody(of(405), msg(405, "Method Not Allowed"));
         buildErrorResult(body, ex.getMessage());
         return body;
@@ -153,7 +158,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.NOT_ACCEPTABLE)
     @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
     public UnifyResponse<Object> handleNotAcceptable(HttpMediaTypeNotAcceptableException ex) {
-        log.error("HttpMediaTypeNotAcceptableException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("HttpMediaTypeNotAcceptableException");
         UnifyResponse<Object> body = failBody(of(406), msg(406, "Not Acceptable"));
         buildErrorResult(body, ex.getMessage());
         return body;
@@ -162,7 +167,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public UnifyResponse<Object> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        log.error("MethodArgumentTypeMismatchException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("MethodArgumentTypeMismatchException");
         String detail = String.format("参数类型不匹配: name=%s, value=%s", ex.getName(), ex.getValue());
         UnifyResponse<Object> body = failBody(of(400), msg(400, detail));
         buildErrorResult(body, detail);
@@ -172,7 +177,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(HandlerMethodValidationException.class)
     public UnifyResponse<Object> handleMethodValidation(HandlerMethodValidationException ex) {
-        log.error("HandlerMethodValidationException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("HandlerMethodValidationException");
 
         // Spring 7 移除了 getAllValidationResults()，改为参数级 + 跨参数级两类结果
         String joinMsg = Stream.concat(
@@ -192,7 +197,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ConstraintViolationException.class)
     public UnifyResponse<Object> handleConstraintViolation(ConstraintViolationException ex) {
-        log.error("ConstraintViolationException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("ConstraintViolationException");
 
         Map<String, String> violations = new LinkedHashMap<>();
         ex.getConstraintViolations().forEach(v -> violations.put(v.getPropertyPath().toString(), v.getMessage()));
@@ -208,7 +213,7 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(NoHandlerFoundException.class)
     public UnifyResponse<Object> handleNoHandlerFound(NoHandlerFoundException ex) {
-        log.error("NoHandlerFoundException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        clientError("NoHandlerFoundException");
         UnifyResponse<Object> body = failBody(of(404), msg(404, "Not Found"));
         buildErrorResult(body, ex.getMessage());
         return body;
@@ -242,18 +247,47 @@ public class GlobalExceptionAdvice {
         return body;
     }
 
-    /* ----------------------------- 兜底 5xx ----------------------------- */
-
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    @ExceptionHandler(Exception.class)
-    public UnifyResponse<Object> handleOther(Exception ex) {
-        log.error("Unhandled Exception, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
-        UnifyResponse<Object> body = failBody(of(500), msg(500, ex.getMessage()));
+    /** 请求正文读不出来（格式错误的 JSON、缺正文、类型不符）：客户端错误。 */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public UnifyResponse<Object> handleNotReadable(HttpMessageNotReadableException ex) {
+        clientError("HttpMessageNotReadableException");
+        UnifyResponse<Object> body = failBody(of(400), msg(400, "Bad Request"));
         buildErrorResult(body, ex.getMessage());
         return body;
     }
 
+    /* ----------------------------- 兜底 ----------------------------- */
+
+    /**
+     * 其余异常。Spring MVC 自己的请求错误都实现 {@link ErrorResponse} 并带着状态码（正文格式不支持 415、
+     * 路径不存在 404、缺请求头 400 等），按它的 4xx 状态码与响应头返回，记 WARN；其他一律 500，记 ERROR 与调用栈。
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<UnifyResponse<Object>> handleOther(Exception ex) {
+        if (ex instanceof ErrorResponse error && error.getStatusCode().is4xxClientError()) {
+            clientError(ex.getClass().getSimpleName());
+            int status = error.getStatusCode().value();
+            HttpStatus known = HttpStatus.resolve(status);
+            UnifyResponse<Object> body = failBody(of(status), msg(status, known == null ? String.valueOf(status) : known.getReasonPhrase()));
+            buildErrorResult(body, ex.getMessage());
+            return ResponseEntity.status(status).headers(error.getHeaders()).body(body);
+        }
+        log.error("Unhandled Exception, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
+        UnifyResponse<Object> body = failBody(of(500), msg(500, ex.getMessage()));
+        buildErrorResult(body, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
     /* ----------------------------- 私有工具方法 ----------------------------- */
+
+    /**
+     * 客户端造成的错误（4xx）：记 WARN，只写异常类型与请求，不带调用栈与异常消息。消息里可能有客户端提交的值
+     * （例如被拒的手机号），调用栈对客户端错误没有排查价值，ERROR 留给服务端自身的失败，避免外部请求刷出错误日志。
+     */
+    private static void clientError(String type) {
+        log.warn("{}, URL=[{}]", type, RequestUtil.getRequestMethodAndUri());
+    }
 
     /**
      * i18n 主通道：error.code.<数字>

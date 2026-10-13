@@ -45,10 +45,19 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 | `NoHandlerFoundException` | 404 | 找不到处理器 |
 | `HttpRequestMethodNotSupportedException` | 405 | 方法不支持 |
 | `HttpMediaTypeNotAcceptableException` | 406 | 无法按 `Accept` 协商 |
+| `HttpMessageNotReadableException` | 400 | 请求正文读不出来，例如格式错误的 JSON |
+| Spring MVC 其他带状态码的请求错误 | 按异常自带的 4xx 状态码 | 实现 `ErrorResponse` 的异常，例如正文格式不支持 415（响应头 `Accept` 列出可接受的格式）；错误码等于状态码，响应头随异常一起返回 |
 | 未预期异常 | 500 | 兜底，错误码 500 |
 
-框架兜底用的状态码（400 / 404 / 405 / 406 / 500）**不经错误码区间校验**，
+框架兜底用的状态码（400 / 404 / 405 / 406 / 415 等 4xx 与 500）**不经错误码区间校验**，
 详见 [../docs/error-code.md](../docs/error-code.md)。
+
+**日志级别**：客户端造成的错误（4xx，含状态码为 4xx 的 `HttpException`）记一行 WARN，只写异常类型与请求方法和路径，
+不带调用栈与异常消息（消息里可能有客户端提交的值）；`IllegalArgumentException`、`LockFailureException`、状态码不是 4xx 的
+`HttpException` 与未预期异常记 ERROR 并带调用栈。格式、方法、参数这类常见的请求错误因此不会产生 ERROR。
+
+请求在选定处理方法之前就被拒绝时（例如路径不存在、方法上声明的 `consumes` 不匹配），本 starter 的异常处理不参与，
+由 Spring MVC 默认返回对应状态码与空正文。
 
 ### 分布式锁失败
 
