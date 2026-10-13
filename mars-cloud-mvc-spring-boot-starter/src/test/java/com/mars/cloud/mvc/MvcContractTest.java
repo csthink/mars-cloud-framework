@@ -126,9 +126,11 @@ class MvcContractTest {
     }
 
     @Test
-    @DisplayName("未预期异常仍记 ERROR 与调用栈")
+    @DisplayName("未预期异常仍记 ERROR 与调用栈，响应文案不带异常消息")
     void unexpectedException_isLoggedAsError(CapturedOutput output) throws Exception {
-        mockMvc.perform(get("/boom")).andExpect(status().isInternalServerError());
+        mockMvc.perform(get("/boom"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("boom"))));
         assertThat(output.getAll()).contains("ERROR").contains("Unhandled Exception, URL=[")
                 .contains("java.lang.IllegalStateException: boom");
     }

@@ -507,7 +507,7 @@
   ],
   "service": [
     {
-      "pattern": "WARN\\ GlobalExceptionAdvice:\\ HttpException,\\ URL=\\[GET\\ \\-\\ /v1/orders/missing\\]",
+      "pattern": "WARN\\ GlobalExceptionAdvice:\\ HttpException,\\ URL=\\[GET\\ \\-\\ /v1/orders/missing\\],\\ status=404,\\ code=66101",
       "reason": "Negative contract test: intentional invalid input or unavailable fixture."
     },
     {

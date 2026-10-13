@@ -42,22 +42,24 @@ Servlet 栈的 Web 横切能力：统一响应、全局异常、错误码区间�
 | `LockFailureException` | 409 | **框架自带**的锁失败异常，见下 |
 | Sentinel `BlockException` | 429 | `61006`，统一失败信封；仅在服务接入 Sentinel 后发生 |
 | 参数校验类异常 | 400 | 含 `MethodArgumentNotValidException` / `BindException` / `ConstraintViolationException` / `HandlerMethodValidationException` / `MissingServletRequestParameterException` / `MethodArgumentTypeMismatchException` / `IllegalArgumentException` |
-| `NoHandlerFoundException` | 404 | 找不到处理器 |
-| `HttpRequestMethodNotSupportedException` | 405 | 方法不支持 |
+| `NoHandlerFoundException` | 404 | 找不到处理器；只在处理方法已选定后抛出时经过这里，见下文 |
+| `HttpRequestMethodNotSupportedException` | 405 | 方法不支持；同上 |
 | `HttpMediaTypeNotAcceptableException` | 406 | 无法按 `Accept` 协商 |
 | `HttpMessageNotReadableException` | 400 | 请求正文读不出来，例如格式错误的 JSON |
 | Spring MVC 其他带状态码的请求错误 | 按异常自带的 4xx 状态码 | 实现 `ErrorResponse` 的异常，例如正文格式不支持 415（响应头 `Accept` 列出可接受的格式）；错误码等于状态码，响应头随异常一起返回 |
-| 未预期异常 | 500 | 兜底，错误码 500 |
+| 未预期异常 | 500 | 兜底，错误码 500；响应文案不带异常消息（可能含 SQL 或内部地址），开发 profile 的 `result` 里仍有 |
 
 框架兜底用的状态码（400 / 404 / 405 / 406 / 415 等 4xx 与 500）**不经错误码区间校验**，
 详见 [../docs/error-code.md](../docs/error-code.md)。
 
 **日志级别**：客户端造成的错误（4xx，含状态码为 4xx 的 `HttpException`）记一行 WARN，只写异常类型与请求方法和路径，
-不带调用栈与异常消息（消息里可能有客户端提交的值）；`IllegalArgumentException`、`LockFailureException`、状态码不是 4xx 的
-`HttpException` 与未预期异常记 ERROR 并带调用栈。格式、方法、参数这类常见的请求错误因此不会产生 ERROR。
+不带调用栈与异常消息（消息里可能有客户端提交的值），状态码为 4xx 的 `HttpException` 另写状态码与业务码；`IllegalArgumentException`、
+`LockFailureException`、状态码不是 4xx 的 `HttpException`（含 200 的业务拒绝）与未预期异常记 ERROR 并带调用栈。
+所以正文格式、正文读不出来与参数校验（`IllegalArgumentException` 除外）这类请求错误不会产生 ERROR。
 
-请求在选定处理方法之前就被拒绝时（例如路径不存在、方法上声明的 `consumes` 不匹配），本 starter 的异常处理不参与，
-由 Spring MVC 默认返回对应状态码与空正文。
+请求在选定处理方法之前就被拒绝时（例如路径不存在、方法不支持、方法上声明的 `consumes` 不匹配），本 starter 的异常处理只作用于
+`com.mars.cloud` 包下的处理方法，接不到这类异常：Spring MVC 返回对应状态码，正文是 Spring Boot 默认的错误 JSON
+（`timestamp`、`status`、`error`、`path`），不是统一信封。
 
 ### 分布式锁失败
 

@@ -68,7 +68,8 @@ public class GlobalExceptionAdvice {
         HttpStatus status = HttpStatus.resolve(ex.getHttpStatusCode());
         if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
         if (status.is4xxClientError()) {
-            clientError("HttpException");
+            // 状态码与业务码不含客户端提交的值，同一路径上的不同拒绝原因靠它们区分
+            log.warn("HttpException, URL=[{}], status={}, code={}", RequestUtil.getRequestMethodAndUri(), status.value(), ec.getCode());
         } else {
             log.error("HttpException, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
         }
@@ -80,10 +81,9 @@ public class GlobalExceptionAdvice {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(AuthenticationException.class)
     public UnifyResponse<Object> handleAuthenticationException(AuthenticationException ex) {
-        clientError("AuthenticationException");
-
         // 优先取业务码/枚举，兜底直接用异常里的 errCode
         ErrorCode ec = ex.getErrorEnum() != null ? ex.getErrorEnum() : of(ex.getErrCode());
+        log.warn("AuthenticationException, URL=[{}], code={}", RequestUtil.getRequestMethodAndUri(), ec.getCode());
         String message = msg(ec.getCode(), ex.getMessage());
 
         UnifyResponse<Object> body = failBody(ec, message);
@@ -274,7 +274,8 @@ public class GlobalExceptionAdvice {
             return ResponseEntity.status(status).headers(error.getHeaders()).body(body);
         }
         log.error("Unhandled Exception, URL=[{}]", RequestUtil.getRequestMethodAndUri(), ex);
-        UnifyResponse<Object> body = failBody(of(500), msg(500, ex.getMessage()));
+        // 异常消息可能含 SQL、内部地址等，不进响应文案；开发 profile 下的 result 仍带它，便于排查
+        UnifyResponse<Object> body = failBody(of(500), msg(500, "Internal Server Error"));
         buildErrorResult(body, ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
