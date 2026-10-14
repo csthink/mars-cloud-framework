@@ -1,9 +1,16 @@
+import argparse
+import contextlib
+import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
+import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 spec = importlib.util.spec_from_file_location('verify', Path(__file__).resolve().parents[1] / 'verify.py')
 v = importlib.util.module_from_spec(spec)
@@ -144,6 +151,246 @@ class VerificationTest(unittest.TestCase):
     def test_policy_excludes_native_dns_error(self):
         policy = json.loads((v.ROOT / '.ci/log-policy.json').read_text())
         self.assertFalse(any('DnsServerAddressStreamProviders' in x['pattern'] for x in policy['service']))
+
+
+
+TOOLCHAIN = 'Apache Maven 3.9.14 (test)\nJava version: 25.0.1, vendor: Amazon.com Inc.\n'
+FRAMEWORK_SHA = 'a' * 40
+SERVICE_SHA = 'b' * 40
+REAL_RUN = subprocess.run
+
+
+class FrameworkArchiveTest(unittest.TestCase):
+    """Runs build() with Maven, Git and source checks replaced, so only the driver's own decisions are tested."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name).resolve()
+        self.framework, self.service, self.cache = root / 'framework', root / 'service', root / 'cache'
+        for checkout in (self.framework, self.service):
+            checkout.mkdir()
+            (checkout / 'pom.xml').write_text('<project xmlns="http://maven.apache.org/POM/4.0.0"/>')
+        (self.framework / '.ci').mkdir()
+        shutil.copy2(v.ROOT / '.ci/log-policy.json', self.framework / '.ci/log-policy.json')
+        (self.cache / 'org/example').mkdir(parents=True)
+        (self.cache / 'org/example/dep.jar').write_text('dependency')
+        self.reports = root / 'reports'
+        self.maven = []
+        self.runs = 0
+        for patch in (mock.patch.object(v, 'ROOT', self.framework),
+                      mock.patch.object(v, 'source', lambda path, expected, development=False: {'sha': expected, 'clean': True}),
+                      mock.patch.object(v, 'source_locks', lambda paths: contextlib.nullcontext()),
+                      mock.patch.object(v.subprocess, 'check_output', lambda *args, **kwargs: TOOLCHAIN),
+                      mock.patch.object(v.subprocess, 'run', self.fake_run),
+                      mock.patch.dict(os.environ, {}, clear=False)):
+            patch.start()
+            self.addCleanup(patch.stop)
+        os.environ.pop('MAVEN_ARGS', None)
+
+    def fake_run(self, cmd, cwd=None, **kwargs):
+        if cmd[0] == 'git':
+            return subprocess.CompletedProcess(cmd, 0, stdout='', stderr='')
+        if cmd[0] != 'mvn':
+            return REAL_RUN(cmd, cwd=cwd, **kwargs)
+        self.maven.append(Path(cwd).name)
+        repository = Path(next(arg for arg in cmd if arg.startswith('-Dmaven.repo.local=')).split('=', 1)[1])
+        if 'install' in cmd:
+            artifact = repository / 'com/mars/cloud/mars-cloud-common/1.0.0-SNAPSHOT'
+            artifact.mkdir(parents=True)
+            (artifact / 'mars-cloud-common-1.0.0-SNAPSHOT.jar').write_text('framework jar')
+        reports = Path(cwd) / 'target/surefire-reports'
+        reports.mkdir(parents=True, exist_ok=True)
+        (reports / 'TEST-X.xml').write_text('<testsuite name="X" tests="1"><testcase name="one"/></testsuite>')
+        return subprocess.CompletedProcess(cmd, 0)
+
+    def run_build(self, development=False, rebuild=False):
+        self.runs += 1
+        output = self.reports / str(self.runs)
+        args = argparse.Namespace(framework=str(self.framework), framework_sha=FRAMEWORK_SHA, service=str(self.service),
+                                  service_sha=SERVICE_SHA, framework_source='candidate', declared_framework='',
+                                  purpose='compatibility', cache=str(self.cache), output=str(output),
+                                  development=development, rebuild_framework=rebuild)
+        self.maven.clear()
+        with open(os.devnull, 'w') as quiet, contextlib.redirect_stdout(quiet), contextlib.redirect_stderr(quiet):
+            v.build(args)
+        return json.loads((output / 'report.json').read_text()), output
+
+    def key(self):
+        policy = hashlib.sha256((self.framework / '.ci/log-policy.json').read_bytes()).hexdigest()
+        return v.archive_key(FRAMEWORK_SHA, TOOLCHAIN, policy)
+
+    def archive(self):
+        return self.cache / '.framework-builds' / self.key()
+
+    def writable(self, path):
+        os.chmod(path.parent, 0o755)
+        if path.exists():
+            os.chmod(path, 0o644)
+
+    def test_key_covers_commit_toolchain_and_log_policy(self):
+        key = v.archive_key('a' * 40, 'maven', 'policy')
+        self.assertEqual(key, hashlib.sha256(('a' * 40 + '\nmaven\npolicy').encode()).hexdigest()[:24])
+        self.assertEqual(len({key, v.archive_key('b' * 40, 'maven', 'policy'), v.archive_key('a' * 40, 'other', 'policy'),
+                              v.archive_key('a' * 40, 'maven', 'other')}), 4)
+
+    def test_first_build_archives_and_second_build_reuses(self):
+        first, _ = self.run_build()
+        self.assertTrue(first['success'], first.get('error'))
+        self.assertEqual(self.maven, ['framework', 'service'])
+        self.assertFalse(first['framework_reused'])
+        archive = self.archive()
+        manifest = (archive / 'manifest.json').read_bytes()
+        self.assertEqual(first['framework_archive'], {'key': self.key(), 'manifest_sha256': hashlib.sha256(manifest).hexdigest()})
+        self.assertEqual(json.loads((archive / 'build.json').read_text()), first['builds'][0])
+        self.assertEqual(sorted(json.loads(manifest)['files']),
+                         ['build.json', 'repository/com/mars/cloud/mars-cloud-common/1.0.0-SNAPSHOT/mars-cloud-common-1.0.0-SNAPSHOT.jar',
+                          'tests/framework/TEST-X.xml'])
+        for directory, subdirs, files in os.walk(archive):
+            self.assertEqual(stat.S_IMODE(os.stat(directory).st_mode), 0o555)
+            for name in files:
+                self.assertEqual(stat.S_IMODE(os.stat(Path(directory) / name).st_mode), 0o444)
+
+        second, output = self.run_build()
+        self.assertTrue(second['success'], second.get('error'))
+        self.assertEqual(self.maven, ['service'])
+        self.assertTrue(second['framework_reused'])
+        self.assertIsNone(second['framework_archive'])
+        self.assertTrue(second['project_cache_empty_before_build'])
+        self.assertEqual([build['name'] for build in second['builds']], ['framework', 'service'])
+        self.assertEqual(second['builds'][0], {**first['builds'][0], 'reused': first['framework_archive']})
+        self.assertTrue((output / 'tests/framework/framework/TEST-X.xml').is_file())
+        jar = Path(second['repository']) / 'com/mars/cloud/mars-cloud-common/1.0.0-SNAPSHOT/mars-cloud-common-1.0.0-SNAPSHOT.jar'
+        self.assertEqual(jar.read_text(), 'framework jar')
+        self.assertTrue(os.access(jar, os.W_OK) and os.access(jar.parent, os.W_OK))
+        self.assertEqual((archive / 'manifest.json').read_bytes(), manifest)
+
+    def assert_reuse_rejected(self, detail):
+        report, _ = self.run_build()
+        self.assertFalse(report['success'])
+        self.assertIn(f'Framework build archive {self.key()} failed verification: {detail}', report['error'])
+        self.assertEqual(self.maven, [])
+        self.assertEqual(report['builds'], [])
+
+    def test_changed_jar_is_rejected(self):
+        self.run_build()
+        jar = self.archive() / 'repository/com/mars/cloud/mars-cloud-common/1.0.0-SNAPSHOT/mars-cloud-common-1.0.0-SNAPSHOT.jar'
+        self.writable(jar)
+        jar.write_text('replaced jar')
+        self.assert_reuse_rejected('repository/com/mars/cloud/mars-cloud-common/1.0.0-SNAPSHOT/mars-cloud-common-1.0.0-SNAPSHOT.jar changed')
+
+    def test_extra_file_is_rejected(self):
+        self.run_build()
+        extra = self.archive() / 'repository/com/mars/cloud/extra.jar'
+        self.writable(extra)
+        extra.write_text('extra')
+        self.assert_reuse_rejected("extra files ['repository/com/mars/cloud/extra.jar'], missing files []")
+
+    def test_missing_file_is_rejected(self):
+        self.run_build()
+        report = self.archive() / 'tests/framework/TEST-X.xml'
+        self.writable(report)
+        report.unlink()
+        self.assert_reuse_rejected("extra files [], missing files ['tests/framework/TEST-X.xml']")
+
+    def test_manifest_from_another_toolchain_is_rejected(self):
+        self.run_build()
+        manifest = self.archive() / 'manifest.json'
+        self.writable(manifest)
+        manifest.write_text(json.dumps({**json.loads(manifest.read_text()), 'toolchain': 'Apache Maven 3.9.13'}))
+        self.assert_reuse_rejected('toolchain differs from this build')
+
+    def test_development_build_neither_archives_nor_reuses(self):
+        report, _ = self.run_build(development=True)
+        self.assertTrue(report['success'], report.get('error'))
+        self.assertFalse((self.cache / '.framework-builds').exists())
+        self.assertIsNone(report['framework_archive'])
+        self.run_build()
+        report, _ = self.run_build(development=True)
+        self.assertTrue(report['success'], report.get('error'))
+        self.assertEqual(self.maven, ['framework', 'service'])
+        self.assertFalse(report['framework_reused'])
+        self.assertIsNone(report['framework_archive'])
+
+    def test_rebuild_builds_the_framework_and_keeps_the_archive(self):
+        self.run_build()
+        manifest = (self.archive() / 'manifest.json').read_bytes()
+        report, _ = self.run_build(rebuild=True)
+        self.assertTrue(report['success'], report.get('error'))
+        self.assertEqual(self.maven, ['framework', 'service'])
+        self.assertFalse(report['framework_reused'])
+        self.assertIsNone(report['framework_archive'])
+        self.assertNotIn('reused', report['builds'][0])
+        self.assertEqual((self.archive() / 'manifest.json').read_bytes(), manifest)
+
+    def test_failed_framework_tests_are_not_archived(self):
+        original = self.fake_run
+        def failing(cmd, cwd=None, **kwargs):
+            result = original(cmd, cwd=cwd, **kwargs)
+            if cmd[0] == 'mvn':
+                (Path(cwd) / 'target/surefire-reports/TEST-X.xml').write_text(
+                    '<testsuite name="X" tests="1"><testcase name="one"><failure/></testcase></testsuite>')
+            return result
+        with mock.patch.object(v.subprocess, 'run', failing):
+            report, _ = self.run_build()
+        self.assertFalse(report['success'])
+        self.assertFalse((self.cache / '.framework-builds').exists())
+
+    def test_builds_keep_only_the_previous_run_repository(self):
+        for _ in range(3):
+            report, _ = self.run_build()
+            self.assertTrue(report['success'], report.get('error'))
+        runs = sorted(path.name for path in (self.cache / '.verification').iterdir())
+        self.assertEqual(len(runs), 2)
+        self.assertIn(Path(report['repository']).parent.name, runs)
+
+
+class PruneRunsTest(unittest.TestCase):
+    def test_keeps_newest_run_and_leaves_the_rest_of_the_cache(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache = Path(temp)
+            runs = cache / '.verification'
+            for name, seconds in (('old', 1), ('newest', 3), ('middle', 2)):
+                (runs / name / 'repository').mkdir(parents=True)
+                os.utime(runs / name, ns=(0, seconds * 10**9))
+            (cache / '.framework-builds/key').mkdir(parents=True)
+            (cache / 'org/example').mkdir(parents=True)
+            (cache / 'org/example/dep.jar').write_text('dependency')
+            self.assertEqual(sorted(v.prune_runs(cache)), ['middle', 'old'])
+            self.assertEqual([path.name for path in runs.iterdir()], ['newest'])
+            self.assertTrue((cache / '.framework-builds/key').is_dir())
+            self.assertEqual((cache / 'org/example/dep.jar').read_text(), 'dependency')
+            self.assertEqual(v.prune_runs(cache), [])
+
+    def test_missing_directory_and_symlinks(self):
+        with tempfile.TemporaryDirectory() as temp:
+            cache = Path(temp)
+            self.assertEqual(v.prune_runs(cache), [])
+            (cache / '.verification').mkdir()
+            (cache / 'elsewhere').mkdir()
+            (cache / '.verification/link').symlink_to(cache / 'elsewhere', target_is_directory=True)
+            with self.assertRaises(ValueError): v.prune_runs(cache)
+            self.assertTrue((cache / 'elsewhere').is_dir())
+
+
+class WriteArchiveTest(unittest.TestCase):
+    def test_existing_archive_is_not_overwritten(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            repository, tests = root / 'repository', root / 'tests'
+            (repository / 'com/mars/cloud/a').mkdir(parents=True)
+            (repository / 'com/mars/cloud/a/a.jar').write_text('one')
+            tests.mkdir()
+            (tests / 'TEST-X.xml').write_text('<testsuite/>')
+            identity = {'framework_sha': 'a' * 40, 'toolchain': 'maven', 'policy_sha256': 'policy'}
+            created = v.write_archive(root / 'cache', identity, repository, tests, {'name': 'framework'})
+            self.assertEqual(created['key'], v.archive_key('a' * 40, 'maven', 'policy'))
+            (repository / 'com/mars/cloud/a/a.jar').write_text('two')
+            self.assertIsNone(v.write_archive(root / 'cache', identity, repository, tests, {'name': 'framework'}))
+            archive = root / 'cache/.framework-builds' / created['key']
+            self.assertEqual((archive / 'repository/com/mars/cloud/a/a.jar').read_text(), 'one')
+            self.assertEqual([path.name for path in (root / 'cache/.framework-builds').iterdir()], [created['key']])
+            self.assertEqual(v.load_archive(root / 'cache', identity)['reused'], created)
 
 
 if __name__ == '__main__': unittest.main()

@@ -14,7 +14,6 @@ import shutil
 import shlex
 import subprocess
 import sys
-import tempfile
 import uuid
 import xml.etree.ElementTree as ET
 
@@ -84,6 +83,159 @@ def seed(cache, destination):
         shutil.rmtree(project)
     if project.exists():
         raise ValueError("Project artifacts survived cache isolation")
+
+
+KEEP_RUNS = 1
+
+
+def prune_runs(cache, keep=KEEP_RUNS):
+    """Delete older run repositories under <cache>/.verification, keeping the newest `keep`.
+
+    Called before a new run repository is created. Startup checks that follow a build resolve test classpaths
+    in that build's run repository, so the newest existing one is kept: at most the previous and the current
+    run repository exist. Archived framework builds and dependencies elsewhere in the cache are not touched.
+    """
+    runs = cache / ".verification"
+    if runs.is_symlink():
+        raise ValueError("Cache symlinks are not supported")
+    if not runs.exists():
+        return []
+    directories = []
+    for item in runs.iterdir():
+        if item.is_symlink():
+            raise ValueError("Cache symlinks are not supported")
+        if item.is_dir():
+            directories.append(item)
+    directories.sort(key=lambda item: (item.stat().st_mtime_ns, item.name), reverse=True)
+    removed = directories[keep:]
+    for item in removed:
+        shutil.rmtree(item)
+    return [item.name for item in removed]
+
+
+ARCHIVES = ".framework-builds"
+PROJECT = Path("com/mars/cloud")
+MANIFEST = "manifest.json"
+IDENTITY = ("framework_sha", "toolchain", "policy_sha256")
+
+
+def archive_key(framework_sha, toolchain, policy_sha256):
+    """Archive directory name: any change of commit, tool versions or log policy selects another archive."""
+    return hashlib.sha256("\n".join((framework_sha, toolchain, policy_sha256)).encode()).hexdigest()[:24]
+
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def tree_files(root):
+    """Relative paths of every regular file under root; symlinks and other file types are rejected."""
+    found = []
+    for directory, subdirs, files in os.walk(root, followlinks=False):
+        current = Path(directory)
+        for name in subdirs + files:
+            path = current / name
+            if path.is_symlink():
+                raise ValueError(f"Symlink in framework build archive: {path.relative_to(root)}")
+        for name in files:
+            path = current / name
+            if not path.is_file():
+                raise ValueError(f"Unsupported file in framework build archive: {path.relative_to(root)}")
+            found.append(path.relative_to(root).as_posix())
+    return sorted(found)
+
+
+def copy_tree(source_root, destination):
+    """Copy file contents only, so the copy stays writable whatever the source modes are."""
+    for directory, subdirs, files in os.walk(source_root, followlinks=False):
+        current = Path(directory)
+        target = destination / current.relative_to(source_root)
+        target.mkdir(parents=True, exist_ok=True)
+        for name in subdirs + files:
+            if (current / name).is_symlink():
+                raise ValueError("Symlinks are not supported in project artifacts")
+        for name in files:
+            shutil.copyfile(current / name, target / name)
+
+
+def write_archive(cache, identity, repository, tests, evidence):
+    """Store a framework build that passed every check; an existing archive for the same key is kept as is."""
+    key = archive_key(*(identity[name] for name in IDENTITY))
+    archives = cache / ARCHIVES
+    if archives.is_symlink():
+        raise ValueError("Cache symlinks are not supported")
+    final = archives / key
+    if final.exists() or final.is_symlink():
+        return None
+    archives.mkdir(parents=True, exist_ok=True)
+    staging = archives / f".staging-{key}-{uuid.uuid4().hex}"
+    try:
+        copy_tree(repository / PROJECT, staging / "repository" / PROJECT)
+        copy_tree(tests, staging / "tests")
+        (staging / "build.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
+        files = {name: file_sha256(staging / name) for name in tree_files(staging)}
+        manifest = json.dumps({**{name: identity[name] for name in IDENTITY}, "files": files},
+                              ensure_ascii=False, indent=2) + "\n"
+        (staging / MANIFEST).write_text(manifest)
+        os.replace(staging, final)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+    for directory, subdirs, files in os.walk(final, topdown=False):
+        for name in files:
+            os.chmod(Path(directory) / name, 0o444)
+        os.chmod(directory, 0o555)
+    return {"key": key, "manifest_sha256": hashlib.sha256(manifest.encode()).hexdigest()}
+
+
+def load_archive(cache, identity):
+    """Return the verified archive for this build input, or None when there is none.
+
+    A damaged or mismatched archive fails the run instead of being rebuilt, because a changed archive needs inspection.
+    """
+    key = archive_key(*(identity[name] for name in IDENTITY))
+    archives = cache / ARCHIVES
+    archive = archives / key
+    if archives.is_symlink() or archive.is_symlink():
+        raise ValueError("Cache symlinks are not supported")
+    if not archive.exists():
+        return None
+    def reject(detail):
+        raise ValueError(f"Framework build archive {key} failed verification: {detail}; "
+                         f"inspect {archive} and remove it before building again")
+    try:
+        data = (archive / MANIFEST).read_bytes()
+        manifest = json.loads(data)
+    except (OSError, ValueError):
+        reject("unreadable manifest")
+    if not isinstance(manifest, dict) or set(manifest) != {*IDENTITY, "files"} or not isinstance(manifest["files"], dict):
+        reject("unexpected manifest fields")
+    for name in IDENTITY:
+        if manifest[name] != identity[name]:
+            reject(f"{name} differs from this build")
+    present = [name for name in tree_files(archive) if name != MANIFEST]
+    if sorted(manifest["files"]) != present:
+        extra = sorted(set(present) - set(manifest["files"]))
+        missing = sorted(set(manifest["files"]) - set(present))
+        reject(f"extra files {extra}, missing files {missing}")
+    if "build.json" not in present or not any(name.startswith(f"repository/{PROJECT.as_posix()}/") for name in present) \
+            or not any(name.startswith("tests/") for name in present):
+        reject("incomplete archive")
+    for name, expected in manifest["files"].items():
+        if file_sha256(archive / name) != expected:
+            reject(f"{name} changed")
+    try:
+        evidence = json.loads((archive / "build.json").read_text())
+    except (OSError, ValueError):
+        reject("unreadable build.json")
+    if not isinstance(evidence, dict) or evidence.get("name") != "framework":
+        reject("build.json is not a framework build")
+    return {"path": archive, "evidence": evidence,
+            "reused": {"key": key, "manifest_sha256": hashlib.sha256(data).hexdigest()}}
 
 
 # Match severity fields, not words such as '.error.' in test class names. The message is optional:
@@ -204,6 +356,7 @@ def build(args):
     report = {"schema": 1, "success": False, "formal": not args.development,
               "purpose": args.purpose, "framework_source": args.framework_source,
               "declared_framework": args.declared_framework, "sources": {}, "builds": [],
+              "framework_reused": False, "framework_archive": None,
               "run": {k: os.environ.get(k, "") for k in ("GITHUB_REPOSITORY", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA", "GITHUB_EVENT_NAME", "GITHUB_REF", "SOURCE_HEAD_SHA")},
               "started_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
     try:
@@ -233,16 +386,29 @@ def build(args):
                 raise ValueError("Worktree builds must use their own slot cache")
         policy = json.loads((ROOT / ".ci/log-policy.json").read_text())
         report["policy_sha256"] = hashlib.sha256((ROOT / ".ci/log-policy.json").read_bytes()).hexdigest()
+        identity = {"framework_sha": report["sources"]["framework"]["sha"], "toolchain": report["toolchain"],
+                    "policy_sha256": report["policy_sha256"]}
+        # Only formal builds produce or consume archives; development reports are never evidence.
+        formal = not args.development
         with lock(cache), source_locks([path for _, path, _ in inputs]):
+            prune_runs(cache)
+            reuse = load_archive(cache, identity) if formal and not args.rebuild_framework else None
             run_root = cache / ".verification" / uuid.uuid4().hex
             repository = run_root / "repository"
             seed(cache, repository)
             report["repository"] = str(repository)
-            report["project_cache_empty_before_build"] = not (repository / "com/mars/cloud").exists()
+            report["project_cache_empty_before_build"] = not (repository / PROJECT).exists()
             for name, path, _ in inputs:
                 config = path / ".mvn/maven.config"
                 if config.exists() and re.search(r"skip|test=|argLine|maven.repo.local|failure.ignore", config.read_text(), re.I):
                     raise ValueError("Maven configuration overrides verification")
+                if name == "framework" and reuse:
+                    copy_tree(reuse["path"] / "repository" / PROJECT, repository / PROJECT)
+                    copy_tree(reuse["path"] / "tests", output / "tests" / path.name)
+                    print(f"Reusing framework build {reuse['reused']['key']}", flush=True)
+                    report["builds"].append({**reuse["evidence"], "reused": reuse["reused"]})
+                    report["framework_reused"] = True
+                    continue
                 cmd = ["mvn", "-B", "-ntp", f"-Dmaven.repo.local={repository}",
                        "-DskipTests=false", "-Dmaven.test.skip=false", "-DskipITs=false", "-Dmaven.test.failure.ignore=false",
                        "clean", "install" if name == "framework" else "verify"]
@@ -258,6 +424,11 @@ def build(args):
                 evidence["tests"] = test_reports(path, output)
                 if evidence["diagnostics"]["unknown"]:
                     raise ValueError(f"{name}: unknown diagnostic(s); inspect report.json")
+                if name == "framework" and formal:
+                    if source(path, args.framework_sha) != report["sources"][name]:
+                        raise ValueError("Sources changed during verification")
+                    report["framework_archive"] = write_archive(cache, identity, repository,
+                                                                output / "tests" / path.name, evidence)
             for directory, subdirs, files in os.walk(repository):
                 current = Path(directory)
                 relative = current.relative_to(repository)
@@ -293,6 +464,8 @@ def main():
     parser.add_argument("--cache", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--development", action="store_true")
+    parser.add_argument("--rebuild-framework", action="store_true",
+                        help="build and test the framework even when an archived build of the same input exists")
     args = parser.parse_args()
     if not args.service or not args.service_sha:
         parser.error("Both repository inputs are required")
