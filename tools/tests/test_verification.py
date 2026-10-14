@@ -312,16 +312,19 @@ class FrameworkArchiveTest(unittest.TestCase):
         self.assertFalse(report['framework_reused'])
         self.assertIsNone(report['framework_archive'])
 
-    def test_rebuild_builds_the_framework_and_keeps_the_archive(self):
-        self.run_build()
-        manifest = (self.archive() / 'manifest.json').read_bytes()
+    def test_rebuild_builds_the_framework_and_replaces_the_archive(self):
+        first, _ = self.run_build()
         report, _ = self.run_build(rebuild=True)
         self.assertTrue(report['success'], report.get('error'))
         self.assertEqual(self.maven, ['framework', 'service'])
         self.assertFalse(report['framework_reused'])
-        self.assertIsNone(report['framework_archive'])
         self.assertNotIn('reused', report['builds'][0])
-        self.assertEqual((self.archive() / 'manifest.json').read_bytes(), manifest)
+        replaced = report['framework_archive']
+        self.assertEqual(replaced['key'], first['framework_archive']['key'])
+        self.assertNotEqual(replaced['manifest_sha256'], first['framework_archive']['manifest_sha256'])
+        self.assertEqual(hashlib.sha256((self.archive() / 'manifest.json').read_bytes()).hexdigest(),
+                         replaced['manifest_sha256'])
+        self.assertEqual([path.name for path in self.archive().parent.iterdir()], [self.archive().name])
 
     def test_failed_framework_tests_are_not_archived(self):
         original = self.fake_run
@@ -391,6 +394,28 @@ class WriteArchiveTest(unittest.TestCase):
             self.assertEqual((archive / 'repository/com/mars/cloud/a/a.jar').read_text(), 'one')
             self.assertEqual([path.name for path in (root / 'cache/.framework-builds').iterdir()], [created['key']])
             self.assertEqual(v.load_archive(root / 'cache', identity)['reused'], created)
+
+    def test_replace_supersedes_the_archive_and_clears_leftovers(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            repository, tests = root / 'repository', root / 'tests'
+            (repository / 'com/mars/cloud/a').mkdir(parents=True)
+            (repository / 'com/mars/cloud/a/a.jar').write_text('one')
+            tests.mkdir()
+            (tests / 'TEST-X.xml').write_text('<testsuite/>')
+            identity = {'framework_sha': 'a' * 40, 'toolchain': 'maven', 'policy_sha256': 'policy'}
+            created = v.write_archive(root / 'cache', identity, repository, tests, {'name': 'framework'})
+            archives = root / 'cache/.framework-builds'
+            leftover = archives / '.staging-interrupted'
+            (leftover / 'repository').mkdir(parents=True)
+            os.chmod(leftover / 'repository', 0o555)
+            (repository / 'com/mars/cloud/a/a.jar').write_text('two')
+            replaced = v.write_archive(root / 'cache', identity, repository, tests, {'name': 'framework'}, replace=True)
+            self.assertEqual(replaced['key'], created['key'])
+            self.assertNotEqual(replaced['manifest_sha256'], created['manifest_sha256'])
+            self.assertEqual((archives / created['key'] / 'repository/com/mars/cloud/a/a.jar').read_text(), 'two')
+            self.assertEqual([path.name for path in archives.iterdir()], [created['key']])
+            self.assertEqual(v.load_archive(root / 'cache', identity)['reused'], replaced)
 
 
 if __name__ == '__main__': unittest.main()

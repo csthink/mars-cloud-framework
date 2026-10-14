@@ -162,34 +162,56 @@ def copy_tree(source_root, destination):
             shutil.copyfile(current / name, target / name)
 
 
-def write_archive(cache, identity, repository, tests, evidence):
-    """Store a framework build that passed every check; an existing archive for the same key is kept as is."""
+def remove_tree(path):
+    """Delete a directory tree, including the read-only trees of retired archives."""
+    for directory, subdirs, files in os.walk(path):
+        os.chmod(directory, 0o755)
+    shutil.rmtree(path)
+
+
+def write_archive(cache, identity, repository, tests, evidence, replace=False):
+    """Store a framework build that passed every check.
+
+    An existing archive for the same key is kept unless `replace` is set (a forced rebuild), so a rebuild can always
+    supersede an archive whose origin report is no longer available.
+    """
     key = archive_key(*(identity[name] for name in IDENTITY))
     archives = cache / ARCHIVES
     if archives.is_symlink():
         raise ValueError("Cache symlinks are not supported")
     final = archives / key
-    if final.exists() or final.is_symlink():
+    if final.is_symlink():
+        raise ValueError("Cache symlinks are not supported")
+    if final.exists() and not replace:
         return None
     archives.mkdir(parents=True, exist_ok=True)
+    # The cache lock is held, so any staging or retired directory is left over from an interrupted run.
+    for item in archives.iterdir():
+        if item.name.startswith((".staging-", ".retired-")) and item.is_dir() and not item.is_symlink():
+            remove_tree(item)
     staging = archives / f".staging-{key}-{uuid.uuid4().hex}"
+    retired = archives / f".retired-{key}-{uuid.uuid4().hex}"
     try:
         copy_tree(repository / PROJECT, staging / "repository" / PROJECT)
         copy_tree(tests, staging / "tests")
-        (staging / "build.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n")
+        (staging / "build.json").write_bytes((json.dumps(evidence, ensure_ascii=False, indent=2) + "\n").encode())
         files = {name: file_sha256(staging / name) for name in tree_files(staging)}
-        manifest = json.dumps({**{name: identity[name] for name in IDENTITY}, "files": files},
-                              ensure_ascii=False, indent=2) + "\n"
-        (staging / MANIFEST).write_text(manifest)
+        manifest = (json.dumps({**{name: identity[name] for name in IDENTITY}, "files": files},
+                               ensure_ascii=False, indent=2) + "\n").encode()
+        (staging / MANIFEST).write_bytes(manifest)
+        if final.exists():
+            os.replace(final, retired)
         os.replace(staging, final)
     finally:
         if staging.exists():
-            shutil.rmtree(staging)
+            remove_tree(staging)
+        if retired.exists():
+            remove_tree(retired)
     for directory, subdirs, files in os.walk(final, topdown=False):
         for name in files:
             os.chmod(Path(directory) / name, 0o444)
         os.chmod(directory, 0o555)
-    return {"key": key, "manifest_sha256": hashlib.sha256(manifest.encode()).hexdigest()}
+    return {"key": key, "manifest_sha256": hashlib.sha256(manifest).hexdigest()}
 
 
 def load_archive(cache, identity):
@@ -229,7 +251,7 @@ def load_archive(cache, identity):
         if file_sha256(archive / name) != expected:
             reject(f"{name} changed")
     try:
-        evidence = json.loads((archive / "build.json").read_text())
+        evidence = json.loads((archive / "build.json").read_bytes().decode())
     except (OSError, ValueError):
         reject("unreadable build.json")
     if not isinstance(evidence, dict) or evidence.get("name") != "framework":
@@ -428,7 +450,8 @@ def build(args):
                     if source(path, args.framework_sha) != report["sources"][name]:
                         raise ValueError("Sources changed during verification")
                     report["framework_archive"] = write_archive(cache, identity, repository,
-                                                                output / "tests" / path.name, evidence)
+                                                                output / "tests" / path.name, evidence,
+                                                                replace=args.rebuild_framework)
             for directory, subdirs, files in os.walk(repository):
                 current = Path(directory)
                 relative = current.relative_to(repository)
