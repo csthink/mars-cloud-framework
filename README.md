@@ -185,7 +185,7 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 
 ## 构建
 
-正式验证使用与 CI 相同的 [tools/verify.sh](tools/verify.sh)，固定两仓源码 SHA、Corretto JDK 25 与 Maven 3.9.14，生成测试及日志报告。参数见 [docs/ci.md](docs/ci.md)。以下 Maven 命令用于开发迭代。
+正式验证在本机运行 [tools/verify.sh](tools/verify.sh)，固定两仓源码 SHA、Corretto JDK 25 与 Maven 3.9.14，生成测试及日志报告。参数见 [docs/ci.md](docs/ci.md)。以下 Maven 命令用于开发迭代。
 
 ```bash
 mvn clean install            # 全量构建（父 POM 通过显式 relativePath 解析）
