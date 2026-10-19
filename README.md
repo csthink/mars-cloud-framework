@@ -183,6 +183,13 @@ Servlet 服务需要经 Nacos 服务名发起同步读调用时，再引入：
 > 本仓**只出 jar，不部署**。某个能力该不该放这里，判据是「第二个真实消费者出现了吗」——
 > 只有第一个消费者时，代码应留在那个业务服务里。可部署的应用都在配套服务仓。
 
+## HTTP 凭据头判断
+
+`mars-cloud-common` 的 `com.mars.cloud.common.http.SensitiveHttpHeaders.isSensitive(name)`
+可以在构造响应详情或日志时识别应省略值的头名：Authorization、Proxy-Authorization、Cookie、Set-Cookie、X-Api-Key。
+判断大小写不敏感，null 与空字符串返回 false；普通头名不受影响。调用方须显式调用该工具完成过滤，
+并单独处理自己的其他凭据头；引入 common 不会自动修改 HTTP 请求或日志。
+
 ## 构建
 
 正式验证在本机运行 [tools/verify.sh](tools/verify.sh)，固定两仓源码 SHA、Corretto JDK 25 与 Maven 3.9.14，生成测试及日志报告。参数见 [docs/ci.md](docs/ci.md)。以下 Maven 命令用于开发迭代。
@@ -267,13 +274,8 @@ Lombok（截至 1.18.48）在 JDK 24 及以上的编译期会调用 `sun.misc.Un
 - 各模块自己的 `README.md` —— 配置项与用法
 - 配套服务仓的 `mars-cloud-sample-service` —— 可运行的完整示例
 
-## 许可
+## 许可证
 
-内部项目，暂未公开发布 artifact。
-
-## HTTP 凭据头判断
-
-`mars-cloud-common` 的 `com.mars.cloud.common.http.SensitiveHttpHeaders.isSensitive(name)`
-可以在构造响应详情或日志时识别应省略值的头名：Authorization、Proxy-Authorization、Cookie、Set-Cookie、X-Api-Key。
-判断大小写不敏感，null 与空字符串返回 false；普通头名不受影响。调用方须显式调用该工具完成过滤，
-并单独处理自己的其他凭据头；引入 common 不会自动修改 HTTP 请求或日志。
+本仓以 [Apache License 2.0](LICENSE) 发布，版权声明见 [NOTICE](NOTICE)。
+`mars-cloud-rocketmq-spring-boot-starter` 的 `MarsTransactionMessageHandler` 衍生自 Spring Cloud Alibaba 2025.1.0.0，
+同样以 Apache License 2.0 发布，文件头保留上游的版权声明。

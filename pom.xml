@@ -13,6 +13,13 @@
     <name>mars-cloud-framework</name>
     <description>mars-cloud 微服务框架：依赖管理 BOM 与各 Spring Boot Starter</description>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+
     <!--
       根聚合 POM 只做聚合，不做 parent。
       各模块的 parent 始终是 mars-cloud-dependencies，这样「版本唯一出口」的契约不变，

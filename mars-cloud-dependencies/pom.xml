@@ -13,6 +13,13 @@
     <name>mars-cloud-dependencies</name>
     <description>mars-cloud 依赖管理 BOM：统一管理 Spring Boot / Spring Cloud / Spring Cloud Alibaba / 内部模块 / 常用依赖的版本</description>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+
     <!--
       本模块是 mars-cloud 全仓的「版本唯一出口」。
       所有模块以它为 parent，依赖版本只在这里声明一次。
